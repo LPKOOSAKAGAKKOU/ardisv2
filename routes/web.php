@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Controllers\AdminController\StudentController;
 
 
 Route::get('/', function () {
@@ -39,6 +40,10 @@ Route::middleware([
             Inertia::render('admin/dashboard')
         )->name('dashboard');
 
+        // Route Resource untuk Manajemen Siswa
+        // Menggunakan resource agar otomatis punya index, create, store, edit, update, destroy
+        Route::resource('students', StudentController::class);
+
     });
 
 /*
@@ -58,6 +63,9 @@ Route::middleware([
         Route::get('dashboard', fn () =>
             Inertia::render('sensei/dashboard')
         )->name('dashboard');
+
+        // Sensei juga bisa akses StudentController yang sama
+        Route::resource('students', StudentController::class);
 
     });
 

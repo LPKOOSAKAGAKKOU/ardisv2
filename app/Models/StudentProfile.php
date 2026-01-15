@@ -14,8 +14,10 @@ class StudentProfile extends Model
      * Sangat penting untuk tanggal (dob, entry_date_lpk) agar bisa dimanipulasi Carbon.
      */
     protected $casts = [
-        'dob' => 'date',
-        'entry_date_lpk' => 'date',
+        'dob' => 'date:Y-m-d',
+        'entry_date_lpk' => 'date:Y-m-d',
+        'passport_issue_date' => 'date:Y-m-d',  // Tambahkan juga
+        'passport_expiry_date' => 'date:Y-m-d', // Tambahkan juga
         'height' => 'integer',
         'weight' => 'integer',
     ];

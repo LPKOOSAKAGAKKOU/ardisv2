@@ -11,7 +11,7 @@ class StudentFamily extends Model
         'name', 'age', 'occupation'
     ];
 
-    // Untuk 'age' bisa di-cast ke integer jika ingin memastikan tipenya
+    // ✅ SUDAH BENAR - age sebagai integer
     protected $casts = [
         'age' => 'integer',
     ];

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('student_profile_id')->constrained()->onDelete('cascade');
             $table->string('company_name');
             $table->string('job_type'); // Jenis kerja dari job_options.php
-            $table->number('monthly_salary')->nullable();
+            $table->integer('monthly_salary')->nullable();
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->timestamps();

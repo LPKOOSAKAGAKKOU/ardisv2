@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\AdminController;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\StudentProfile;
 use Illuminate\Http\Request;
@@ -15,22 +16,28 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
-        $students = StudentProfile::with('user')
-            ->whereHas('user', function ($query) use ($request) {
-                $query->where('role', 'student');
-                
-                // Opsional: Tambah fitur search nama jika ada input dari frontend
-                if ($request->search) {
-                    $query->where('name', 'like', "%{$request->search}%");
-                }
-            })
-            ->latest()
+        $query = StudentProfile::with('user');
+
+        // Filter berdasarkan role user (student)
+        $query->whereHas('user', function ($q) {
+            $q->where('role', 'student');
+        });
+
+        // Fitur Search: Mencari di nama user ATAU NIK di profil
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('full_name', 'like', "%{$request->search}%")
+                ->orWhere('nik', 'like', "%{$request->search}%");
+            });
+        }
+
+        $students = $query->latest()
             ->paginate(25)
             ->withQueryString();
 
-        return Inertia::render('Student/Index', [
+        return Inertia::render('admin/student/Index', [
             'students' => $students,
-            'filters' => $request->only(['search']) // Mengirim balik kata kunci pencarian ke React
+            'filters' => $request->only(['search'])
         ]);
     }
 
@@ -40,7 +47,7 @@ class StudentController extends Controller
         $provinces = Province::all(); // Contoh tabel provinsi
         $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
 
-        return Inertia::render('Student/Create', [
+        return Inertia::render('admin/student/StudentForm', [
             'provinces' => Province::all() ?? [],
             'jobSectors' => JobSector::all() ?? []
         ]);
@@ -48,44 +55,54 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
+        // 1. Validasi Data
+        $request->validate([
+            'email' => 'required|email|unique:users,email',
+            'nik' => 'required|unique:student_profiles,nik',
+            'full_name' => 'required|string|max:255',
+            'dob' => 'required|date',
+            // Tambahkan validasi lain jika perlu
+        ]);
+
         DB::beginTransaction();
         try {
-            // 1. Buat User untuk login
+            // 2. Buat User Login
             $user = User::create([
                 'name' => $request->full_name,
                 'email' => $request->email,
-                'password' => Hash::make('password123'), // Default password
+                'password' => Hash::make('password123'), 
+                'role' => 'student', // Pastikan role diset
             ]);
 
-            // 2. Simpan Data Profil Utama
-            // Kita ambil SEMUA input kecuali data user dan data array riwayat
+            // 3. Simpan Data Profil Utama
+            // Gunakan $request->only atau $request->except agar lebih aman
             $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
             $profileData['user_id'] = $user->id;
             
             $profile = StudentProfile::create($profileData);
 
-            // 3. Simpan Riwayat Pendidikan
-            if ($request->has('educations')) {
+            // 4. Simpan Relasi (Hanya jika ada datanya)
+            if (!empty($request->educations)) {
                 $profile->educations()->createMany($request->educations);
             }
 
-            // 4. Simpan Riwayat Pekerjaan
-            if ($request->has('experiences')) {
+            if (!empty($request->experiences)) {
                 $profile->experiences()->createMany($request->experiences);
             }
 
-            // 5. Simpan Riwayat Keluarga
-            if ($request->has('families')) {
+            if (!empty($request->families)) {
                 $profile->families()->createMany($request->families);
             }
 
             DB::commit();
-            return redirect()->route('student.index')->with('success', 'Data Siswa ' . $profile->full_name . ' berhasil disimpan.');
+
+            // Gunakan nama route yang benar sesuai php artisan route:list
+            return redirect('/admin/students')->with('success', 'Siswa berhasil didaftarkan.');
 
         } catch (\Exception $e) {
             DB::rollback();
-            // Log error untuk debug jika perlu
-            return back()->withInput()->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
+            // Log::error($e->getMessage()); // Opsional: catat di storage/logs/laravel.log
+            return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()])->withInput();
         }
     }
 
@@ -95,9 +112,15 @@ class StudentController extends Controller
         $student = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
             ->findOrFail($id);
 
+        // Ambil data provinces dan jobSectors seperti di method create()
+        $provinces = Province::select('id', 'name')->orderBy('name')->get();
+        $jobSectors = JobSector::select('id', 'name', 'code')->orderBy('name')->get();
+
         // Inertia akan mengirimkan objek $student sebagai PROPS ke React
-        return Inertia::render('Student/Edit', [
-            'student' => $student
+        return Inertia::render('admin/student/StudentForm', [
+            'student' => $student,
+            'provinces' => $provinces,      // TAMBAHKAN INI
+            'jobSectors' => $jobSectors,    // TAMBAHKAN INI
         ]);
     }
 
@@ -144,4 +167,16 @@ class StudentController extends Controller
             return back()->withInput()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
         }
     }
+
+    public function show($id)
+    {
+        // Ambil data lengkap dengan semua relasi
+        $student = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
+            ->findOrFail($id);
+
+        return Inertia::render('admin/student/Show', [
+            'student' => $student
+        ]);
+    }
+
 }
