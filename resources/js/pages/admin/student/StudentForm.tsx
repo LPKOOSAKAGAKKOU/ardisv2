@@ -86,15 +86,11 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
             // Rute otomatis: admin.students.update
             put(route('admin.students.update', student.id), {
                 preserveScroll: true,
-                onSuccess: () => alert('Data berhasil diperbarui!'),
             });
         } else {
             // Rute otomatis: admin.students.store
             post(route('admin.students.store'), {
                 preserveScroll: true,
-                onSuccess: () => {
-                    // Berhasil disimpan, Inertia otomatis redirect sesuai Controller
-                },
                 onError: (errors) => {
                     // JIKA DIAM SAJA, CEK LOG INI DI CONSOLE (F12)
                     console.error("Gagal Simpan. Cek validasi:", errors);

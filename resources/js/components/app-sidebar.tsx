@@ -37,9 +37,9 @@ const adminNavItems = (): NavItem[] => [
     { title: 'Data Siswa', href: route('admin.students.index'), icon: Users },
     { title: 'Data Kelas', href: '#', icon: School },
     { title: 'Data Guru', href: '#', icon: GraduationCap },
-    { title: 'Data Wawancara', href: '#', icon: MessageSquare },
-    { title: 'Data Perusahaan', href: '#', icon: Building2 },
-    { title: 'Data Organisasi Penerima', href: '#', icon: Network },
+    { title: 'Data Wawancara', href: route('admin.interviews.index'), icon: MessageSquare },
+    { title: 'Data Perusahaan', href: route('admin.companies.index'), icon: Building2 },
+    { title: 'Data Organisasi Penerima', href: route('admin.organizations.index'), icon: Network },
     { title: 'Data Pembayaran', href: '#', icon: CreditCard },
 ]
 

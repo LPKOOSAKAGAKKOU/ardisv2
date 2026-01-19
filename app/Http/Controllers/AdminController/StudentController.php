@@ -8,12 +8,24 @@ use App\Models\StudentProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Services\YunervaService;
 use Inertia\Inertia;
 use App\Models\Province;
 use App\Models\JobSector;
+use Illuminate\Support\Str;
 
 class StudentController extends Controller
 {
+
+    // 1. ANDA WAJIB MENAMBAHKAN BARIS INI
+    protected $yunerva;
+
+    // 2. Pastikan inisialisasi di constructor seperti ini
+    public function __construct(YunervaService $yunerva)
+    {
+        $this->yunerva = $yunerva;
+    }
+    
     public function index(Request $request)
     {
         $query = StudentProfile::with('user');
@@ -78,6 +90,7 @@ class StudentController extends Controller
             // Gunakan $request->only atau $request->except agar lebih aman
             $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
             $profileData['user_id'] = $user->id;
+            $profileData['yunerva_file_password'] = Str::random(8);
             
             $profile = StudentProfile::create($profileData);
 
@@ -129,42 +142,61 @@ class StudentController extends Controller
         // Mengambil profil beserta relasi user-nya
         $profile = StudentProfile::with('user')->findOrFail($id);
         
+        // 1. Validasi Data dengan Pengecualian ID saat ini
+        $request->validate([
+            // 'unique:table,column,except_id'
+            'email' => 'required|email|unique:users,email,' . $profile->user_id,
+            'nik'   => 'required|unique:student_profiles,nik,' . $profile->id,
+            'full_name' => 'required|string|max:255',
+            'dob'   => 'required|date',
+            // Tambahkan validasi lain sesuai kebutuhan
+        ]);
+
         DB::beginTransaction();
         try {
-            // 1. Update Email di Tabel Users
+            // 2. Update Data di Tabel Users
             $profile->user->update([
-                'name'  => $request->full_name, // Update nama di user juga jika perlu
+                'name'  => $request->full_name,
                 'email' => $request->email
             ]);
 
-            // 2. Update Data Profil Utama
-            // Mengupdate semua kolom medis, fisik, kebiasaan, dll secara otomatis
+            // 3. Update Data Profil Utama
+            // Mengupdate kolom medis, fisik, dll sesuai field di $request
             $profile->update($request->except(['email', 'educations', 'experiences', 'families']));
 
-            // 3. Update Riwayat Pendidikan (Re-sync)
+            // 4. Update Riwayat Pendidikan (Re-sync)
             if ($request->has('educations')) {
-                $profile->educations()->delete(); // Hapus data lama
-                $profile->educations()->createMany($request->educations); // Masukkan data baru dari form
+                $profile->educations()->delete(); 
+                if (!empty($request->educations)) {
+                    $profile->educations()->createMany($request->educations);
+                }
             }
 
-            // 4. Update Riwayat Pekerjaan (Re-sync)
+            // 5. Update Riwayat Pekerjaan (Re-sync)
             if ($request->has('experiences')) {
                 $profile->experiences()->delete();
-                $profile->experiences()->createMany($request->experiences);
+                if (!empty($request->experiences)) {
+                    $profile->experiences()->createMany($request->experiences);
+                }
             }
 
-            // 5. Update Riwayat Keluarga (Re-sync)
+            // 6. Update Riwayat Keluarga (Re-sync)
             if ($request->has('families')) {
                 $profile->families()->delete();
-                $profile->families()->createMany($request->families);
+                if (!empty($request->families)) {
+                    $profile->families()->createMany($request->families);
+                }
             }
 
             DB::commit();
-            return redirect()->route('student.index')->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui');
+            
+            // Pastikan route index sudah benar, misal: admin.students.index
+            return redirect()->route('admin.students.index')
+                            ->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui');
 
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withInput()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
+            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui data: ' . $e->getMessage()]);
         }
     }
 
@@ -177,6 +209,75 @@ class StudentController extends Controller
         return Inertia::render('admin/student/Show', [
             'student' => $student
         ]);
+    }
+
+    public function destroy($id)
+    {
+        $profile = StudentProfile::findOrFail($id);
+        $user = User::find($profile->user_id);
+
+        $documentFields = [
+            'photo_yunerva_uuid',
+            'photo_with_suit_yunerva_uuid',
+            'id_card_yunerva_uuid',
+            'family_card_yunerva_uuid',
+            'birth_certificate_yunerva_uuid',
+            'diploma_yunerva_uuid',
+            'transcript_yunerva_uuid',
+            '1st_medical_checkup_yunerva_uuid',
+            '2nd_medical_checkup_yunerva_uuid',
+            '3rd_medical_checkup_yunerva_uuid',
+            'passport_photo_page_yunerva_uuid',
+            'parents_consent_letter_yunerva_uuid',
+            'japanese_language_certificate_yunerva_uuid',
+            'work_contract_yunerva_uuid',
+        ];
+
+        // 1. Kumpulkan UUID sebelum datanya dihapus dari DB
+        $uuidsToDelete = [];
+        foreach ($documentFields as $field) {
+            if (!empty($profile->$field)) {
+                $uuidsToDelete[] = $profile->$field;
+            }
+        }
+
+        // 2. Transaksi Database (Cepat)
+        DB::beginTransaction();
+        try {
+            $profile->educations()->delete();
+            $profile->experiences()->delete();
+            $profile->families()->delete();
+            $profile->delete();
+            
+            if ($user) {
+                $user->delete();
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withErrors(['error' => 'Gagal menghapus data database: ' . $e->getMessage()]);
+        }
+
+        // 3. Proses Hapus File ke API Yunerva (Di luar Transaction)
+        // Karena DB sudah commit, meskipun di sini lambat, data di web sudah terupdate
+        foreach ($uuidsToDelete as $uuid) {
+            try {
+                // Gunakan timeout agar tidak menunggu selamanya jika API down
+                $this->yunerva->deleteFile($uuid);
+                
+                // Jeda cukup 100ms - 200ms saja (0.1 - 0.2 detik)
+                // 1 detik terlalu lama jika filenya banyak
+                usleep(200000); 
+                
+                \Log::info("Berhasil hapus file Yunerva: " . $uuid);
+            } catch (\Exception $e) {
+                \Log::error("Gagal hapus file Yunerva UUID: {$uuid}. Error: " . $e->getMessage());
+            }
+        }
+
+        return redirect()->route('admin.students.index')
+            ->with('success', 'Data siswa dan ' . count($uuidsToDelete) . ' berkas berhasil dihapus.');
     }
 
 }

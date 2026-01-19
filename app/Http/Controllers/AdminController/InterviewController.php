@@ -1,0 +1,250 @@
+<?php
+
+namespace App\Http\Controllers\AdminController;
+
+use App\Http\Controllers\Controller;
+use App\Models\Interview;
+use App\Models\InterviewDetail;
+use App\Models\Company;
+use App\Models\AcceptingOrganization;
+use App\Services\YunervaService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class InterviewController extends Controller
+{
+    protected $yunerva;
+
+    public function __construct(YunervaService $yunerva)
+    {
+        $this->yunerva = $yunerva;
+    }
+    /**
+     * Menampilkan daftar wawancara untuk Admin/Sensei
+     */
+    public function index(Request $request)
+    {
+        $query = Interview::with(['company', 'acceptingOrganization']);
+
+        if ($request->search) {
+            $query->where('interviewer_title', 'like', "%{$request->search}%");
+        }
+
+        $interviews = $query->withCount('details')
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return Inertia::render('admin/interview/Index', [
+            'interviews' => $interviews,
+            'filters' => $request->only(['search'])
+        ]);
+    }
+
+
+    /**
+     * Tampilkan Form Tambah Wawancara
+     */
+    public function create()
+    {
+        return Inertia::render('admin/interview/InterviewForm', [
+            'companies' => Company::select('id', 'name')->orderBy('name')->get(),
+            'organizations' => AcceptingOrganization::select('id', 'name')->orderBy('name')->get(),
+        ]);
+    }
+
+    /**
+     * Simpan Wawancara Baru
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'interviewer_title' => 'required|string|max:255',
+            'company_id' => 'required|exists:companies,id',
+            'accepting_organization_id' => 'required|exists:accepting_organizations,id',
+            'description' => 'required|string',
+            'interview_date' => 'required|date',
+            'interview_registration_deadline' => 'nullable|date',
+        ]);
+
+        // Simpan tanpa file kyuujinhyou terlebih dahulu
+        Interview::create($request->all());
+
+        return redirect()->route('admin.interviews.index')
+            ->with('success', 'Jadwal wawancara berhasil dibuat.');
+    }
+    /**
+     * Tampilkan Form Edit
+     */
+    public function edit($id)
+    {
+        $interview = Interview::findOrFail($id);
+
+        return Inertia::render('admin/interview/InterviewForm', [
+            'interview' => $interview, // Props ini yang membedakan Edit atau Create
+            'companies' => Company::select('id', 'name')->orderBy('name')->get(),
+            'organizations' => AcceptingOrganization::select('id', 'name')->orderBy('name')->get(),
+        ]);
+    }
+
+    /**
+     * Update Data Wawancara
+     */
+    public function update(Request $request, $id)
+    {
+        $interview = Interview::findOrFail($id);
+
+        $request->validate([
+            'interviewer_title' => 'required|string|max:255',
+            'company_id'        => 'required|exists:companies,id',
+            'accepting_organization_id' => 'required|exists:accepting_organizations,id',
+            'description'       => 'required|string',
+            'interview_date'    => 'required|date',
+            'interview_registration_deadline' => 'nullable|date',
+            'date_fly_to_japan' => 'nullable|date',
+            'group_chat_link'   => 'nullable|url',
+        ]);
+
+        // Update data teks saja
+        $interview->update($request->all());
+
+        return redirect()->route('admin.interviews.index')
+            ->with('success', 'Jadwal wawancara ' . $interview->interviewer_title . ' berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus Wawancara & File Terkait
+     */
+    public function destroy($id)
+    {
+        $interview = Interview::findOrFail($id);
+
+        // 1. Hapus berkas fisik di Yunerva jika ada
+        if ($interview->kyuujinhyou_yunerva_uuid) {
+            $this->yunerva->deleteFile($interview->kyuujinhyou_yunerva_uuid);
+        }
+
+        // 2. Hapus dari database (InterviewDetail akan terhapus otomatis jika menggunakan cascade)
+        $interview->delete();
+
+        return redirect()->route('admin.interviews.index')->with('success', 'Jadwal wawancara dihapus.');
+    }
+
+    /**
+     * Menampilkan detail wawancara dan profil lengkap siswa yang terlibat
+     * Digunakan oleh Admin/Sensei untuk menarik biodata
+     */
+    public function show($id)
+    {
+        $interview = Interview::with([
+            'company',
+            'acceptingOrganization',
+            'details.user.studentProfile.educations',
+            'details.user.studentProfile.experiences',
+            'details.user.studentProfile.families'
+        ])->findOrFail($id);
+
+        return Inertia::render('admin/interview/Show', [
+            'interview' => $interview
+        ]);
+    }
+
+    /**
+     * Method khusus untuk upload/update Kyuujinhyou dari halaman Show
+     */
+    public function uploadKyuujinhyou(Request $request, $id)
+    {
+        $request->validate([
+            'upload_ticket' => 'required|string',
+        ]);
+
+        $interview = Interview::findOrFail($id);
+        
+        // Kirim null sebagai parameter kedua agar access_type jadi 'public'
+        $response = $this->yunerva->finalizeUpload($request->upload_ticket, null);
+
+        if (isset($response['status']) && $response['status'] === 'success') {
+            // Hapus file lama di cloud jika ada (Cleanup)
+            if ($interview->kyuujinhyou_yunerva_uuid) {
+                $this->yunerva->deleteFile($interview->kyuujinhyou_yunerva_uuid);
+            }
+
+            // Update database dengan UUID baru dari Yunerva
+            $interview->update([
+                'kyuujinhyou_yunerva_uuid' => $response['data']['uuid']
+            ]);
+
+            return redirect()->back()->with('success', 'Dokumen Kyuujinhyou berhasil diunggah secara publik.');
+        }
+
+        return back()->withErrors(['error' => 'Gagal memproses dokumen di storage cloud.']);
+    }
+
+    /**
+     * Preview Kyuujinhyou: Ambil View URL (berlaku 15 detik)
+     */
+    public function previewKyuujinhyou(Request $request, $id)
+    {
+        $interview = Interview::findOrFail($id);
+
+        if (!$interview->kyuujinhyou_yunerva_uuid) {
+            return response()->json(['status' => 'error', 'message' => 'File tidak ditemukan'], 404);
+        }
+
+        // Panggil generate link dengan password null
+        $response = $this->yunerva->generateViewLink(
+            $interview->kyuujinhyou_yunerva_uuid,
+            null
+        );
+
+        return response()->json($response);
+    }
+
+    /**
+     * Fitur Siswa: Mendaftarkan diri ke wawancara
+     */
+    public function apply(Request $request, $interviewId)
+    {
+        $user = Auth::user();
+        
+        // Cek apakah sudah mendaftar
+        $exists = InterviewDetail::where('interview_id', $interviewId)
+            ->where('user_id', $user->id)
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['error' => 'Anda sudah terdaftar di wawancara ini.']);
+        }
+
+        // Cek batas waktu pendaftaran
+        $interview = Interview::findOrFail($interviewId);
+        if ($interview->interview_registration_deadline < now()->toDateString()) {
+            return back()->withErrors(['error' => 'Batas waktu pendaftaran sudah lewat.']);
+        }
+
+        InterviewDetail::create([
+            'interview_id' => $interviewId,
+            'user_id' => $user->id,
+            'result' => 'waiting',
+        ]);
+
+        return redirect()->back()->with('success', 'Berhasil mendaftar wawancara.');
+    }
+
+    /**
+     * Update hasil wawancara (Admin Only)
+     */
+    public function updateResult(Request $request, $detailId)
+    {
+        $request->validate([
+            'result' => 'required|in:waiting,passed,failed,reserved',
+            'remarks' => 'nullable|string'
+        ]);
+
+        $detail = InterviewDetail::findOrFail($detailId);
+        $detail->update($request->only(['result', 'remarks']));
+
+        return redirect()->back()->with('success', 'Hasil wawancara berhasil diperbarui.');
+    }
+}

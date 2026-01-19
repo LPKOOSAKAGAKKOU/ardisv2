@@ -1,17 +1,18 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus, Search, Edit2, Eye, Trash2, Users, GraduationCap, Briefcase } from 'lucide-react';
+import { Plus, Search, Edit2, Eye, Trash2, Users, GraduationCap, Briefcase, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
-// 1. Tambahkan field sesuai kebutuhan tabel baru
-// Interface sesuai dengan field dari StudentProfile model
 interface Student {
     id: number;
     nik: string;
     full_name: string;
-    dob: string; // date of birth dari database
-    gender: string; // "Laki-laki" atau "Perempuan" dari database
-    pob: string; // place of birth (kota asal)
+    dob: string;
+    gender: string;
+    pob: string;
     user?: {
         email: string;
     };
@@ -41,6 +42,10 @@ interface BreadcrumbItem {
 
 export default function StudentIndex({ students, filters }: Props) {
     const [search, setSearch] = useState(filters?.search || '');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+    const [confirmName, setConfirmName] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/admin/dashboard' },
@@ -52,10 +57,26 @@ export default function StudentIndex({ students, filters }: Props) {
         router.get('/admin/students', { search }, { preserveState: true });
     };
 
-    const handleDelete = (id: number, name: string) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus siswa ${name}?`)) {
-            router.delete(`/admin/students/${id}`);
-        }
+    const openDeleteModal = (student: Student) => {
+        setStudentToDelete(student);
+        setConfirmName('');
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDelete = () => {
+        if (!studentToDelete) return;
+        
+        setIsDeleting(true);
+        router.delete(`/admin/students/${studentToDelete.id}`, {
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setStudentToDelete(null);
+                setIsDeleting(false);
+                alert('Siswa dan seluruh berkas berhasil dihapus permanen.');
+            },
+            onError: () => setIsDeleting(false),
+            onFinish: () => setIsDeleting(false),
+        });
     };
 
     return (
@@ -113,7 +134,6 @@ export default function StudentIndex({ students, filters }: Props) {
                                 {students?.data?.length > 0 ? (
                                     students.data.map((item, index) => (
                                         <tr key={item.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors">
-                                            {/* Hitung nomor urut berdasarkan pagination */}
                                             <td className="px-4 py-3 text-center text-muted-foreground">
                                                 {(students.current_page - 1) * students.per_page + index + 1}
                                             </td>
@@ -136,7 +156,7 @@ export default function StudentIndex({ students, filters }: Props) {
                                                         <Edit2 className="size-4" />
                                                     </Link>
                                                     <button 
-                                                        onClick={() => handleDelete(item.id, item.full_name)}
+                                                        onClick={() => openDeleteModal(item)}
                                                         className="text-red-600 hover:text-red-800"
                                                     >
                                                         <Trash2 className="size-4" />
@@ -177,6 +197,59 @@ export default function StudentIndex({ students, filters }: Props) {
                         ))}
                     </div>
                 </div>
+
+                {/* MODAL KONFIRMASI HAPUS (Sekarang berada di dalam div utama) */}
+                <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+                    <DialogContent className="sm:max-w-[425px] border-none shadow-2xl">
+                        <DialogHeader>
+                            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                                <AlertTriangle className="h-6 w-6 text-red-600" />
+                            </div>
+                            <DialogTitle className="text-center text-xl font-bold">Hapus Data Siswa?</DialogTitle>
+                            <DialogDescription className="text-center pt-2">
+                                Tindakan ini <span className="font-bold text-red-600">permanen</span>. Seluruh data profil dan berkas digital di server Yunerva akan dihapus.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4">
+                            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Siswa yang akan dihapus:</p>
+                                <p className="text-sm font-bold">{studentToDelete?.full_name}</p>
+                                <p className="text-[11px] font-mono text-muted-foreground">{studentToDelete?.nik}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Ketik nama lengkap siswa untuk mengonfirmasi:
+                                </label>
+                                <Input 
+                                    value={confirmName}
+                                    onChange={(e) => setConfirmName(e.target.value)}
+                                    placeholder="Masukkan nama lengkap"
+                                    className="border-red-200 focus-visible:ring-red-500"
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                disabled={isDeleting}
+                            >
+                                Batal
+                            </Button>
+                            <Button 
+                                variant="destructive"
+                                onClick={handleDelete}
+                                disabled={confirmName !== studentToDelete?.full_name || isDeleting}
+                                className="w-full sm:w-auto"
+                            >
+                                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Permanen'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

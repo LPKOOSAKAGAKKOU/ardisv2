@@ -48,6 +48,8 @@ return new class extends Migration
             $table->string('passport_number')->nullable();
             $table->date('passport_issue_date')->nullable();
             $table->date('passport_expiry_date')->nullable();
+
+            // Dokumen Unggahan (Yunerva UUID)
             $table->string('photo_yunerva_uuid')->nullable(); // yunerva_uuid foto studio
             $table->string('photo_with_suit_yunerva_uuid')->nullable(); // yunerva_uuid foto dengan setelan jas
             $table->string('id_card_yunerva_uuid')->nullable(); // yunerva_uuid KTP
@@ -60,7 +62,25 @@ return new class extends Migration
             $table->string('3rd_medical_checkup_yunerva_uuid')->nullable(); // yunerva_uuid MCU Pra Keberangkatan
             $table->string('passport_photo_page_yunerva_uuid')->nullable(); // yunerva_uuid halaman foto passport
             $table->string('parents_consent_letter_yunerva_uuid')->nullable(); // yunerva_uuid surat persetujuan orang tua
+            $table->string('japanese_language_certificate_yunerva_uuid')->nullable(); // yunerva_uuid sertifikat bahasa jepang
             $table->string('work_contract_yunerva_uuid')->nullable(); // yunerva_uuid kontrak kerja
+            // Dokumen Ginou Jisshuu
+            $table->string('ginou_jisshuu_1-3_document_yunerva_uuid')->nullable(); 
+            $table->string('ginou_jisshuu_1-19_document_yunerva_uuid')->nullable(); 
+            $table->string('ginou_jisshuu_1-20_document_yunerva_uuid')->nullable();
+            $table->string('ginou_jisshuu_2-21_document_yunerva_uuid')->nullable();
+            $table->string('ginou_jisshuu_1-39_document_yunerva_uuid')->nullable();
+            $table->string('ginou_jisshuu_aggreement_document_yunerva_uuid')->nullable();
+            // Dokumen Tokutei Ginou
+            $table->string('tokutei_ginou_1-1_document_yunerva_uuid')->nullable();
+            $table->string('tokutei_ginou_1-5_document_yunerva_uuid')->nullable();
+            $table->string('tokutei_ginou_1-6_document_yunerva_uuid')->nullable();
+            $table->string('tokutei_ginou_1-16_document_yunerva_uuid')->nullable();
+            $table->string('tokutei_ginou_1-17_document_yunerva_uuid')->nullable();
+            $table->string('power_of_attorney_letter_yunerva_uuid')->nullable();
+            $table->string('ssw_test_result_yunerva_uuid')->nullable();
+            // password untuk mendownload file dari Yunerva
+            $table->string('yunerva_file_password')->require(); // password untuk mendownload file dari Yunerva
             
             // Data LPK Internal
             $table->string('class_level'); // SISWA BARU, BAB 1-10, dll

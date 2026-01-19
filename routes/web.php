@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Controllers\AdminController\StudentController;
+use App\Http\Controllers\AdminController\StudentDocumentController;
+use App\Http\Controllers\AdminController\InterviewController;
+use App\Http\Controllers\AdminController\AcceptingOrganizationController;
+use App\Http\Controllers\AdminController\CompanyController;
+
 
 
 Route::get('/', function () {
@@ -28,23 +33,45 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware([
-        'auth',
-        'verified',
-        RoleMiddleware::class . ':admin',
-    ])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
+    'auth',
+    'verified',
+    RoleMiddleware::class . ':admin',
+])
+->prefix('admin')
+->name('admin.')
+->group(function () {
 
-        Route::get('dashboard', fn () =>
-            Inertia::render('admin/dashboard')
-        )->name('dashboard');
+    // Dashboard
+    Route::get('dashboard', fn () => Inertia::render('admin/dashboard'))->name('dashboard');
 
-        // Route Resource untuk Manajemen Siswa
-        // Menggunakan resource agar otomatis punya index, create, store, edit, update, destroy
-        Route::resource('students', StudentController::class);
-
+    // --- MANAJEMEN DOKUMEN SISWA ---
+    Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])->name('documents.request');
+    
+    Route::prefix('students')->group(function () {
+        Route::post('{id}/documents-store', [StudentDocumentController::class, 'storeDocument'])->name('documents.store');
+        Route::post('{id}/preview-file', [StudentDocumentController::class, 'previewDocument'])->name('documents.preview');
     });
+
+    // --- MANAJEMEN SISWA (Cukup satu baris ini) ---
+    Route::resource('students', StudentController::class);
+
+    // --- MANAJEMEN WAWANCARA (INTERVIEW) ---
+    // Pastikan Route Resource diletakkan di bawah rute custom jika ada tumpang tindih URL
+    Route::resource('interviews', InterviewController::class);
+    
+    // Rute Custom Wawancara
+    Route::post('/interviews/{id}/apply', [InterviewController::class, 'apply'])->name('interviews.apply');
+    Route::patch('/interview-details/{id}', [InterviewController::class, 'updateResult'])->name('interviews.updateResult');
+    Route::post('/interviews/{id}/upload-kyuujinhyou', [InterviewController::class, 'uploadKyuujinhyou'])->name('interviews.upload-kyuujinhyou');
+    Route::post('/interviews/{id}/preview-kyuujinhyou', [InterviewController::class, 'previewKyuujinhyou'])
+        ->name('interviews.preview-kyuujinhyou');
+
+    // --- MANAJEMEN ORGANISASI ---
+    Route::resource('organizations', AcceptingOrganizationController::class);
+    // --- MANAJEMEN PERUSAHAAN ---
+    Route::resource('companies', CompanyController::class);
+
+});
 
 /*
 |--------------------------------------------------------------------------

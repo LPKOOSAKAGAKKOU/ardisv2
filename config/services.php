@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'yunerva' => [
+        'base_url'   => env('YUNERVA_API_BASE_URL', 'https://yunerva.com/api/v1'),
+        'api_token'  => env('YUNERVA_API_TOKEN'),
+        'secret_key' => env('YUNERVA_SECRET_KEY'),
+    ],
+
 ];

@@ -1,18 +1,28 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { 
     User, Mail, Fingerprint, Calendar, MapPin, 
     Ruler, Weight, Heart, Shield, GraduationCap, 
     Briefcase, Users, ArrowLeft, Edit, Phone, 
     Target, Award, BookOpen, PlaneTakeoff,
-    Eye, Beer, Flame, Anchor, CreditCard, Info
+    Eye, Beer, Flame, Anchor, CreditCard, Info, File, Download, CheckCircle2, UploadCloud, Loader2, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import axios from 'axios';
+
+// Ganti impor manual yang error tadi dengan ini:
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Props {
     student: any;
@@ -20,9 +30,100 @@ interface Props {
 
 export default function StudentShow({ student }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Data Siswa', href: route('admin.students.index') },
+        { title: 'Data Siswa', href: '/admin/students' },
         { title: 'Profil Siswa', href: '#' },
     ];
+
+    const [previewData, setPreviewData] = useState<{ url: string; type: string } | null>(null);
+    const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
+    const [uploadingField, setUploadingField] = useState<string | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<string>('');
+    const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+    const handlePreview = async (uuid: string, fieldName: string) => {
+        setLoadingPreview(fieldName); // Set nama field yang sedang loading
+        try {
+            const res = await axios.post(`/admin/students/${student.id}/preview-file`, { uuid });
+            if (res.data.status === 'success') {
+                setPreviewData({ 
+                    url: res.data.data.view_url, 
+                    type: res.data.data.mime_type 
+                });
+            }
+        } catch (err) {
+            alert("Gagal memuat pratinjau.");
+        } finally {
+            setLoadingPreview(null); // Reset setelah selesai
+        }
+    };
+
+
+    // Fungsi untuk Upload
+    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // VALIDASI JENIS FILE (JPG, JPEG, PDF)
+        const allowedExtensions = ['image/jpeg', 'image/jpg', 'application/pdf'];
+        if (!allowedExtensions.includes(file.type)) {
+            alert("Format file tidak didukung. Harap unggah file JPG, JPEG, atau PDF.");
+            e.target.value = ''; // Reset input
+            return;
+        }
+
+        setUploadingField(fieldName);
+        setUploadProgress(0);
+        
+        try {
+            // 1. Request URL
+            setUploadStatus('Menghubungkan ke Yunerva...');
+            const req = await axios.post('/admin/upload-request', {
+                filename: file.name,
+                extension: file.name.split('.').pop(),
+                mime_type: file.type,
+                size: file.size
+            });
+
+            const { upload_url, upload_ticket } = req.data.data;
+
+            // 2. PUT ke Cloudflare R2
+            setUploadStatus('Mengunggah berkas...');
+            await axios.put(upload_url, file, { 
+                headers: { 'Content-Type': file.type },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 100));
+                    setUploadProgress(percentCompleted);
+                }
+            });
+
+            // 3. Finalize ke Backend
+            setUploadStatus('Menyimpan metadata...');
+            await axios.post(`/admin/students/${student.id}/documents-store`, {
+                upload_ticket: upload_ticket,
+                field_name: fieldName
+            });
+
+            setUploadStatus('Selesai!');
+            // SOLUSI: Mengambil data terbaru dari server tanpa full reload browser
+            // REFRESH DATA TANPA RELOAD BROWSER
+            router.reload({ 
+                only: ['student'],
+                onSuccess: () => {
+                    setUploadStatus('');
+                    setUploadingField(null);
+                }
+            });
+        } catch (err: any) {
+            // Cek log di F12 Console untuk melihat error spesifiknya
+            console.error("Detail Error:", err.response?.data || err.message);
+            alert("Gagal mengunggah: " + (err.response?.data?.message || "Terjadi kesalahan koneksi"));
+            setUploadStatus('');
+        } finally {
+            setUploadingField(null);
+            setUploadProgress(0);
+        }
+    };
+    
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -33,7 +134,7 @@ export default function StudentShow({ student }: Props) {
                 {/* --- HEADER ACTIONS --- */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <Link href={route('admin.students.index')}>
+                        <Link href="/admin/students">
                             <Button variant="outline" size="sm" className="border-sidebar-border/70 dark:border-sidebar-border">
                                 <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
                             </Button>
@@ -43,7 +144,7 @@ export default function StudentShow({ student }: Props) {
                             {student.student_status}
                         </Badge>
                     </div>
-                    <Link href={route('admin.students.edit', student.id)}>
+                    <Link href={`/admin/students/${student.id}/edit`}>
                         <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 shadow-sm">
                             <Edit className="mr-2 h-4 w-4" /> Edit Profil
                         </Button>
@@ -169,12 +270,170 @@ export default function StudentShow({ student }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* --- DOCUMENT SECTION --- */}
+                        <Card className="border-sidebar-border/70 dark:border-sidebar-border shadow-none bg-background rounded-xl overflow-hidden mt-6">
+                            <CardHeader className="border-b border-sidebar-border/70 bg-sidebar-accent/30 py-4 flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <File size={20} className="text-muted-foreground" />
+                                    <CardTitle className="text-sm font-bold uppercase tracking-wider">Arsip Dokumen Digital</CardTitle>
+                                </div>
+                                <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-200">
+                                    <Shield size={14} className="text-blue-600" />
+                                    <span className="text-[10px] font-bold text-blue-700 uppercase tracking-tighter">
+                                        Password: {student.yunerva_file_password}
+                                    </span>
+                                </div>
+                            </CardHeader>
+                           <CardContent className="p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {[
+                                        { label: "Foto Studio", field: "photo_yunerva_uuid" },
+                                        { label: "Foto Setelan Jas", field: "photo_with_suit_yunerva_uuid" },
+                                        { label: "KTP (ID Card)", field: "id_card_yunerva_uuid" },
+                                        { label: "Kartu Keluarga", field: "family_card_yunerva_uuid" },
+                                        { label: "Akta Kelahiran", field: "birth_certificate_yunerva_uuid" },
+                                        { label: "Ijazah Terakhir", field: "diploma_yunerva_uuid" },
+                                        { label: "Transkrip Nilai", field: "transcript_yunerva_uuid" },
+                                        { label: "MCU Tahap 1", field: "1st_medical_checkup_yunerva_uuid" },
+                                        { label: "MCU Tahap 2", field: "2nd_medical_checkup_yunerva_uuid" },
+                                        { label: "MCU Tahap 3", field: "3rd_medical_checkup_yunerva_uuid" },
+                                        { label: "Halaman Foto Paspor", field: "passport_photo_page_yunerva_uuid" },
+                                        { label: "Surat Izin Orang Tua", field: "parents_consent_letter_yunerva_uuid" },
+                                        { label: "Sertifikat Bahasa Jepang", field: "japanese_language_certificate_yunerva_uuid" },
+                                        { label: "Kontrak Kerja", field: "work_contract_yunerva_uuid" },
+                                    ].map((doc) => (
+                                        <div key={doc.field} className="group relative flex flex-col p-4 rounded-xl border border-sidebar-border/50 bg-sidebar-accent/5 hover:bg-sidebar-accent/10 transition-all">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className={`p-2 rounded-lg ${student[doc.field] ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+                                                    {student[doc.field] ? <CheckCircle2 size={18} /> : <UploadCloud size={18} />}
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    {student[doc.field] && (
+                                                        <>
+                                                                <Button 
+                                                                    size="icon" 
+                                                                    variant="ghost" 
+                                                                    className="h-7 w-7" 
+                                                                    // TAMBAHKAN field ke dalam parameter fungsi
+                                                                    onClick={() => handlePreview(student[doc.field], doc.field)}
+                                                                    // CEK apakah field ini yang sedang loading
+                                                                    disabled={loadingPreview !== null}
+                                                                >
+                                                                    {loadingPreview === doc.field ? (
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Eye size={14} />
+                                                                    )}
+                                                                </Button>
+                                                            <a href={`https://yunerva.com/f/${student[doc.field]}`} target="_blank">
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600">
+                                                                    <Download size={14} />
+                                                                </Button>
+                                                            </a>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] font-bold text-foreground uppercase mb-1">{doc.label}</p>
+                                            
+                                            {uploadingField === doc.field ? (
+                                                <div className="mt-auto space-y-2">
+                                                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter">
+                                                        <span className="text-blue-600 animate-pulse">{uploadStatus}</span>
+                                                        <span className="text-muted-foreground">{uploadProgress}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-sidebar-accent rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-blue-600 transition-all duration-300 ease-out"
+                                                            style={{ width: `${uploadProgress}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <label className="mt-auto">
+                                                    {/* INPUT HANYA MENERIMA JPG, JPEG, PDF */}
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept=".jpg,.jpeg,.pdf"
+                                                        onChange={(e) => onFileChange(e, doc.field)} 
+                                                        disabled={!!uploadingField} 
+                                                    />
+                                                    <div className="w-full py-2 rounded-md text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-colors bg-foreground text-background hover:bg-foreground/90">
+                                                        {student[doc.field] ? 'Ganti File' : 'Upload'}
+                                                    </div>
+                                                </label>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
+
+            {/* MODAL PREVIEW */}
+            <Dialog open={!!previewData} onOpenChange={() => setPreviewData(null)}>
+                <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-neutral-950/5 dark:bg-zinc-950/5 backdrop-blur-xl">
+                    
+                    {/* Header dengan tombol Close manual */}
+                    <DialogHeader className="p-4 bg-background/80 backdrop-blur-md border-b flex flex-row items-center justify-between sticky top-0 z-50">
+                        <div className="flex flex-col gap-1">
+                            <DialogTitle className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-2 text-foreground/80">
+                                <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                                    <Eye size={16} className="text-blue-600" />
+                                </div>
+                                Pratinjau Dokumen Digital
+                            </DialogTitle>
+                            <p className="text-[10px] text-muted-foreground font-medium ml-8">Format: {previewData?.type.split('/')[1].toUpperCase()}</p>
+                        </div>
+
+                        {/* TOMBAL CLOSE MANUAL */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full hover:bg-muted transition-colors"
+                            onClick={() => setPreviewData(null)}
+                        >
+                            <X size={18} className="text-muted-foreground" />
+                        </Button>
+                    </DialogHeader>
+
+                    {/* Content Area */}
+                    <div className="flex-1 w-full overflow-auto bg-neutral-900/50 flex items-start justify-center p-6">
+                        {previewData?.type.includes('image') ? (
+                            <div className="relative group flex items-center justify-center min-h-full w-full">
+                                <img 
+                                    src={previewData.url} 
+                                    alt="Preview Dokumen" 
+                                    className="max-w-full h-auto object-contain rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)]"
+                                />
+                            </div>
+                        ) : (
+                            <div className="w-full h-full bg-white rounded-lg shadow-2xl overflow-hidden border border-white/20">
+                                <iframe 
+                                    src={`${previewData?.url}#toolbar=0&navpanes=0`} 
+                                    className="w-full h-full" 
+                                    title="PDF Preview" 
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-3 bg-background/80 backdrop-blur-md border-t flex justify-center">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest italic text-center">
+                            Dokumen terenkripsi secara otomatis oleh Yunerva Secure Service
+                        </p>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
+
 
 /* --- REUSABLE INTERNAL COMPONENTS (MATCHING THE DASHBOARD THEME) --- */
 

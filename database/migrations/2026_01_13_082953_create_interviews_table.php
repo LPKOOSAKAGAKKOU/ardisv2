@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('accepting_organization_id')->constrained('accepting_organizations')->onDelete('cascade');
             $table->text('description');
             $table->string('group_chat_link')->nullable(); // Link grup chat
-            $table->string('kyuujinhyou_upload_directory')->nullable(); // Upload Kyuujinhyou
+            $table->string('kyuujinhyou_yunerva_uuid')->nullable(); // Upload Kyuujinhyou
             $table->date('interview_announcement_date')->nullable(); // Tanggal pengumuman wawancara
             $table->date('interview_registration_deadline')->nullable(); // Batas pendaftaran wawancara
             $table->date('interview_date');
