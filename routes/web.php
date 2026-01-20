@@ -11,6 +11,8 @@ use App\Http\Controllers\AdminController\StudentDocumentController;
 use App\Http\Controllers\AdminController\InterviewController;
 use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
+use App\Http\Controllers\StudentController\DashboardController;
+use App\Http\Controllers\StudentController\ProfileController;
 
 
 
@@ -110,10 +112,12 @@ Route::middleware([
     ->name('student.')
     ->group(function () {
 
-        Route::get('dashboard', fn () =>
-            Inertia::render('student/dashboard')
-        )->name('dashboard');
+        // Ganti dari anonymous function ke Controller
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Rute Tunggal untuk Biodata
+        Route::get('profile', [ProfileController::class, 'showForm'])->name('profile.edit');
+        Route::post('profile', [ProfileController::class, 'storeOrUpdate'])->name('profile.save');
 
     });
-
 require __DIR__.'/settings.php';
