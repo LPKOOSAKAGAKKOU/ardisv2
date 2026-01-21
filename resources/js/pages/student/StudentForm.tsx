@@ -22,9 +22,10 @@ interface Props {
     student?: any;
     provinces: { id: number; name: string }[];
     jobSectors: { id: number; name: string; code: string }[];
+    majors: { id: number; name: string }[]; // Tambahkan baris ini
 }
 
-export default function StudentForm({ student, provinces, jobSectors }: Props) {
+export default function StudentForm({ student, provinces, jobSectors, majors }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
     const validateStep = (currentStep: number) => {
@@ -191,7 +192,23 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                         <FormItem label="Nama Lengkap" required><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} /></FormItem>
                                         <FormItem label="Nama Katakana" required><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" /></FormItem>
                                         <FormItem label="Tempat Lahir" required><Input value={data.pob} onChange={e => setData('pob', e.target.value)} /></FormItem>
-                                        <FormItem label="Provinsi Lahir" required><Input value={data.pob_province} onChange={e => setData('pob_province', e.target.value)} /></FormItem>
+                                        <FormItem label="Provinsi Lahir" required error={errors.pob_province}>
+                                            <Select 
+                                                value={data.pob_province} 
+                                                onValueChange={v => setData('pob_province', v)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Pilih Provinsi" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {provinces.map((prov) => (
+                                                        <SelectItem key={prov.id} value={prov.name}>
+                                                            {prov.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
                                         <FormItem label="Tgl Lahir" required><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} /></FormItem>
                                         <FormItem label="Jenis Kelamin" required>
                                             <Select value={data.gender} onValueChange={v => setData('gender', v as any)}>
@@ -331,13 +348,26 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                     onChange={e => { const updated = [...data.educations]; updated[idx].school_name = e.target.value; setData('educations', updated); }} 
                                                                 />
                                                             </FormItem>
-
                                                             <FormItem label="Jurusan / Konsentrasi">
-                                                                <Input 
-                                                                    placeholder="Contoh: Teknik Mesin / IPA" 
+                                                                <Select 
                                                                     value={edu.major} 
-                                                                    onChange={e => { const updated = [...data.educations]; updated[idx].major = e.target.value; setData('educations', updated); }} 
-                                                                />
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.educations]; 
+                                                                        updated[idx].major = v; 
+                                                                        setData('educations', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Jurusan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {majors.map((m) => (
+                                                                            <SelectItem key={m.id} value={m.name}>
+                                                                                {m.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
 
                                                             <FormItem label="Tanggal Masuk">
@@ -489,11 +519,23 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                             </FormItem>
 
                                                             <FormItem label="Bidang / Jenis Pekerjaan">
-                                                                <Input 
-                                                                    placeholder="Contoh: Konstruksi / Operator" 
+                                                                <Select 
                                                                     value={exp.job_type} 
-                                                                    onChange={e => { const updated = [...data.experiences]; updated[idx].job_type = e.target.value; setData('experiences', updated); }} 
-                                                                />
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.experiences]; 
+                                                                        updated[idx].job_type = v; 
+                                                                        setData('experiences', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger><SelectValue placeholder="Pilih Bidang Pekerjaan" /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {jobSectors.map((job) => (
+                                                                            <SelectItem key={job.id} value={job.name}>
+                                                                                {job.name} ({job.code})
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
 
                                                             <FormItem label="Gaji Bulanan (Rp)">
@@ -598,7 +640,28 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                 <Input type="number" placeholder="Tahun" value={fam.age} onChange={e => { const updated = [...data.families]; updated[idx].age = e.target.value; setData('families', updated); }} />
                                                             </FormItem>
                                                             <FormItem label="Pekerjaan">
-                                                                <Input placeholder="Pekerjaan saat ini" value={fam.occupation} onChange={e => { const updated = [...data.families]; updated[idx].occupation = e.target.value; setData('families', updated); }} />
+                                                                <Select 
+                                                                    value={fam.occupation} 
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.families]; 
+                                                                        updated[idx].occupation = v; 
+                                                                        setData('families', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Pekerjaan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {jobSectors.map((job) => (
+                                                                            <SelectItem key={job.id} value={job.name}>
+                                                                                {job.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                        <SelectItem value="Ibu Rumah Tangga">Ibu Rumah Tangga</SelectItem>
+                                                                        <SelectItem value="Tidak Bekerja">Tidak Bekerja / Pensiun</SelectItem>
+                                                                        <SelectItem value="Lainnya">Lainnya</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
                                                         </div>
                                                     </div>

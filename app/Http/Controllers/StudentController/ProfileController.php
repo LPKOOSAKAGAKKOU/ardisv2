@@ -41,6 +41,7 @@ class ProfileController extends Controller
             'student' => $student,
             'provinces' => Province::all(),
             'jobSectors' => JobSector::all(),
+            'majors' => Major::orderBy('name', 'asc')->get(), // Jurusan SMA/SMK
         ]);
     }
 
