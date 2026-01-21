@@ -30,26 +30,28 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
     const validateStep = (currentStep: number) => {
         switch (currentStep) {
             case 1:
-                return (
-                    data.nik && data.full_name && data.pob && 
-                    data.pob_province && data.dob && data.gender && 
-                    data.phone_student && data.phone_parent && data.address_ktp
-                );
+                return (data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
             case 2:
-                return (
-                    data.height && data.weight && data.blood_type && 
-                    data.religion && data.marital_status && 
-                    data.tbc_history && data.color_blind
-                );
-            case 5: // Step data LPK
-                return (
-                    data.class_level && data.entry_date_lpk && 
-                    data.strength && data.weakness && 
-                    data.skill_technical && data.hobby && 
-                    data.savings_target && data.savings_reason
-                );
+                return (data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
+            case 5:
+                const isValid = !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
+                if (!isValid) {
+                    console.log("Field yang kosong:", {
+                        status: !!data.student_status,
+                        expert: !!data.program_expert,
+                        level: !!data.class_level,
+                        date: !!data.entry_date_lpk,
+                        strength: !!data.strength,
+                        weakness: !!data.weakness,
+                        skill: !!data.skill_technical,
+                        hobby: !!data.hobby,
+                        target: !!data.savings_target,
+                        reason: !!data.savings_reason
+                    });
+                }
+                return isValid;
             default:
-                return true; // Step 3 & 4 (Pendidikan/Kerja) biasanya fleksibel/array
+                return true;
         }
     };
 
@@ -88,9 +90,9 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
         passport_expiry_date: student?.passport_expiry_date || '',
 
         // 4. Data LPK Internal
-        class_level: student?.class_level || '',
-        program_expert: 'BAHASA JEPANG',
-        entry_date_lpk: student?.entry_date_lpk || '',
+        class_level: student?.class_level || 'SISWA BARU',
+        program_expert: student?.program_expert || 'BAHASA JEPANG',
+        entry_date_lpk: student?.entry_date_lpk || new Date().toISOString().split('T')[0], // Default tgl hari ini
         strength: student?.strength || '',
         weakness: student?.weakness || '',
         skill_technical: student?.skill_technical || '',
@@ -614,11 +616,9 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                             </div>
                         )}
 
-                        {/* STEP 5: INTERNAL LPK & KELUARGA */}
+                        {/* STEP 5: INTERNAL LPK & KOMPETENSI */}
                         {step === 5 && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                
-                        {/* CARD MANAJEMEN LPK & SKILL */}
                                 <Card className="border-border shadow-none overflow-hidden">
                                     <CardHeader className="px-6 py-5 border-b bg-transparent">
                                         <div className="flex items-center gap-3">
@@ -627,83 +627,56 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                             </div>
                                             <div>
                                                 <CardTitle className="text-lg font-bold tracking-tight">Manajemen & Kompetensi</CardTitle>
-                                                <CardDescription className="text-xs">Data internal LPK dan evaluasi kemampuan siswa.</CardDescription>
+                                                <CardDescription className="text-xs">Data internal ini dikunci dan hanya dapat diubah oleh Admin.</CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
+                                    <CardContent className="p-6 space-y-6">
+                                        
+                                        {/* FIELD TERKUNCI (DISABLED) */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-muted/20 p-4 rounded-xl border border-dashed">
                                             <FormItem label="Status Siswa" required>
-                                                <Select value={data.student_status} onValueChange={v => setData('student_status', v as any)}>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="pelatihan">Pelatihan</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                                <Input value={data.student_status.toUpperCase()} disabled className="bg-background font-black text-emerald-600 cursor-not-allowed opacity-100" />
                                             </FormItem>
 
-                                            {/* PERBAIKAN DI SINI: Program Keahlian dikunci ke BAHASA JEPANG */}
                                             <FormItem label="Program Keahlian" required>
-                                                <Select 
-                                                    value={data.program_expert} 
-                                                    onValueChange={v => setData('program_expert', v)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Pilih Program" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="BAHASA JEPANG">BAHASA JEPANG</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                                <Input value={data.program_expert} disabled className="bg-background font-black text-blue-600 cursor-not-allowed opacity-100" />
                                             </FormItem>
 
-                                            <FormItem label="Level Kelas">
-                                                <Input 
-                                                    value={data.class_level} 
-                                                    onChange={e => setData('class_level', e.target.value)} 
-                                                    placeholder="Contoh: BAB 1-10" 
-                                                />
+                                            <FormItem label="Level Kelas" required>
+                                                <Input value={data.class_level} disabled className="bg-background font-bold cursor-not-allowed opacity-100" />
                                             </FormItem>
 
-                                            {/* PASTIKAN INI TERISI: Tgl Masuk LPK */}
                                             <FormItem label="Tgl Masuk LPK" required>
-                                                <Input 
-                                                    type="date" 
-                                                    value={data.entry_date_lpk} 
-                                                    onChange={e => setData('entry_date_lpk', e.target.value)} 
-                                                />
+                                                <Input type="date" value={data.entry_date_lpk} disabled className="bg-background font-bold cursor-not-allowed opacity-100" />
                                             </FormItem>
+                                        </div>
 
-                                            <FormItem label="Kelebihan (Strength)" required>
-                                                <Input value={data.strength} onChange={e => setData('strength', e.target.value)} placeholder="Kelebihan siswa" />
+                                        <Separator />
+
+                                        {/* FIELD YANG HARUS DIISI (EDITABLE) */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
+                                            <FormItem label="Kelebihan (Strength)" required error={errors.strength}>
+                                                <Input value={data.strength} onChange={e => setData('strength', e.target.value)} placeholder="Contoh: Disiplin" />
                                             </FormItem>
-
-                                            <FormItem label="Kekurangan (Weakness)" required>
-                                                <Input value={data.weakness} onChange={e => setData('weakness', e.target.value)} placeholder="Kekurangan siswa" />
+                                            <FormItem label="Kekurangan (Weakness)" required error={errors.weakness}>
+                                                <Input value={data.weakness} onChange={e => setData('weakness', e.target.value)} placeholder="Contoh: Kurang Teliti" />
                                             </FormItem>
-
-                                            <FormItem label="Skill Teknis" required>
+                                            <FormItem label="Skill Teknis" required error={errors.skill_technical}>
                                                 <Input maxLength={15} value={data.skill_technical} onChange={e => setData('skill_technical', e.target.value)} placeholder="Maks 15 huruf" />
                                             </FormItem>
-
-                                            <FormItem label="Hobi" required>
+                                            <FormItem label="Hobi" required error={errors.hobby}>
                                                 <Input maxLength={15} value={data.hobby} onChange={e => setData('hobby', e.target.value)} placeholder="Maks 15 huruf" />
                                             </FormItem>
-
-                                            <FormItem label="Target Tabungan (Yen)" required>
+                                            <FormItem label="Target Tabungan (Yen)" required error={errors.savings_target}>
                                                 <Input value={data.savings_target} onChange={e => setData('savings_target', e.target.value)} placeholder="Contoh: 3.000.000" />
                                             </FormItem>
-
-                                            <div className="md:col-span-2 lg:col-span-3">
-                                                <FormItem label="Alasan Menabung" required>
-                                                    <Input maxLength={15} value={data.savings_reason} onChange={e => setData('savings_reason', e.target.value)} placeholder="Maks 15 huruf" />
-                                                </FormItem>
-                                            </div>
+                                            <FormItem label="Alasan Menabung" required error={errors.savings_reason}>
+                                                <Input maxLength={15} value={data.savings_reason} onChange={e => setData('savings_reason', e.target.value)} placeholder="Maks 15 huruf" />
+                                            </FormItem>
                                         </div>
                                     </CardContent>
                                 </Card>
-
-                                
                             </div>
                         )}
 
@@ -736,8 +709,9 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                             ) : (
                                 <Button 
                                     type="submit"
+                                    // Tombol aktif HANYA JIKA tidak sedang processing DAN validasi step 5 lolos
                                     disabled={processing || !validateStep(5)} 
-                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md disabled:bg-slate-400"
+                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed"
                                 >
                                     {processing ? 'Menyimpan...' : (
                                         <>

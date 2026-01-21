@@ -109,15 +109,29 @@ Route::middleware([
         RoleMiddleware::class . ':student',
     ])
     ->prefix('student')
-    ->name('student.')
+    ->name('student.') // Prefix nama rute: student.
     ->group(function () {
 
-        // Ganti dari anonymous function ke Controller
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Rute Tunggal untuk Biodata
+        // Rute Biodata
         Route::get('profile', [ProfileController::class, 'showForm'])->name('profile.edit');
         Route::post('profile', [ProfileController::class, 'storeOrUpdate'])->name('profile.save');
 
+        // --- MANAJEMEN DOKUMEN SISWA (Disesuaikan dengan pemanggilan di React) ---
+        
+        // Ganti name agar sinkron dengan route('student.profile.upload-request')
+        Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])
+            ->name('profile.upload-request'); 
+        
+        Route::prefix('profile-documents')->group(function () {
+            // Ganti name agar sinkron dengan route('student.profile.documents-store')
+            Route::post('{id}/store', [StudentDocumentController::class, 'storeDocument'])
+                ->name('profile.documents-store');
+
+            // Ganti name agar sinkron dengan route('student.profile.preview-file')
+            Route::post('{id}/preview', [StudentDocumentController::class, 'previewDocument'])
+                ->name('profile.preview-file');
+        });
     });
 require __DIR__.'/settings.php';
