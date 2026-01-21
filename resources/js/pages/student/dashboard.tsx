@@ -8,7 +8,7 @@ import {
     AlertCircle, Info, ClipboardList, BookOpen, HeartPulse, Sparkles, ChevronRight,
     Eye, UploadCloud, Loader2, X, ShieldCheck, AlertTriangle, Download, Clock,
     MapPin, Phone, Activity, Heart, Plane, Droplet, Cigarette, Wine, Globe,
-    Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown
+    Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -342,149 +342,399 @@ export default function StudentDashboard({ student, interviews }: Props) {
                                     isExpanded={expandedSections.identity}
                                     onToggle={() => toggleSection('identity')}
                                 >
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        <InfoBlock label="Nama Lengkap" value={student.full_name} />
-                                        {student.full_name_katakana && (
-                                            <InfoBlock label="Nama Katakana" value={student.full_name_katakana} icon="🇯🇵" />
-                                        )}
-                                        <InfoBlock label="NIK" value={student.nik} icon={<ShieldCheck className="size-3" />} />
-                                        <InfoBlock label="Jenis Kelamin" value={student.gender} />
-                                        <InfoBlock label="Tempat Lahir" value={student.pob} icon={<MapPin className="size-3" />} />
-                                        <InfoBlock label="Provinsi Lahir" value={student.pob_province} />
-                                        <InfoBlock label="Tanggal Lahir" value={student.dob} icon={<Calendar className="size-3" />} />
-                                        <InfoBlock label="Usia" value={`${new Date().getFullYear() - new Date(student.dob).getFullYear()} tahun`} />
-                                        <InfoBlock label="Agama" value={student.religion} />
-                                        <InfoBlock label="Status Nikah" value={student.marital_status} />
-                                        <InfoBlock label="Telepon Siswa" value={student.phone_student} icon={<Phone className="size-3" />} />
-                                        <InfoBlock label="Telepon Ortu" value={student.phone_parent} icon={<Phone className="size-3" />} />
-                                    </div>
-                                    <div className="mt-6 p-4 bg-muted/30 rounded-xl">
-                                        <p className="text-xs font-black uppercase text-muted-foreground mb-2">Alamat KTP</p>
-                                        <p className="text-sm font-medium text-foreground">{student.address_ktp}</p>
+                                    <div className="space-y-10 pt-2"> {/* Tambah space-y untuk jarak antar grup besar */}
+                                        {/* Row 1: Nama & NIK (Highlight Utama) */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-6">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Nama Lengkap</p>
+                                                <h3 className="text-xl font-black text-foreground">{student.full_name}</h3>
+                                                {student.full_name_katakana && (
+                                                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                                        <span className="text-xs px-1.5 py-0.5 bg-secondary rounded text-foreground font-bold">カナ</span>
+                                                        {student.full_name_katakana}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col justify-center md:items-end">
+                                                <div className="inline-flex items-center gap-3 bg-secondary/50 px-4 py-2 rounded-2xl border border-border">
+                                                    <ShieldCheck className="size-4 text-blue-600" />
+                                                    <div>
+                                                        <p className="text-[9px] font-black uppercase text-muted-foreground leading-none">Nomor Induk Kependudukan</p>
+                                                        <p className="text-sm font-mono font-bold text-foreground tracking-widest">{student.nik}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Grid Informasi Detail */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-6">
+                                            <InfoBlock label="Jenis Kelamin" value={student.gender} />
+                                            <InfoBlock label="Agama" value={student.religion} />
+                                            <InfoBlock label="Status Nikah" value={student.marital_status} />
+                                            <InfoBlock label="Usia" value={`${new Date().getFullYear() - new Date(student.dob).getFullYear()} Tahun`} />
+                                            
+                                            <InfoBlock 
+                                                label="Kelahiran" 
+                                                value={`${student.pob}, ${student.pob_province}`} 
+                                                icon={<MapPin className="size-3" />} 
+                                            />
+                                            <InfoBlock 
+                                                label="Tanggal Lahir" 
+                                                value={student.dob} 
+                                                icon={<Calendar className="size-3" />} 
+                                            />
+                                            <InfoBlock 
+                                                label="HP Siswa" 
+                                                value={student.phone_student} 
+                                                icon={<Phone className="size-3 text-green-600" />} 
+                                            />
+                                            <InfoBlock 
+                                                label="HP Orang Tua" 
+                                                value={student.phone_parent} 
+                                                icon={<Users className="size-3" />} 
+                                            />
+                                        </div>
+
+                                        {/* Row 3: Alamat (Box Berbeda) */}
+                                        <div className="group relative overflow-hidden rounded-2xl border border-dashed border-border bg-muted/20 p-5 transition-colors hover:bg-muted/30">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 rounded-full bg-background p-2 shadow-sm text-muted-foreground group-hover:text-blue-600 transition-colors">
+                                                    <MapPin size={16} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Domisili Sesuai KTP</p>
+                                                    <p className="text-sm font-semibold leading-relaxed text-foreground/90 italic">
+                                                        "{student.address_ktp}"
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </CollapsibleSection>
 
                                 {/* SECTION 2: DATA FISIK & KEBIASAAN */}
                                 <CollapsibleSection
-                                    title="Data Fisik & Kebiasaan"
+                                    title="Kondisi Fisik & Kebiasaan"
                                     icon={<Activity className="size-5 text-green-600" />}
                                     isExpanded={expandedSections.physical}
                                     onToggle={() => toggleSection('physical')}
                                 >
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        <InfoBlock label="Tinggi Badan" value={`${student.height} cm`} />
-                                        <InfoBlock label="Berat Badan" value={`${student.weight} kg`} />
-                                        <InfoBlock label="BMI" value={calculateBMI()} badge={bmiCategory.text} badgeColor={bmiCategory.color} />
-                                        <InfoBlock label="Golongan Darah" value={student.blood_type} icon={<Droplet className="size-3 text-red-500" />} />
-                                    </div>
-                                    
-                                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <StatusCard 
-                                            label="Tato" 
-                                            value={student.tattoo}
-                                            icon={student.tattoo === 'ada' ? <AlertCircle className="size-4 text-orange-600" /> : <CheckCircle2 className="size-4 text-green-600" />}
-                                            positive={student.tattoo === 'tidak'}
-                                        />
-                                        <StatusCard 
-                                            label="Merokok" 
-                                            value={student.smoking}
-                                            icon={student.smoking === 'merokok' ? <Cigarette className="size-4 text-orange-600" /> : <Ban className="size-4 text-green-600" />}
-                                            positive={student.smoking === 'tidak merokok'}
-                                        />
-                                        <StatusCard 
-                                            label="Alkohol" 
-                                            value={student.alcohol}
-                                            icon={student.alcohol === 'minum' ? <Wine className="size-4 text-orange-600" /> : <Ban className="size-4 text-green-600" />}
-                                            positive={student.alcohol === 'tidak minum'}
-                                        />
-                                        <StatusCard 
-                                            label="Keluarga di Jepang" 
-                                            value={student.family_in_japan}
-                                            icon={<Globe className="size-4" />}
-                                            positive={false}
-                                        />
+                                    <div className="space-y-10 pt-2"> {/* Tambah space-y untuk jarak antar grup besar */}
+                                        
+                                        {/* Row 1: Statistik Vital (Highlight Utama) */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 border-b pb-10 mb-2"> 
+                                            {/* pb-10 memberikan jarak dari teks ke garis bawah */}
+                                            {/* mb-2 memberikan sedikit ruang tambahan di luar garis */}
+                                            
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600/80">Tinggi Badan</p>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-3xl font-black text-foreground">{student.height}</span>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase">cm</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600/80">Berat Badan</p>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-3xl font-black text-foreground">{student.weight}</span>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase">kg</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-600/80">Indeks Massa Tubuh</p>
+                                                <div className="flex flex-col">
+                                                    <span className="text-2xl font-black text-foreground">{calculateBMI()}</span>
+                                                    <span className={`text-[10px] font-extrabold uppercase tracking-tighter ${bmiCategory.color}`}>
+                                                        {bmiCategory.text}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600/80">Gol. Darah</p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="bg-red-50 p-1.5 rounded-lg">
+                                                        <Droplet className="size-5 text-red-500 fill-red-500/20" />
+                                                    </div>
+                                                    <span className="text-3xl font-black text-foreground">{student.blood_type}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Status & Kebiasaan */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <StatusCard 
+                                                label="Tato / Bekas Luka" 
+                                                value={student.tattoo === 'ada' ? 'Memiliki Tato' : 'Bersih / Tidak Ada'}
+                                                icon={<ShieldCheck className={`size-4 ${student.tattoo === 'ada' ? 'text-orange-500' : 'text-green-600'}`} />}
+                                                positive={student.tattoo === 'tidak'}
+                                            />
+                                            <StatusCard 
+                                                label="Kebiasaan Merokok" 
+                                                value={student.smoking}
+                                                icon={<Cigarette className={`size-4 ${student.smoking === 'merokok' ? 'text-orange-500' : 'text-green-600'}`} />}
+                                                positive={student.smoking === 'tidak merokok'}
+                                            />
+                                            <StatusCard 
+                                                label="Konsumsi Alkohol" 
+                                                value={student.alcohol}
+                                                icon={<Wine className={`size-4 ${student.alcohol === 'minum' ? 'text-orange-500' : 'text-green-600'}`} />}
+                                                positive={student.alcohol === 'tidak minum'}
+                                            />
+                                            <StatusCard 
+                                                label="Keluarga di Jepang" 
+                                                value={student.family_in_japan === 'ada' ? 'Ada' : 'Tidak Ada'}
+                                                icon={<Globe className="size-4 text-blue-600" />}
+                                                positive={student.family_in_japan === 'tidak'}
+                                            />
+                                        </div>
                                     </div>
                                 </CollapsibleSection>
 
                                 {/* SECTION 3: DATA MEDIS */}
                                 <CollapsibleSection
-                                    title="Data Medis"
+                                    title="Informasi Kesehatan"
                                     icon={<Heart className="size-5 text-red-600" />}
                                     isExpanded={expandedSections.medical}
                                     onToggle={() => toggleSection('medical')}
                                 >
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                        <StatusCard 
-                                            label="Riwayat TBC" 
-                                            value={student.tbc_history}
-                                            icon={student.tbc_history === 'ada' ? <AlertCircle className="size-4 text-red-600" /> : <CheckCircle2 className="size-4 text-green-600" />}
-                                            positive={student.tbc_history === 'tidak'}
-                                        />
-                                        <InfoBlock 
-                                            label="Buta Warna" 
-                                            value={student.color_blind === 'normal' ? 'Normal' : student.color_blind}
-                                            icon={<Eye className="size-3" />}
-                                        />
-                                    </div>
-                                    
-                                    {student.other_illness && (
-                                        <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
-                                            <p className="text-xs font-black uppercase text-orange-700 mb-2">Riwayat Penyakit/Operasi Lainnya</p>
-                                            <p className="text-sm font-medium text-orange-900">{student.other_illness}</p>
+                                    <div className="space-y-8 pt-2">
+                                        {/* Row 1: Status Kesehatan Utama */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-8 mb-2">
+                                            <StatusCard 
+                                                label="Riwayat Penyakit TBC" 
+                                                value={student.tbc_history === 'ada' ? 'Pernah Mengalami' : 'Tidak Ada Riwayat'}
+                                                icon={student.tbc_history === 'ada' ? <AlertTriangle className="size-4 text-red-600" /> : <CheckCircle2 className="size-4 text-green-600" />}
+                                                positive={student.tbc_history === 'tidak'}
+                                            />
+                                            <StatusCard 
+                                                label="Kondisi Buta Warna" 
+                                                value={student.color_blind === 'normal' ? 'Normal (Tidak Buta Warna)' : student.color_blind}
+                                                icon={<Eye className={`size-4 ${student.color_blind === 'normal' ? 'text-green-600' : 'text-orange-500'}`} />}
+                                                positive={student.color_blind === 'normal'}
+                                            />
                                         </div>
-                                    )}
+
+                                        {/* Row 2: Riwayat Penyakit Lainnya */}
+                                        <div className="group relative overflow-hidden rounded-2xl border border-dashed border-red-200 bg-red-50/30 p-6 transition-colors hover:bg-red-50/50">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1 rounded-full bg-white p-2 shadow-sm text-red-600 group-hover:scale-110 transition-transform">
+                                                    <Activity size={18} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-700/70 mb-2">Catatan Medis / Riwayat Operasi</p>
+                                                    {student.other_illness ? (
+                                                        <p className="text-sm font-bold leading-relaxed text-red-900 italic">
+                                                            "{student.other_illness}"
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-sm font-medium text-muted-foreground italic">
+                                                            Tidak ada riwayat penyakit berat atau operasi yang dilaporkan.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Dekorasi latar belakang tipis */}
+                                            <HeartPulse className="absolute -bottom-2 -right-2 size-16 text-red-500/5 rotate-12" />
+                                        </div>
+
+                                        <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">
+                                            <ShieldCheck size={12} />
+                                            Data medis digunakan untuk memproses asuransi dan kelayakan kerja di Jepang
+                                        </div>
+                                    </div>
                                 </CollapsibleSection>
 
-                                {/* SECTION 4: DATA PASSPORT */}
+                                {/* SECTION 4: DATA PASPOR */}
                                 <CollapsibleSection
-                                    title="Data Passport"
+                                    title="Dokumen Perjalanan (Paspor)"
                                     icon={<Plane className="size-5 text-indigo-600" />}
                                     isExpanded={expandedSections.passport}
                                     onToggle={() => toggleSection('passport')}
                                 >
-                                    {student.has_passport === 'ada' ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                            <InfoBlock label="Nomor Passport" value={student.passport_number || '-'} />
-                                            <InfoBlock label="Tanggal Terbit" value={student.passport_issue_date || '-'} />
-                                            <InfoBlock label="Tanggal Kadaluarsa" value={student.passport_expiry_date || '-'} />
+                                    <div className="space-y-8 pt-2">
+                                        {student.has_passport === 'ada' ? (
+                                            <div className="space-y-6">
+                                                {/* Row 1: Paspor Highlight (Gaya ID Card) */}
+                                                <div className="relative group overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-background p-6 transition-all hover:shadow-md">
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                        <div className="space-y-4 flex-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600">
+                                                                    <FileText size={20} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600/80 leading-none mb-1">Nomor Paspor</p>
+                                                                    <p className="text-2xl font-mono font-black text-foreground tracking-widest">
+                                                                        {student.passport_number || 'N/A'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Status Validitas */}
+                                                        <div className="flex items-center gap-4 px-6 border-l border-indigo-100">
+                                                            <div className="text-right">
+                                                                <p className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1.5">Status Dokumen</p>
+                                                                <Badge className="bg-indigo-600 text-white font-bold uppercase text-[10px] px-3">Aktif / Valid</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Dekorasi Pesawat Terbang Transparan */}
+                                                    <PlaneTakeoff className="absolute -bottom-4 -right-4 size-24 text-indigo-600/5 -rotate-12" />
+                                                </div>
+
+                                                {/* Row 2: Grid Tanggal Penting */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-border bg-muted/5">
+                                                        <div className="p-2.5 bg-background rounded-lg shadow-sm">
+                                                            <Calendar className="size-5 text-indigo-500" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Tanggal Pengeluaran</p>
+                                                            <p className="text-sm font-bold text-foreground">{student.passport_issue_date || '-'}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-border bg-muted/5">
+                                                        <div className="p-2.5 bg-background rounded-lg shadow-sm">
+                                                            <Clock className="size-5 text-red-500" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Tanggal Kadaluarsa</p>
+                                                            <p className="text-sm font-bold text-foreground">{student.passport_expiry_date || '-'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* Tampilan Jika Belum Ada Paspor */
+                                            <div className="group relative overflow-hidden rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/30 p-10 text-center transition-colors hover:bg-orange-50/50">
+                                                <div className="relative z-10">
+                                                    <div className="mx-auto w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                        <Plane className="size-8 text-orange-400 opacity-40" />
+                                                    </div>
+                                                    <h4 className="text-sm font-black text-orange-900 uppercase tracking-tight">Paspor Belum Tersedia</h4>
+                                                    <p className="text-xs text-orange-700/70 mt-2 max-w-xs mx-auto leading-relaxed">
+                                                        Siswa dilaporkan belum memiliki paspor. Mohon segera proses pembuatan paspor untuk keperluan pengajuan COE.
+                                                    </p>
+                                                </div>
+                                                {/* Background Pattern */}
+                                                <Globe className="absolute -bottom-6 -left-6 size-32 text-orange-600/5 rotate-12" />
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">
+                                            <Info size={12} />
+                                            Data paspor harus sesuai dengan ID Card untuk verifikasi data di Imigrasi Jepang
                                         </div>
-                                    ) : (
-                                        <div className="p-6 bg-orange-50 border border-orange-200 rounded-xl text-center">
-                                            <AlertCircle className="size-8 text-orange-600 mx-auto mb-3" />
-                                            <p className="text-sm font-bold text-orange-900">Belum memiliki passport</p>
-                                        </div>
-                                    )}
+                                    </div>
                                 </CollapsibleSection>
 
-                                {/* SECTION 5: DATA LPK INTERNAL */}
+                                {/* SECTION 5: DATA LPK INTERNAL & KOMPETENSI */}
                                 <CollapsibleSection
-                                    title="Data LPK Internal"
+                                    title="Data LPK & Analisis Siswa"
                                     icon={<Building2 className="size-5 text-purple-600" />}
                                     isExpanded={expandedSections.lpk}
                                     onToggle={() => toggleSection('lpk')}
                                 >
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        <InfoBlock label="Level Kelas" value={student.class_level} icon={<BookOpen className="size-3" />} />
-                                        <InfoBlock label="Program Keahlian" value={student.program_expert} icon={<Award className="size-3" />} />
-                                        <InfoBlock label="Tanggal Masuk LPK" value={student.entry_date_lpk} />
-                                        <InfoBlock label="Skill Teknis" value={student.skill_technical} />
-                                        <InfoBlock label="Hobi" value={student.hobby} />
-                                        <InfoBlock label="Target Tabungan" value={student.savings_target} icon={<Target className="size-3" />} />
-                                        <InfoBlock label="Alasan Menabung" value={student.savings_reason} />
-                                    </div>
-                                    
-                                    <div className="mt-6 grid md:grid-cols-2 gap-4">
-                                        <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-                                            <p className="text-xs font-black uppercase text-green-700 mb-2 flex items-center gap-2">
-                                                <TrendingUp className="size-3" /> Kelebihan
-                                            </p>
-                                            <p className="text-sm font-medium text-green-900">{student.strength}</p>
+                                    <div className="space-y-8 pt-2">
+                                        
+                                        {/* SUB-SECTION 1: STATUS AKADEMIK */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <GraduationCap size={14} className="text-purple-500" /> Status Akademik & Kelas
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="p-4 rounded-2xl bg-purple-50 border border-purple-100 flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black text-purple-700/60 uppercase tracking-widest">Level Kelas</span>
+                                                    <span className="text-lg font-black text-purple-900">{student.class_level}</span>
+                                                </div>
+                                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black text-blue-700/60 uppercase tracking-widest">Program Keahlian</span>
+                                                    <span className="text-lg font-black text-blue-900">{student.program_expert}</span>
+                                                </div>
+                                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col gap-1">
+                                                    <span className="text-[9px] font-black text-slate-700/60 uppercase tracking-widest">Mulai Pelatihan</span>
+                                                    <span className="text-lg font-black text-slate-900">{student.entry_date_lpk}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                                            <p className="text-xs font-black uppercase text-blue-700 mb-2 flex items-center gap-2">
-                                                <Target className="size-3" /> Area Pengembangan
-                                            </p>
-                                            <p className="text-sm font-medium text-blue-900">{student.weakness}</p>
+
+                                        {/* SUB-SECTION 2: TARGET FINANSIAL */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <Target size={14} className="text-emerald-500" /> Motivasi & Target Finansial
+                                            </h4>
+                                            <div className="relative group overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-background p-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                                                    <div className="space-y-2">
+                                                        <p className="text-[10px] font-black uppercase text-emerald-700/70 tracking-widest">Target Tabungan (Yen)</p>
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="text-3xl font-black text-foreground">¥ {Number(student.savings_target).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 border-l border-emerald-100 pl-8">
+                                                        <p className="text-[10px] font-black uppercase text-emerald-700/70 tracking-widest">Alasan / Tujuan Utama</p>
+                                                        <p className="text-sm font-bold text-foreground italic leading-relaxed">
+                                                            "{student.savings_reason}"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <TrendingUp className="absolute -bottom-4 -right-4 size-24 text-emerald-600/5 -rotate-12" />
+                                            </div>
+                                        </div>
+
+                                        {/* SUB-SECTION 3: ANALISIS KOMPETENSI (SWOT STYLE) */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <Activity size={14} className="text-orange-500" /> Analisis Kompetensi Siswa
+                                            </h4>
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                {/* Strength & Skill */}
+                                                <div className="space-y-4">
+                                                    <div className="p-5 bg-green-50 border border-green-200 rounded-2xl relative overflow-hidden group">
+                                                        <div className="relative z-10">
+                                                            <p className="text-[10px] font-black uppercase text-green-700 mb-3 flex items-center gap-2">
+                                                                <CheckCircle2 className="size-3" /> Kelebihan Utama
+                                                            </p>
+                                                            <p className="text-sm font-bold text-green-900 leading-relaxed">{student.strength}</p>
+                                                        </div>
+                                                        <Sparkles className="absolute -top-2 -right-2 size-12 text-green-600/10" />
+                                                    </div>
+                                                    <div className="p-5 bg-indigo-50 border border-indigo-200 rounded-2xl">
+                                                        <p className="text-[10px] font-black uppercase text-indigo-700 mb-3 flex items-center gap-2">
+                                                            <Award className="size-3" /> Skill Teknis
+                                                        </p>
+                                                        <p className="text-sm font-bold text-indigo-900 leading-relaxed">{student.skill_technical}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Weakness & Hobby */}
+                                                <div className="space-y-4">
+                                                    <div className="p-5 bg-red-50 border border-red-200 rounded-2xl">
+                                                        <p className="text-[10px] font-black uppercase text-red-700 mb-3 flex items-center gap-2">
+                                                            <AlertCircle className="size-3" /> Area Pengembangan (Weakness)
+                                                        </p>
+                                                        <p className="text-sm font-bold text-red-900 leading-relaxed">{student.weakness}</p>
+                                                    </div>
+                                                    <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl">
+                                                        <p className="text-[10px] font-black uppercase text-amber-700 mb-3 flex items-center gap-2">
+                                                            <Heart size={14} /> Hobi & Minat
+                                                        </p>
+                                                        <p className="text-sm font-bold text-amber-900 leading-relaxed">{student.hobby}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter italic border-t pt-4">
+                                            <Info size={12} />
+                                            Data internal ini digunakan oleh tim LPK OOSAKA GAKKOU untuk menentukan rekomendasi pekerjaan yang sesuai bagi siswa.
                                         </div>
                                     </div>
                                 </CollapsibleSection>
@@ -496,29 +746,56 @@ export default function StudentDashboard({ student, interviews }: Props) {
                                         icon={<GraduationCap className="size-5 text-blue-600" />}
                                         isExpanded={expandedSections.education}
                                         onToggle={() => toggleSection('education')}
-                                        badge={`${student.educations.length} Riwayat`}
+                                        badge={`${student.educations.length} Jenjang`}
                                     >
-                                        <div className="space-y-4">
+                                        <div className="relative space-y-6 pt-2 before:absolute before:inset-y-0 before:left-4 before:block before:w-px before:bg-gradient-to-b before:from-blue-200 before:via-slate-200 before:to-transparent">
                                             {student.educations.map((edu: any, idx: number) => (
-                                                <div key={idx} className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        <div>
-                                                            <Badge className="bg-blue-600 text-white mb-2">{edu.level}</Badge>
-                                                            <h4 className="font-black text-foreground text-lg">{edu.school_name}</h4>
-                                                            <p className="text-sm text-muted-foreground font-medium">{edu.school_type}</p>
+                                                <div key={idx} className="relative pl-10 group">
+                                                    {/* Dot Timeline */}
+                                                    <div className="absolute left-[11px] top-1.5 h-[10px] w-[10px] rounded-full border-2 border-blue-600 bg-white ring-4 ring-blue-50 transition-transform group-hover:scale-125" />
+                                                    
+                                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-blue-300 hover:shadow-md">
+                                                        <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-50/50 px-5 py-3 border-b border-slate-100 gap-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <Badge className="bg-blue-600 text-[10px] font-black uppercase tracking-wider px-2">
+                                                                    {edu.level}
+                                                                </Badge>
+                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                                                                    <Building2 size={10} /> {edu.school_type}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-blue-700">
+                                                                <Calendar size={12} className="opacity-60" />
+                                                                <span className="text-[11px] font-black tracking-tighter">
+                                                                    {new Date(edu.entry_date).getFullYear()} — {new Date(edu.graduation_date).getFullYear()}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <Badge variant="outline" className="font-bold">
-                                                            {new Date(edu.entry_date).getFullYear()} - {new Date(edu.graduation_date).getFullYear()}
-                                                        </Badge>
+
+                                                        <div className="p-5">
+                                                            <h4 className="text-lg font-black text-foreground leading-tight mb-1 group-hover:text-blue-700 transition-colors">
+                                                                {edu.school_name}
+                                                            </h4>
+                                                            
+                                                            {edu.major ? (
+                                                                <div className="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
+                                                                    <Award className="size-3.5 text-indigo-600" />
+                                                                    <span className="text-xs font-bold text-indigo-900">Konsentrasi: {edu.major}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs font-medium text-muted-foreground italic mt-1">
+                                                                    Kurikulum Pendidikan Umum
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {edu.major && (
-                                                        <div className="mt-3 flex items-center gap-2 text-sm">
-                                                            <Award className="size-4 text-blue-600" />
-                                                            <span className="font-bold text-blue-900">Jurusan: {edu.major}</span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             ))}
+                                        </div>
+                                        
+                                        <div className="mt-8 flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter italic">
+                                            <Info size={12} />
+                                            Data ijazah diverifikasi untuk keperluan sinkronisasi dokumen COE ke Imigrasi Jepang
                                         </div>
                                     </CollapsibleSection>
                                 )}
@@ -526,33 +803,74 @@ export default function StudentDashboard({ student, interviews }: Props) {
                                 {/* SECTION 7: PENGALAMAN KERJA */}
                                 {student.experiences && student.experiences.length > 0 && (
                                     <CollapsibleSection
-                                        title="Pengalaman Kerja"
+                                        title="Riwayat Pekerjaan"
                                         icon={<Briefcase className="size-5 text-orange-600" />}
                                         isExpanded={expandedSections.experience}
                                         onToggle={() => toggleSection('experience')}
-                                        badge={`${student.experiences.length} Pengalaman`}
+                                        badge={`${student.experiences.length} Instansi`}
                                     >
-                                        <div className="space-y-4">
+                                        <div className="relative space-y-8 pt-4 before:absolute before:inset-y-0 before:left-4 before:block before:w-px before:bg-gradient-to-b before:from-orange-200 before:via-slate-200 before:to-transparent">
                                             {student.experiences.map((exp: any, idx: number) => (
-                                                <div key={idx} className="p-5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl">
-                                                    <div className="flex items-start justify-between mb-3">
-                                                        <div>
-                                                            <h4 className="font-black text-foreground text-lg">{exp.company_name}</h4>
-                                                            <Badge className="bg-orange-600 text-white mt-2">{exp.job_type}</Badge>
+                                                <div key={idx} className="relative pl-10 group">
+                                                    {/* Dot Timeline */}
+                                                    <div className="absolute left-[11px] top-2 h-2.5 w-2.5 rounded-full border-2 border-orange-500 bg-white ring-4 ring-orange-50 transition-all group-hover:scale-125 group-hover:bg-orange-500" />
+                                                    
+                                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-orange-300 hover:shadow-md">
+                                                        {/* Header: Company & Date */}
+                                                        <div className="flex flex-col md:flex-row md:items-center justify-between bg-orange-50/30 px-5 py-4 border-b border-orange-100 gap-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100">
+                                                                    <Building2 size={18} className="text-orange-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-black text-foreground leading-none mb-1 group-hover:text-orange-700 transition-colors">
+                                                                        {exp.company_name}
+                                                                    </h4>
+                                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+                                                                        {exp.job_type}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-orange-100 shadow-sm">
+                                                                <Calendar size={12} className="text-orange-500" />
+                                                                <span className="text-[10px] font-black text-orange-700 uppercase tracking-tighter">
+                                                                    {exp.start_date} — {exp.end_date || 'Sekarang'}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <Badge variant="outline" className="font-bold">
-                                                            {new Date(exp.start_date).getFullYear()} - {exp.end_date ? new Date(exp.end_date).getFullYear() : 'Sekarang'}
-                                                        </Badge>
+
+                                                        {/* Body: Salary & Additional Details */}
+                                                        <div className="p-5 flex flex-wrap items-center justify-between gap-4">
+                                                            <div className="flex items-center gap-6">
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Penghasilan Terakhir</p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="p-1 bg-green-100 rounded text-green-700">
+                                                                            <TrendingUp size={12} />
+                                                                        </div>
+                                                                        <span className="text-sm font-black text-foreground">
+                                                                            Rp {Number(exp.monthly_salary).toLocaleString('id-ID')}
+                                                                            <span className="text-[10px] text-muted-foreground font-medium ml-1">/ bulan</span>
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Masa Kerja Badge */}
+                                                            <div className="flex items-center gap-2 text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
+                                                                <Clock size={12} />
+                                                                <span className="text-[10px] font-bold uppercase tracking-tighter">Valid Performance</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    {exp.monthly_salary && (
-                                                        <div className="mt-3 flex items-center gap-2 text-sm">
-                                                            <span className="font-bold text-orange-900">
-                                                                Gaji: Rp {exp.monthly_salary.toLocaleString('id-ID')} / bulan
-                                                            </span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        <div className="mt-8 flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter italic">
+                                            <Info size={12} />
+                                            Pengalaman kerja membantu Admin menyesuaikan penempatan sektor pekerjaan di Jepang (Tokutei Ginou/Internship)
                                         </div>
                                     </CollapsibleSection>
                                 )}
@@ -560,36 +878,69 @@ export default function StudentDashboard({ student, interviews }: Props) {
                                 {/* SECTION 8: DATA KELUARGA */}
                                 {student.families && student.families.length > 0 && (
                                     <CollapsibleSection
-                                        title="Data Keluarga"
+                                        title="Jaringan Keluarga"
                                         icon={<Users className="size-5 text-pink-600" />}
                                         isExpanded={expandedSections.family}
                                         onToggle={() => toggleSection('family')}
                                         badge={`${student.families.length} Anggota`}
                                     >
-                                        <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                                             {student.families.map((family: any, idx: number) => (
-                                                <div key={idx} className="p-5 bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-xl">
-                                                    <div className="flex items-center gap-3 mb-3">
-                                                        <div className="h-10 w-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-black">
+                                                <div 
+                                                    key={idx} 
+                                                    className="group relative overflow-hidden rounded-2xl border border-pink-100 bg-white p-5 transition-all hover:border-pink-300 hover:shadow-md"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        {/* Avatar Lingkaran dengan Inisial */}
+                                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-xl font-black text-white shadow-lg shadow-pink-100 group-hover:scale-110 transition-transform">
                                                             {family.name.charAt(0)}
                                                         </div>
-                                                        <div>
-                                                            <h4 className="font-black text-foreground">{family.name}</h4>
-                                                            <Badge className="bg-pink-600 text-white text-xs">{family.relationship}</Badge>
+
+                                                        <div className="flex-1 space-y-3">
+                                                            {/* Identitas Utama */}
+                                                            <div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <h4 className="font-black text-foreground group-hover:text-pink-700 transition-colors">
+                                                                        {family.name}
+                                                                    </h4>
+                                                                    <Badge className="bg-pink-50 text-pink-700 border-pink-100 font-bold text-[9px] uppercase tracking-widest">
+                                                                        {family.relationship}
+                                                                    </Badge>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mt-0.5">
+                                                                    Kontak Keluarga Terdaftar
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Grid Detail Kecil */}
+                                                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-pink-50">
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[9px] font-black text-pink-800/40 uppercase tracking-widest leading-none">Usia</p>
+                                                                    <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                                                        <Clock size={12} className="text-pink-400" />
+                                                                        {family.age} <span className="text-[10px] opacity-60">Thn</span>
+                                                                    </p>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[9px] font-black text-pink-800/40 uppercase tracking-widest leading-none">Pekerjaan</p>
+                                                                    <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                                                        <Briefcase size={12} className="text-pink-400" />
+                                                                        <span className="truncate">{family.occupation || '-'}</span>
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
-                                                        <div>
-                                                            <p className="text-xs font-bold text-muted-foreground uppercase">Usia</p>
-                                                            <p className="font-bold text-foreground">{family.age} tahun</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-bold text-muted-foreground uppercase">Pekerjaan</p>
-                                                            <p className="font-bold text-foreground">{family.occupation}</p>
-                                                        </div>
-                                                    </div>
+
+                                                    {/* Dekorasi Latar Belakang */}
+                                                    <Heart className="absolute -bottom-2 -right-2 size-12 text-pink-500/5 rotate-12 transition-transform group-hover:scale-125" />
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        <div className="mt-8 flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter italic border-t pt-4">
+                                            <Info size={12} />
+                                            Data keluarga inti diperlukan sebagai jaminan darurat dan syarat administrasi penjamin di Jepang
                                         </div>
                                     </CollapsibleSection>
                                 )}
