@@ -18,21 +18,22 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         
-        // Cari profil jika sudah ada
-        $student = StudentProfile::with(['educations', 'experiences', 'families'])
+        // 1. Pastikan memuat relasi 'user' agar email tersedia saat EDIT
+        $student = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
             ->where('user_id', $user->id)
             ->first();
 
-        // Jika profil belum ada, kita kirim objek minimal agar email muncul di form
+        // Jika profil belum ada (Registrasi Baru)
         if (!$student) {
             $student = [
                 'id' => null,
-                'user' => ['email' => $user->email],
+                'user' => ['email' => $user->email], // Ini sudah benar untuk data baru
                 'educations' => [],
                 'experiences' => [],
                 'families' => [],
-                'student_status' => 'matching',
-                'program_expert' => 'BAHASA JEPANG'
+                'student_status' => 'pelatihan',
+                'program_expert' => 'BAHASA JEPANG',
+                'class_level' => 'SISWA BARU',
             ];
         }
 
