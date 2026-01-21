@@ -213,109 +213,128 @@ export default function StudentDashboard({ student, interviews }: Props) {
                 <div className="grid gap-8 lg:grid-cols-12">
                     {/* --- MAIN COLUMN (LEFT) --- */}
                     <div className="lg:col-span-8 space-y-8">
-                        
-                        <AnimatePresence>
-                            {isConfirming && (
-                                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-                                    <motion.div 
-                                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                        className="bg-card w-full max-w-md rounded-3xl shadow-2xl border p-8 space-y-6"
-                                    >
-                                        <div className="flex items-center gap-4 text-amber-600">
-                                            <div className="p-3 bg-amber-100 rounded-2xl">
-                                                <AlertTriangle className="size-8" />
-                                            </div>
-                                            <h2 className="text-2xl font-black">PENTING!</h2>
-                                        </div>
-                                        
-                                        <div className="space-y-4 text-sm leading-relaxed">
-                                            <p className="text-muted-foreground font-medium">Data yang Anda masukkan bersifat **RESMI** untuk keperluan imigrasi Jepang.</p>
-                                            <div className="bg-destructive/5 p-4 rounded-2xl border border-destructive/10 text-destructive text-xs font-bold leading-relaxed">
-                                                Dilarang memalsukan data. Kesalahan input data keluarga atau medis dapat menyebabkan penolakan Visa/COE secara permanen.
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3 text-center">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                                Konfirmasi Persetujuan:
-                                            </label>
-                                            <p className="text-blue-600 text-xs font-bold italic">"saya mengerti dan lanjutkan"</p>
-                                            <input 
-                                                type="text" 
-                                                className="w-full rounded-2xl border-2 bg-secondary/30 px-4 py-4 text-center text-sm focus:border-blue-500 focus:ring-0 outline-none transition-all font-bold"
-                                                placeholder="..."
-                                                value={confirmationText}
-                                                onChange={(e) => setConfirmationText(e.target.value)}
-                                            />
-                                        </div>
-
-                                        <div className="flex gap-3">
-                                            <Button 
-                                                variant="ghost" 
-                                                className="flex-1 h-14 rounded-2xl font-bold"
-                                                onClick={() => { setIsConfirming(false); setConfirmationText(''); }}
-                                            >
-                                                Batal
-                                            </Button>
-                                            <Link
-                                                href={student ? route('student.profile.edit') : route('student.profile.create')}
-                                                as="button"
-                                                disabled={confirmationText.toLowerCase() !== "saya mengerti dan lanjutkan"}
-                                                className={`flex-1 h-14 rounded-2xl font-bold text-white transition-all ${
-                                                    confirmationText.toLowerCase() === "saya mengerti dan lanjutkan" 
-                                                    ? 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200' 
-                                                    : 'bg-slate-300 cursor-not-allowed'
-                                                }`}
-                                            >
-                                                Lanjutkan
-                                            </Link>
-                                        </div>
-                                    </motion.div>
-                                </div>
-                            )}
-                        </AnimatePresence>
-
-                        {!student ? (
-                            <div className="space-y-8">
+                    {/* --- 1. MODAL KONFIRMASI (ANALYTICS & LEGAL) --- */}
+                    <AnimatePresence>
+                        {isConfirming && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
                                 <motion.div 
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="relative overflow-hidden rounded-[2rem] border bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-800 p-10 text-white shadow-2xl"
+                                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                    className="bg-card w-full max-w-md rounded-[2.5rem] shadow-2xl border p-8 space-y-6"
                                 >
-                                    <div className="relative z-10 space-y-6">
-                                        <Badge className="bg-white/20 text-white border-none backdrop-blur-md px-4 py-1">Langkah 1: Lengkapi Profil</Badge>
-                                        <h3 className="text-4xl font-black leading-tight max-w-md">Mulai Karir Profesional Anda di Jepang.</h3>
-                                        <p className="text-blue-100 max-w-lg text-lg leading-relaxed opacity-90">
-                                            Profil yang lengkap memudahkan kami mencocokkan keahlian Anda dengan perusahaan di Jepang.
-                                        </p>
-                                        <button 
-                                            onClick={() => setIsConfirming(true)}
-                                            className="inline-flex items-center gap-3 rounded-2xl bg-white px-8 py-4 text-sm font-black text-blue-700 hover:bg-blue-50 transition-all hover:scale-105 shadow-xl"
-                                        >
-                                            <UserPlus className="size-5" /> Isi Biodata Sekarang
-                                        </button>
+                                    <div className="flex items-center gap-4 text-amber-600">
+                                        <div className="p-3 bg-amber-100 rounded-2xl">
+                                            <AlertTriangle className="size-8" />
+                                        </div>
+                                        <h2 className="text-2xl font-black tracking-tight">Pernyataan Penting</h2>
                                     </div>
-                                    <PlaceholderPattern className="absolute inset-0 size-full stroke-white/5 [mask-image:radial-gradient(white,transparent)]" />
-                                </motion.div>
+                                    
+                                    <div className="space-y-4 text-sm leading-relaxed">
+                                        <p className="text-muted-foreground font-medium">
+                                            Data yang Anda masukkan akan digunakan secara resmi untuk keperluan verifikasi Imigrasi Jepang, COE, dan Visa Kerja.
+                                        </p>
+                                        <div className="bg-destructive/5 p-4 rounded-2xl border border-destructive/10 text-destructive text-xs font-bold leading-relaxed">
+                                            Dilarang memalsukan data. Kesalahan input data keluarga atau riwayat medis dapat menyebabkan penolakan dokumen secara permanen oleh pihak Jepang.
+                                        </div>
+                                    </div>
 
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                            Ketik kalimat konfirmasi di bawah:
+                                        </label>
+                                        <p className="text-blue-600 text-xs font-bold italic ml-1">"saya mengerti dan lanjutkan"</p>
+                                        <input 
+                                            type="text" 
+                                            className="w-full rounded-2xl border-2 bg-secondary/30 px-4 py-4 text-sm focus:border-blue-500 focus:ring-0 outline-none transition-all font-bold"
+                                            placeholder="Tulis kalimat di atas..."
+                                            value={confirmationText}
+                                            onChange={(e) => setConfirmationText(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button 
+                                            variant="ghost" 
+                                            className="flex-1 h-14 rounded-2xl font-bold"
+                                            onClick={() => { setIsConfirming(false); setConfirmationText(''); }}
+                                        >
+                                            Batal
+                                        </Button>
+                                        <Link
+                                            href={route('student.profile.edit')} // Mengarah ke rute profile.edit Anda
+                                            as="button"
+                                            disabled={confirmationText.toLowerCase() !== "saya mengerti dan lanjutkan"}
+                                            className={`flex-1 h-14 rounded-2xl font-bold text-white transition-all flex items-center justify-center ${
+                                                confirmationText.toLowerCase() === "saya mengerti dan lanjutkan" 
+                                                ? 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 active:scale-95' 
+                                                : 'bg-slate-300 cursor-not-allowed opacity-50'
+                                            }`}
+                                        >
+                                            Lanjutkan
+                                        </Link>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* --- 2. TAMPILAN DASHBOARD (BANNER & CHECKLIST) --- */}
+                    {!student ? (
+                        <div className="space-y-8">
+                            {/* Banner Utama */}
+                            <motion.div 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="relative overflow-hidden rounded-[2.5rem] border bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-800 p-10 text-white shadow-2xl"
+                            >
+                                <div className="relative z-10 space-y-6">
+                                    <div className="inline-flex items-center gap-2 bg-white/20 text-white border-none backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                        <Sparkles className="size-3" /> Langkah 1: Registrasi Profil
+                                    </div>
+                                    <h3 className="text-4xl font-black leading-[1.1] max-w-md tracking-tight">
+                                        Bangun Masa Depan Anda di Jepang.
+                                    </h3>
+                                    <p className="text-blue-100 max-w-lg text-lg leading-relaxed opacity-90">
+                                        Lengkapi profil Anda sekarang. Data yang akurat memudahkan tim LPK Oosaka Gakkou mencocokkan Anda dengan perusahaan impian.
+                                    </p>
+                                    <button 
+                                        onClick={() => setIsConfirming(true)}
+                                        className="inline-flex items-center gap-3 rounded-2xl bg-white px-8 py-4 text-sm font-black text-blue-700 hover:bg-blue-50 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20"
+                                    >
+                                        <UserPlus className="size-5" /> Isi Biodata Lengkap
+                                    </button>
+                                </div>
+                                {/* Background Pattern */}
+                                <PlaceholderPattern className="absolute inset-0 size-full stroke-white/5 [mask-image:radial-gradient(white,transparent)]" />
+                            </motion.div>
+
+                            {/* Checklist Persiapan */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-black flex items-center gap-3 ml-2 uppercase tracking-tighter text-foreground/80">
+                                    <div className="p-2 bg-blue-500 rounded-lg text-white">
+                                        <ClipboardList className="size-4" />
+                                    </div>
+                                    Persiapan Data Sebelum Mengisi
+                                </h3>
+                                
                                 <div className="grid gap-6 md:grid-cols-2">
                                     <PreparationCard 
-                                        icon={<ClipboardList className="text-orange-500" />}
-                                        title="Data KTP & Fisik"
-                                        description="Siapkan NIK dan hasil ukur TB/BB terbaru."
+                                        icon={<User className="text-orange-500" />}
+                                        title="Identitas & Fisik"
+                                        description="Data KTP dan hasil pengukuran fisik terbaru Anda."
                                         details={["NIK 16 Digit", "Tinggi & Berat Badan", "Golongan Darah", "Status Tato"]}
                                     />
                                     <PreparationCard 
-                                        icon={<BookOpen className="text-blue-500" />}
-                                        title="Data Pendidikan"
-                                        description="Informasi ijazah dari SD hingga terakhir."
-                                        details={["Nama Sekolah", "Tahun Lulus", "Jurusan", "Scan Ijazah"]}
+                                        icon={<GraduationCap className="text-blue-500" />}
+                                        title="Data Akademik"
+                                        description="Detail ijazah dari sekolah dasar hingga terakhir."
+                                        details={["Nama Sekolah", "Tahun Kelulusan", "Jurusan / Konsentrasi", "Scan Ijazah Asli"]}
                                     />
                                 </div>
                             </div>
-                        ) : (
+                        </div>
+                    ) : (
                             <div className="space-y-6">
                                 {/* STATUS BADGE UTAMA */}
                                 <div className="rounded-[2rem] border bg-card p-6 shadow-sm">
