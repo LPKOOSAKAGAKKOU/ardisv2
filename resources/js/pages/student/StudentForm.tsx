@@ -308,9 +308,10 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button" // Tambahkan ini
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors" 
+                                                                className="..." 
                                                                 onClick={() => removeRow('educations', idx)}
                                                             >
                                                                 <Trash2 size={18}/>
@@ -499,6 +500,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors" 
@@ -620,6 +622,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive" 
