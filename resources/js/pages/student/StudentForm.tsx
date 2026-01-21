@@ -27,6 +27,31 @@ interface Props {
 export default function StudentForm({ student, provinces, jobSectors }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
+    const validateStep = (currentStep: number) => {
+        switch (currentStep) {
+            case 1:
+                return (
+                    data.nik && data.full_name && data.pob && 
+                    data.pob_province && data.dob && data.gender && 
+                    data.phone_student && data.phone_parent && data.address_ktp
+                );
+            case 2:
+                return (
+                    data.height && data.weight && data.blood_type && 
+                    data.religion && data.marital_status && 
+                    data.tbc_history && data.color_blind
+                );
+            case 5: // Step data LPK
+                return (
+                    data.class_level && data.entry_date_lpk && 
+                    data.strength && data.weakness && 
+                    data.skill_technical && data.hobby && 
+                    data.savings_target && data.savings_reason
+                );
+            default:
+                return true; // Step 3 & 4 (Pendidikan/Kerja) biasanya fleksibel/array
+        }
+    };
 
     const { data, setData, post, put, processing, errors } = useForm({
         // 1. Akun & Identitas
@@ -149,7 +174,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormItem label="NIK" error={errors.nik}>
+                                        <FormItem label="NIK" error={errors.nik} required>
                                             <Input value={data.nik} onChange={e => setData('nik', e.target.value)} placeholder="16 digit NIK" />
                                         </FormItem>
                                         <FormItem label="Email Akun (Read Only)" error={errors.email}>
@@ -161,21 +186,21 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                             />
                                             <p className="text-[10px] text-blue-600 mt-1">* Email otomatis menggunakan akun login Anda.</p>
                                         </FormItem>
-                                        <FormItem label="Nama Lengkap"><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} /></FormItem>
-                                        <FormItem label="Nama Katakana"><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" /></FormItem>
-                                        <FormItem label="Tempat Lahir"><Input value={data.pob} onChange={e => setData('pob', e.target.value)} /></FormItem>
-                                        <FormItem label="Provinsi Lahir"><Input value={data.pob_province} onChange={e => setData('pob_province', e.target.value)} /></FormItem>
-                                        <FormItem label="Tgl Lahir"><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} /></FormItem>
-                                        <FormItem label="Jenis Kelamin">
+                                        <FormItem label="Nama Lengkap" required><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} /></FormItem>
+                                        <FormItem label="Nama Katakana" required><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" /></FormItem>
+                                        <FormItem label="Tempat Lahir" required><Input value={data.pob} onChange={e => setData('pob', e.target.value)} /></FormItem>
+                                        <FormItem label="Provinsi Lahir" required><Input value={data.pob_province} onChange={e => setData('pob_province', e.target.value)} /></FormItem>
+                                        <FormItem label="Tgl Lahir" required><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} /></FormItem>
+                                        <FormItem label="Jenis Kelamin" required>
                                             <Select value={data.gender} onValueChange={v => setData('gender', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent><SelectItem value="Laki-laki">Laki-laki</SelectItem><SelectItem value="Perempuan">Perempuan</SelectItem></SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="HP Siswa"><Input value={data.phone_student} onChange={e => setData('phone_student', e.target.value)} /></FormItem>
-                                        <FormItem label="HP Orang Tua"><Input value={data.phone_parent} onChange={e => setData('phone_parent', e.target.value)} /></FormItem>
+                                        <FormItem label="HP Siswa" required><Input value={data.phone_student} onChange={e => setData('phone_student', e.target.value)} /></FormItem>
+                                        <FormItem label="HP Orang Tua" required><Input value={data.phone_parent} onChange={e => setData('phone_parent', e.target.value)} /></FormItem>
                                     </div>
-                                    <FormItem label="Alamat KTP"><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} /></FormItem>
+                                    <FormItem label="Alamat KTP" required><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} /></FormItem>
                                 </CardContent>
                             </Card>
                         )}
@@ -189,15 +214,15 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <FormItem label="Tinggi (cm)"><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} /></FormItem>
-                                        <FormItem label="Berat (kg)"><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} /></FormItem>
-                                        <FormItem label="Gol. Darah">
+                                        <FormItem label="Tinggi (cm)" required><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} /></FormItem>
+                                        <FormItem label="Berat (kg)" required><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} /></FormItem>
+                                        <FormItem label="Gol. Darah" required>
                                             <Select value={data.blood_type} onValueChange={v => setData('blood_type', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['A','B','O','AB'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="Agama">
+                                        <FormItem label="Agama" required>
                                             <Select value={data.religion} onValueChange={v => setData('religion', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['Islam','Kristen','Katholik','Hindu','Budha','Kong Hu Chu'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
@@ -205,15 +230,15 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                         </FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-xl bg-muted/20">
-                                        <FormItem label="Tato"><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Merokok"><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok">Ya</SelectItem><SelectItem value="tidak merokok">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Alkohol"><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum">Ya</SelectItem><SelectItem value="tidak minum">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Status Nikah"><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></FormItem>
-                                        <FormItem label="Buta Warna"><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal">Normal</SelectItem><SelectItem value="parsial">Parsial</SelectItem><SelectItem value="total">Total</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Keluarga di Jepang"><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Tato" required><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Merokok" required><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok">Ya</SelectItem><SelectItem value="tidak merokok">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Alkohol" required><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum">Ya</SelectItem><SelectItem value="tidak minum">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Status Nikah" required><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></FormItem>
+                                        <FormItem label="Buta Warna" required><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal">Normal</SelectItem><SelectItem value="parsial">Parsial</SelectItem><SelectItem value="total">Total</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Keluarga di Jepang" required><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormItem label="Riwayat TBC"><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Pernah</SelectItem><SelectItem value="tidak">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Riwayat TBC" required><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Pernah</SelectItem><SelectItem value="tidak">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
                                         <FormItem label="Penyakit Lainnya"><Textarea value={data.other_illness} onChange={e => setData('other_illness', e.target.value)} placeholder="Sebutkan jika ada riwayat operasi/penyakit berat" /></FormItem>
                                     </div>
                                 </CardContent>
@@ -608,7 +633,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                     </CardHeader>
                                     <CardContent className="p-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
-                                            <FormItem label="Status Siswa">
+                                            <FormItem label="Status Siswa" required>
                                                 <Select value={data.student_status} onValueChange={v => setData('student_status', v as any)}>
                                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                                     <SelectContent>
@@ -618,7 +643,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                             </FormItem>
 
                                             {/* PERBAIKAN DI SINI: Program Keahlian dikunci ke BAHASA JEPANG */}
-                                            <FormItem label="Program Keahlian">
+                                            <FormItem label="Program Keahlian" required>
                                                 <Select 
                                                     value={data.program_expert} 
                                                     onValueChange={v => setData('program_expert', v)}
@@ -641,7 +666,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                             </FormItem>
 
                                             {/* PASTIKAN INI TERISI: Tgl Masuk LPK */}
-                                            <FormItem label="Tgl Masuk LPK">
+                                            <FormItem label="Tgl Masuk LPK" required>
                                                 <Input 
                                                     type="date" 
                                                     value={data.entry_date_lpk} 
@@ -649,28 +674,28 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                 />
                                             </FormItem>
 
-                                            <FormItem label="Kelebihan (Strength)">
+                                            <FormItem label="Kelebihan (Strength)" required>
                                                 <Input value={data.strength} onChange={e => setData('strength', e.target.value)} placeholder="Kelebihan siswa" />
                                             </FormItem>
 
-                                            <FormItem label="Kekurangan (Weakness)">
+                                            <FormItem label="Kekurangan (Weakness)" required>
                                                 <Input value={data.weakness} onChange={e => setData('weakness', e.target.value)} placeholder="Kekurangan siswa" />
                                             </FormItem>
 
-                                            <FormItem label="Skill Teknis">
+                                            <FormItem label="Skill Teknis" required>
                                                 <Input maxLength={15} value={data.skill_technical} onChange={e => setData('skill_technical', e.target.value)} placeholder="Maks 15 huruf" />
                                             </FormItem>
 
-                                            <FormItem label="Hobi">
+                                            <FormItem label="Hobi" required>
                                                 <Input maxLength={15} value={data.hobby} onChange={e => setData('hobby', e.target.value)} placeholder="Maks 15 huruf" />
                                             </FormItem>
 
-                                            <FormItem label="Target Tabungan (Yen)">
+                                            <FormItem label="Target Tabungan (Yen)" required>
                                                 <Input value={data.savings_target} onChange={e => setData('savings_target', e.target.value)} placeholder="Contoh: 3.000.000" />
                                             </FormItem>
 
                                             <div className="md:col-span-2 lg:col-span-3">
-                                                <FormItem label="Alasan Menabung">
+                                                <FormItem label="Alasan Menabung" required>
                                                     <Input maxLength={15} value={data.savings_reason} onChange={e => setData('savings_reason', e.target.value)} placeholder="Maks 15 huruf" />
                                                 </FormItem>
                                             </div>
@@ -698,18 +723,21 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                     type="button"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        e.stopPropagation();
-                                        setStep(s => s + 1);
+                                        if (validateStep(step)) {
+                                            setStep(s => s + 1);
+                                        } else {
+                                            alert("Mohon lengkapi semua field yang wajib diisi pada tahap ini.");
+                                        }
                                     }}
-                                    className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
+                                    className={`px-8 transition-all ${validateStep(step) ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-400 opacity-50'}`}
                                 >
                                     Lanjut <ChevronRight className="ml-2" size={18} />
                                 </Button>
                             ) : (
                                 <Button 
                                     type="submit"
-                                    disabled={processing} 
-                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md"
+                                    disabled={processing || !validateStep(5)} 
+                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md disabled:bg-slate-400"
                                 >
                                     {processing ? 'Menyimpan...' : (
                                         <>
@@ -800,10 +828,12 @@ function StepBadge({ step, current, icon }: { step: number, current: number, ico
     );
 }
 
-function FormItem({ label, children, error }: { label: string, children: any, error?: string }) {
+function FormItem({ label, children, error, required }: { label: string, children: any, error?: string, required?: boolean }) {
     return (
         <div className="space-y-1.5 w-full">
-            <Label className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground/80 ml-1">{label}</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground/80 ml-1">
+                {label} {required && <span className="text-red-500 font-bold">*</span>}
+            </Label>
             {children}
             {error && <p className="text-[10px] text-destructive font-bold ml-1">*{error}</p>}
         </div>
