@@ -202,8 +202,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {provinces.map((prov) => (
-                                                        <SelectItem key={prov.id} value={prov.name}>
-                                                            {prov.name}
+                                                        <SelectItem key={prov.id} value={prov.name_id}>
+                                                            {prov.name_id}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -363,8 +363,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         {majors.map((m) => (
-                                                                            <SelectItem key={m.id} value={m.name}>
-                                                                                {m.name}
+                                                                            <SelectItem key={m.id} value={m.name_id}>
+                                                                                {m.name_id}
                                                                             </SelectItem>
                                                                         ))}
                                                                     </SelectContent>
@@ -529,11 +529,13 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                         setData('experiences', updated); 
                                                                     }}
                                                                 >
-                                                                    <SelectTrigger><SelectValue placeholder="Pilih Bidang Pekerjaan" /></SelectTrigger>
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Bidang" />
+                                                                    </SelectTrigger>
                                                                     <SelectContent>
                                                                         {jobSectors.map((job) => (
-                                                                            <SelectItem key={job.id} value={job.name}>
-                                                                                {job.name} ({job.code})
+                                                                            <SelectItem key={job.id} value={job.name_id}>
+                                                                                {job.name_id} ({job.code})
                                                                             </SelectItem>
                                                                         ))}
                                                                     </SelectContent>
@@ -633,8 +635,34 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                         </div>
                                                         
                                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                                            <FormItem label="Hubungan">
-                                                                <Input placeholder="Ayah / Ibu / Istri" value={fam.relationship} onChange={e => { const updated = [...data.families]; updated[idx].relationship = e.target.value; setData('families', updated); }} />
+                                                            <FormItem label="Hubungan Keluarga">
+                                                                <Select 
+                                                                    value={fam.relationship} 
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.families]; 
+                                                                        updated[idx].relationship = v; 
+                                                                        setData('families', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Hubungan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="父">Ayah</SelectItem>
+                                                                        <SelectItem value="母">Ibu</SelectItem>
+                                                                        <SelectItem value="姉">Kakak Perempuan</SelectItem>
+                                                                        <SelectItem value="兄">Kakak Laki-Laki</SelectItem>
+                                                                        <SelectItem value="妹">Adik Perempuan</SelectItem>
+                                                                        <SelectItem value="弟">Adik Laki-Laki</SelectItem>
+                                                                        <SelectItem value="祖父">Kakek</SelectItem>
+                                                                        <SelectItem value="祖母">Nenek</SelectItem>
+                                                                        <SelectItem value="兄弟">Saudara Kandung</SelectItem>
+                                                                        <SelectItem value="夫">Suami</SelectItem>
+                                                                        <SelectItem value="妻">Istri</SelectItem>
+                                                                        <SelectItem value="娘">Anak Perempuan</SelectItem>
+                                                                        <SelectItem value="息子">Anak Laki-Laki</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
                                                             <FormItem label="Nama Lengkap">
                                                                 <Input placeholder="Nama anggota keluarga" value={fam.name} onChange={e => { const updated = [...data.families]; updated[idx].name = e.target.value; setData('families', updated); }} />
@@ -655,14 +683,16 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                         <SelectValue placeholder="Pilih Pekerjaan" />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
+                                                                        {/* Menggunakan daftar yang sama dengan jobSectors */}
                                                                         {jobSectors.map((job) => (
-                                                                            <SelectItem key={job.id} value={job.name}>
-                                                                                {job.name}
+                                                                            <SelectItem key={job.id} value={job.name_id}>
+                                                                                {job.name_id}
                                                                             </SelectItem>
                                                                         ))}
                                                                         <SelectItem value="Ibu Rumah Tangga">Ibu Rumah Tangga</SelectItem>
+                                                                        <SelectItem value="Wiraswasta">Wiraswasta</SelectItem>
+                                                                        <SelectItem value="Petani">Petani</SelectItem>
                                                                         <SelectItem value="Tidak Bekerja">Tidak Bekerja / Pensiun</SelectItem>
-                                                                        <SelectItem value="Lainnya">Lainnya</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                             </FormItem>
@@ -722,11 +752,76 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
 
                                         {/* FIELD YANG HARUS DIISI (EDITABLE) */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
-                                            <FormItem label="Kelebihan (Strength)" required error={errors.strength}>
-                                                <Input value={data.strength} onChange={e => setData('strength', e.target.value)} placeholder="Contoh: Disiplin" />
+                                            {/* KELEBIHAN (STRENGTH) */}
+                                            <FormItem label="Kelebihan Diri" required error={errors.strength}>
+                                                <Select 
+                                                    value={data.strength} 
+                                                    onValueChange={v => setData('strength', v)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Pilih Kelebihan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="リーダーシップがある">Memiliki sifat kepemimpinan</SelectItem>
+                                                        <SelectItem value="ストレス耐性が強い">Kuat dalam menghadapi stres</SelectItem>
+                                                        <SelectItem value="世話好き">Suka menolong / Merawat orang lain</SelectItem>
+                                                        <SelectItem value="努力家">Pekerja keras / Rajin berusaha</SelectItem>
+                                                        <SelectItem value="協調性がある">Memiliki sikap kerja sama (Kooperatif)</SelectItem>
+                                                        <SelectItem value="几帳面">Rapi / Teratur</SelectItem>
+                                                        <SelectItem value="主体性がある">Memiliki inisiatif / Mandiri</SelectItem>
+                                                        <SelectItem value="論理的思考力がある">Berpikir logis / Rasional</SelectItem>
+                                                        <SelectItem value="行動力がある">Aktif dalam bertindak</SelectItem>
+                                                        <SelectItem value="相手の気持ちを尊重できる">Menghargai perasaan orang lain</SelectItem>
+                                                        <SelectItem value="忍耐力がある">Memiliki ketahanan / Sabar</SelectItem>
+                                                        <SelectItem value="好奇心旺盛">Rasa ingin tahu yang besar</SelectItem>
+                                                        <SelectItem value="調整力がある">Mampu mengatur situasi / Adaptif</SelectItem>
+                                                        <SelectItem value="責任感がある">Memiliki rasa tanggung jawab</SelectItem>
+                                                        <SelectItem value="計画性がある">Memiliki perencanaan yang baik</SelectItem>
+                                                        <SelectItem value="積極性がある">Proaktif</SelectItem>
+                                                        <SelectItem value="前向きな性格">Sikap positif / Optimis</SelectItem>
+                                                        <SelectItem value="柔軟性がある">Fleksibel / Mudah beradaptasi</SelectItem>
+                                                        <SelectItem value="負けず嫌い">Sangat gigih (Tidak suka kalah)</SelectItem>
+                                                        <SelectItem value="目の前の事に集中できる">Mampu fokus pada tugas</SelectItem>
+                                                        <SelectItem value="自分に厳しい">Kritis terhadap diri sendiri</SelectItem>
+                                                        <SelectItem value="素直な性格">Jujur / Tulus</SelectItem>
+                                                        <SelectItem value="礼儀正しい">Berperilaku sopan (Etika baik)</SelectItem>
+                                                        <SelectItem value="仕事が早い">Cepat dan efisien dalam bekerja</SelectItem>
+                                                        <SelectItem value="器用な人">Terampil / Pandai berbagai hal</SelectItem>
+                                                        <SelectItem value="明るい性格">Sifat ceria / Ramah</SelectItem>
+                                                        <SelectItem value="頑張り屋">Orang yang rajin / Gigih</SelectItem>
+                                                        <SelectItem value="真面目">Serius / Tekun</SelectItem>
+                                                        <SelectItem value="社交的">Senang berinteraksi sosial</SelectItem>
+                                                        <SelectItem value="コミュニケーション能力がある">Kemampuan komunikasi baik</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
-                                            <FormItem label="Kekurangan (Weakness)" required error={errors.weakness}>
-                                                <Input value={data.weakness} onChange={e => setData('weakness', e.target.value)} placeholder="Contoh: Kurang Teliti" />
+
+                                            {/* KEKURANGAN (WEAKNESS) */}
+                                            <FormItem label="Kekurangan Diri" required error={errors.weakness}>
+                                                <Select 
+                                                    value={data.weakness} 
+                                                    onValueChange={v => setData('weakness', v)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Pilih Kekurangan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="我が強い">Egois / Keras kepala</SelectItem>
+                                                        <SelectItem value="頑固">Keras kepala (Sulit diubah)</SelectItem>
+                                                        <SelectItem value="慎重すぎる">Terlalu cemas / Sangat sensitif</SelectItem>
+                                                        <SelectItem value="理屈っぽい">Terlalu mencari pembenaran logis</SelectItem>
+                                                        <SelectItem value="気が弱い">Cemas / Mudah tertekan</SelectItem>
+                                                        <SelectItem value="諦めが悪い">Sulit menerima kegagalan</SelectItem>
+                                                        <SelectItem value="飽き性">Mudah bosan / Jenuh</SelectItem>
+                                                        <SelectItem value="心配性">Khawatir / Cemas berlebih</SelectItem>
+                                                        <SelectItem value="楽親的">Terlalu santai / Meremehkan</SelectItem>
+                                                        <SelectItem value="緊張しやすい">Mudah gugup / Tegang</SelectItem>
+                                                        <SelectItem value="恥ずかしがり屋">Pemalu / Penakut</SelectItem>
+                                                        <SelectItem value="せっかち">Tergesa-gesa / Cerewet</SelectItem>
+                                                        <SelectItem value="人見知り">Canggung dengan orang baru</SelectItem>
+                                                        <SelectItem value="一つの事に集中しやすい">Hanya bisa fokus pada satu hal</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
                                             <FormItem label="Skill Teknis" required error={errors.skill_technical}>
                                                 <Input maxLength={15} value={data.skill_technical} onChange={e => setData('skill_technical', e.target.value)} placeholder="Maks 15 huruf" />
