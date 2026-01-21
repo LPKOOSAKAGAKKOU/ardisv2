@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentProfile;
 use App\Models\Province;
 use App\Models\JobSector;
+use App\Models\Major;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -41,7 +42,7 @@ class ProfileController extends Controller
             'student' => $student,
             'provinces' => Province::all(),
             'jobSectors' => JobSector::all(),
-            'majors' => Major::orderBy('name', 'asc')->get(), // Jurusan SMA/SMK
+            'majors' => Major::all(),
         ]);
     }
 
