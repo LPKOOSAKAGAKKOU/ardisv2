@@ -71,31 +71,40 @@ class StudentInterviewController extends Controller
 
     public function previewKyuujinhyou($id)
     {
+        // Cari data interview
         $interview = Interview::findOrFail($id);
 
+        // Cek apakah UUID Kyuujinhyou ada
         if (!$interview->kyuujinhyou_yunerva_uuid) {
             return response()->json([
                 'status' => 'error', 
-                'message' => 'File Kyuujinhyou tidak ditemukan di database.'
+                'message' => 'Dokumen Kyuujinhyou belum tersedia untuk lowongan ini.'
             ], 404);
         }
 
-        // Panggil generateViewLink dari YunervaService
-        $result = $this->yunervaService->generateViewLink($interview->kyuujinhyou_yunerva_uuid);
+        try {
+            // Panggil Yunerva Service
+            // Parameter kedua (password) kita set NULL sesuai permintaan
+            $response = $this->yunerva->generateViewLink(
+                $interview->kyuujinhyou_yunerva_uuid,
+                null 
+            );
 
-        if (isset($result['status']) && $result['status'] === 'success') {
+            // Cek apakah response dari Yunerva sukses
+            if (isset($response['status']) && $response['status'] === 'error') {
+                 throw new \Exception($response['message'] ?? 'Unknown error from Yunerva');
+            }
+
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            \Log::error('Gagal preview Kyuujinhyou: ' . $e->getMessage());
+
             return response()->json([
-                'status' => 'success',
-                'data' => [
-                    'view_url' => $result['data']['view_url'] // Link dari API Yunerva
-                ]
-            ]);
+                'status' => 'error', 
+                'message' => 'Gagal memuat dokumen. Silakan hubungi admin.'
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 'error',
-            'message' => $result['message'] ?? 'Gagal mendapatkan link pratinjau dari Yunerva.'
-        ], 500);
     }
 
     public function apply($id)
