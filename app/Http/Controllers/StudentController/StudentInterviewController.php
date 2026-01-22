@@ -7,29 +7,28 @@ use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Models\StudentProfile;
 use Illuminate\Support\Facades\Auth;
-use App\Models\FileUpload;
 use Inertia\Inertia;
 use App\Services\YunervaService; 
 use Illuminate\Http\Request;
 
 class StudentInterviewController extends Controller
 {
+    // Pastikan nama properti konsisten
     protected $yunervaService;
 
-    public function __construct(YunervaService $yunerva)
+    public function __construct(YunervaService $yunervaService)
     {
-        $this->yunerva = $yunerva;
+        $this->yunervaService = $yunervaService;
     }
 
     public function index()
     {
         $user = Auth::user();
 
-        // 1. AMBIL DATA PROFILE TERPISAH (Tanpa load ke user)
-        // Pastikan model StudentProfile sudah di-import
+        // 1. AMBIL DATA PROFILE
         $studentProfile = StudentProfile::where('user_id', $user->id)->first();
 
-        // 2. Logic Passed Interview (Tetap sama)
+        // 2. Logic Passed Interview
         $passedInterview = InterviewDetail::with(['interview.company'])
             ->where('user_id', $user->id)
             ->where('result', 'passed')
@@ -39,11 +38,11 @@ class StudentInterviewController extends Controller
             return Inertia::render('student/Interview', [
                 'mode' => 'PASSED',
                 'data' => $passedInterview,
-                'studentProfile' => $studentProfile, // <--- KIRIM DISINI
+                'studentProfile' => $studentProfile,
             ]);
         }
 
-        // 3. Logic Upcoming & Past (Tetap sama)
+        // 3. Logic Upcoming & Past
         $upcoming = Interview::with([
             'company', 
             'details' => function($query) use ($user) {
@@ -66,40 +65,40 @@ class StudentInterviewController extends Controller
             'mode' => 'LISTING',
             'upcoming' => $upcoming,
             'past' => $past,
-            'studentProfile' => $studentProfile, // <--- KIRIM DISINI JUGA
+            'studentProfile' => $studentProfile,
         ]);
     }
 
-    // --- 2. METHOD PREVIEW KYUUJINHYOU (Sama persis dengan Admin) ---
-    public function previewKyuujinhyou(Request $request, $id)
+    // --- PERBAIKAN DI SINI ---
+    public function previewKyuujinhyou($id)
     {
-        // Cari data interview
+        // 1. Cari data INTERVIEW (Ini punya Admin)
         $interview = Interview::findOrFail($id);
 
-        // Cek kolom di database
+        // 2. Cek apakah Admin sudah upload file UUID nya
         if (!$interview->kyuujinhyou_yunerva_uuid) {
             return response()->json([
                 'status' => 'error', 
-                'message' => 'File tidak ditemukan'
+                'message' => 'Dokumen Kyuujinhyou belum tersedia untuk lowongan ini.'
             ], 404);
         }
 
         try {
-            // Panggil service Yunerva (gunakan $this->yunerva yang sudah diisi di construct)
-            $response = $this->yunerva->generateViewLink(
+            // 3. Panggil Service (Gunakan $this->yunervaService, BUKAN $this->yunerva)
+            // Password diset NULL karena file admin biasanya tidak dipassword user
+            $response = $this->yunervaService->generateViewLink(
                 $interview->kyuujinhyou_yunerva_uuid,
-                null // Password null sesuai request
+                null 
             );
 
             return response()->json($response);
 
         } catch (\Exception $e) {
-            // Log error biar ketahuan kalau ada masalah lain
-            \Log::error('Preview Error: ' . $e->getMessage());
-            
+            \Log::error('Gagal preview Kyuujinhyou: ' . $e->getMessage());
+
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Gagal menghubungi server dokumen.'
+                'message' => 'Terjadi kesalahan server saat mengambil dokumen.'
             ], 500);
         }
     }
@@ -108,19 +107,18 @@ class StudentInterviewController extends Controller
     {
         $user = Auth::user();
 
-        // 1. CEK PROFILE: Apakah siswa sudah mengisi biodata?
+        // Cek Profile
         $profileExists = StudentProfile::where('user_id', $user->id)->exists();
 
         if (!$profileExists) {
-            // Kirim response JSON dengan instruksi redirect
             return response()->json([
-                'status' => 'need_profile', // Status khusus untuk ditangkap Frontend
+                'status' => 'need_profile', 
                 'message' => 'Mohon lengkapi biodata Anda terlebih dahulu sebelum mendaftar.',
-                'redirect_url' => route('student.profile.edit') // URL tujuan
-            ], 403); // Gunakan 403 (Forbidden) karena akses ditolak sebelum syarat terpenuhi
+                'redirect_url' => route('student.profile.edit')
+            ], 403); 
         }
         
-        // 2. Proteksi double pendaftaran (Kode lama Anda)
+        // Cek Double
         $exists = \App\Models\InterviewDetail::where('interview_id', $id)
             ->where('user_id', $user->id)
             ->exists();
@@ -129,7 +127,7 @@ class StudentInterviewController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Anda sudah terdaftar.'], 422);
         }
 
-        // 3. Simpan Pendaftaran
+        // Simpan
         \App\Models\InterviewDetail::create([
             'interview_id' => $id,
             'user_id' => $user->id,
@@ -141,8 +139,7 @@ class StudentInterviewController extends Controller
 
     public function participants($id)
     {
-        // Ambil detail pendaftaran untuk interview ini
-        $participants = InterviewDetail::with('user:id,name,email') // Hanya ambil nama & email
+        $participants = InterviewDetail::with('user:id,name,email') 
             ->where('interview_id', $id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -153,13 +150,10 @@ class StudentInterviewController extends Controller
         ]);
     }
 
-    // Tambahkan method ini di dalam StudentInterviewController
-
     public function cancel($id)
     {
         $user = Auth::user();
 
-        // Cari data pendaftaran
         $application = InterviewDetail::where('interview_id', $id)
             ->where('user_id', $user->id)
             ->first();
@@ -168,15 +162,12 @@ class StudentInterviewController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Data pendaftaran tidak ditemukan.'], 404);
         }
 
-        // Opsional: Cegah pembatalan jika status bukan 'waiting' (misal sudah Lulus)
         if ($application->result !== 'waiting') {
             return response()->json(['status' => 'error', 'message' => 'Tidak dapat membatalkan wawancara yang sudah diproses.'], 422);
         }
 
-        // Hapus pendaftaran
         $application->delete();
 
         return response()->json(['status' => 'success', 'message' => 'Berhasil mengundurkan diri dari wawancara.']);
     }
-
 }
