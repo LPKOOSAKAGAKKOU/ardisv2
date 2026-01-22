@@ -170,57 +170,74 @@ class StudentController extends Controller
         // Mengambil profil beserta relasi user-nya
         $profile = StudentProfile::with('user')->findOrFail($id);
         
-        // 1. Validasi Data dengan Pengecualian ID saat ini
+        // 1. Validasi Data
         $request->validate([
-            // 'unique:table,column,except_id'
             'email' => 'required|email|unique:users,email,' . $profile->user_id,
             'nik'   => 'required|unique:student_profiles,nik,' . $profile->id,
             'full_name' => 'required|string|max:255',
             'dob'   => 'required|date',
-            // Tambahkan validasi lain sesuai kebutuhan
         ]);
+
+        // --- LOGIKA KAPITALISASI ---
+        $makeUpper = function ($value) {
+            if (!is_string($value)) return $value;
+            // Abaikan jika mengandung karakter Jepang (Hiragana/Katakana/Kanji)
+            if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
+                return $value;
+            }
+            return strtoupper($value);
+        };
+
+        $processArray = function ($array) use ($makeUpper) {
+            return array_map(function ($item) use ($makeUpper) {
+                // Jika item di dalam array adalah array lagi (seperti di educations), proses setiap value-nya
+                return is_array($item) ? array_map($makeUpper, $item) : $makeUpper($item);
+            }, $array);
+        };
+        // ----------------------------
 
         DB::beginTransaction();
         try {
-            // 2. Update Data di Tabel Users
+            // 2. Update Data di Tabel Users (Nama User jadi kapital)
             $profile->user->update([
-                'name'  => $request->full_name,
-                'email' => $request->email
+                'name'  => $makeUpper($request->full_name),
+                'email' => $request->email // Email tetap biarkan sesuai input (lowercase)
             ]);
 
-            // 3. Update Data Profil Utama
-            // Mengupdate kolom medis, fisik, dll sesuai field di $request
-            $profile->update($request->except(['email', 'educations', 'experiences', 'families']));
+            // 3. Update Data Profil Utama (Kecuali email dan relasi)
+            $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
+            $profileData = array_map($makeUpper, $profileData);
+            
+            $profile->update($profileData);
 
-            // 4. Update Riwayat Pendidikan (Re-sync)
+            // 4. Update Riwayat Pendidikan (Re-sync + Kapitalisasi)
             if ($request->has('educations')) {
                 $profile->educations()->delete(); 
                 if (!empty($request->educations)) {
-                    $profile->educations()->createMany($request->educations);
+                    $profile->educations()->createMany($processArray($request->educations));
                 }
             }
 
-            // 5. Update Riwayat Pekerjaan (Re-sync)
+            // 5. Update Riwayat Pekerjaan (Re-sync + Kapitalisasi)
             if ($request->has('experiences')) {
                 $profile->experiences()->delete();
                 if (!empty($request->experiences)) {
-                    $profile->experiences()->createMany($request->experiences);
+                    $profile->experiences()->createMany($processArray($request->experiences));
                 }
             }
 
-            // 6. Update Riwayat Keluarga (Re-sync)
+            // 6. Update Riwayat Keluarga (Re-sync + Kapitalisasi)
             if ($request->has('families')) {
                 $profile->families()->delete();
                 if (!empty($request->families)) {
-                    $profile->families()->createMany($request->families);
+                    $profile->families()->createMany($processArray($request->families));
                 }
             }
 
             DB::commit();
             
-            // Pastikan route index sudah benar, misal: admin.students.index
             return redirect()->route('admin.students.index')
-                            ->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui');
+                            ->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui dalam format kapital.');
 
         } catch (\Exception $e) {
             DB::rollback();
