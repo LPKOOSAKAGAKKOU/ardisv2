@@ -101,9 +101,21 @@ class StudentInterviewController extends Controller
     public function apply($id)
     {
         $user = Auth::user();
+
+        // 1. CEK PROFILE: Apakah siswa sudah mengisi biodata?
+        $profileExists = StudentProfile::where('user_id', $user->id)->exists();
+
+        if (!$profileExists) {
+            // Kirim response JSON dengan instruksi redirect
+            return response()->json([
+                'status' => 'need_profile', // Status khusus untuk ditangkap Frontend
+                'message' => 'Mohon lengkapi biodata Anda terlebih dahulu sebelum mendaftar.',
+                'redirect_url' => route('student.profile.edit') // URL tujuan
+            ], 403); // Gunakan 403 (Forbidden) karena akses ditolak sebelum syarat terpenuhi
+        }
         
-        // Proteksi double pendaftaran
-        $exists = InterviewDetail::where('interview_id', $id)
+        // 2. Proteksi double pendaftaran (Kode lama Anda)
+        $exists = \App\Models\InterviewDetail::where('interview_id', $id)
             ->where('user_id', $user->id)
             ->exists();
 
@@ -111,7 +123,8 @@ class StudentInterviewController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Anda sudah terdaftar.'], 422);
         }
 
-        InterviewDetail::create([
+        // 3. Simpan Pendaftaran
+        \App\Models\InterviewDetail::create([
             'interview_id' => $id,
             'user_id' => $user->id,
             'result' => 'waiting',

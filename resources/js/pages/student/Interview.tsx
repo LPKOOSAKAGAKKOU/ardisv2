@@ -73,16 +73,32 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
 
     const handleApply = async (id: number) => {
         if (!confirm('Apakah Anda yakin ingin mendaftar pada wawancara ini?')) return;
+
         setIsLoadingId(id);
         try {
             const response = await axios.post(route('student.interviews.apply', id));
+            
             if (response.data.status === 'success') {
                 router.reload({ only: ['upcoming', 'past'] });
                 alert(response.data.message);
             }
         } catch (err: any) {
-            const msg = err.response?.data?.message || 'Terjadi kesalahan saat mendaftar.';
-            alert(msg);
+            // TANGKAP ERROR DARI CONTROLLER DISINI
+            const res = err.response?.data;
+            const status = err.response?.status;
+
+            // 1. Jika statusnya 'need_profile' (dari Controller tadi)
+            if (status === 403 && res?.status === 'need_profile') {
+                if(confirm(res.message + "\n\nKlik OK untuk mengisi biodata sekarang.")) {
+                    // Redirect ke halaman Profile
+                    router.visit(res.redirect_url); 
+                }
+            } 
+            // 2. Error lainnya (misal: Double pendaftaran)
+            else {
+                const msg = res?.message || 'Terjadi kesalahan saat mendaftar.';
+                alert(msg);
+            }
         } finally {
             setIsLoadingId(null);
         }
