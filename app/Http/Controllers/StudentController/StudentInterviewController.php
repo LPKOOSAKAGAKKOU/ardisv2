@@ -7,6 +7,7 @@ use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Models\StudentProfile;
 use Illuminate\Support\Facades\Auth;
+use App\Models\FileUpload;
 use Inertia\Inertia;
 use App\Services\YunervaService; 
 use Illuminate\Http\Request;
