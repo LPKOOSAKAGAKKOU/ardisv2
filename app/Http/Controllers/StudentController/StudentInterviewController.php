@@ -15,9 +15,9 @@ class StudentInterviewController extends Controller
 {
     protected $yunervaService;
 
-    public function __construct(YunervaService $yunervaService)
+    public function __construct(YunervaService $yunerva)
     {
-        $this->yunervaService = $yunervaService;
+        $this->yunerva = $yunerva;
     }
 
     public function index()
@@ -69,40 +69,36 @@ class StudentInterviewController extends Controller
         ]);
     }
 
-    public function previewKyuujinhyou($id)
+    // --- 2. METHOD PREVIEW KYUUJINHYOU (Sama persis dengan Admin) ---
+    public function previewKyuujinhyou(Request $request, $id)
     {
         // Cari data interview
         $interview = Interview::findOrFail($id);
 
-        // Cek apakah UUID Kyuujinhyou ada
+        // Cek kolom di database
         if (!$interview->kyuujinhyou_yunerva_uuid) {
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Dokumen Kyuujinhyou belum tersedia untuk lowongan ini.'
+                'message' => 'File tidak ditemukan'
             ], 404);
         }
 
         try {
-            // Panggil Yunerva Service
-            // Parameter kedua (password) kita set NULL sesuai permintaan
+            // Panggil service Yunerva (gunakan $this->yunerva yang sudah diisi di construct)
             $response = $this->yunerva->generateViewLink(
                 $interview->kyuujinhyou_yunerva_uuid,
-                null 
+                null // Password null sesuai request
             );
-
-            // Cek apakah response dari Yunerva sukses
-            if (isset($response['status']) && $response['status'] === 'error') {
-                 throw new \Exception($response['message'] ?? 'Unknown error from Yunerva');
-            }
 
             return response()->json($response);
 
         } catch (\Exception $e) {
-            \Log::error('Gagal preview Kyuujinhyou: ' . $e->getMessage());
-
+            // Log error biar ketahuan kalau ada masalah lain
+            \Log::error('Preview Error: ' . $e->getMessage());
+            
             return response()->json([
                 'status' => 'error', 
-                'message' => 'Gagal memuat dokumen. Silakan hubungi admin.'
+                'message' => 'Gagal menghubungi server dokumen.'
             ], 500);
         }
     }
