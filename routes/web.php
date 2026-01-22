@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
+use App\Http\Controllers\StudentController\StudentInterviewController;
 
 
 
@@ -113,6 +114,12 @@ Route::middleware([
     ->group(function () {
 
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('interviews', [StudentInterviewController::class, 'index'])->name('interviews.index');
+        // Rute Baru
+        Route::post('interviews/{id}/apply', [StudentInterviewController::class, 'apply'])->name('interviews.apply');
+        Route::post('interviews/{id}/preview', [StudentInterviewController::class, 'previewKyuujinhyou'])->name('interviews.preview-kyuujinhyou');
+        Route::get('interviews/{id}/participants', [StudentInterviewController::class, 'participants'])->name('interviews.participants');
+        Route::post('interviews/{id}/cancel', [StudentInterviewController::class, 'cancel'])->name('interviews.cancel');
 
         // Rute Biodata
         Route::get('profile', [ProfileController::class, 'showForm'])->name('profile.edit');

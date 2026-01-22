@@ -45,4 +45,10 @@ class StudentProfile extends Model
     {
         return $this->hasMany(StudentFamily::class);
     }
+
+    public function myApplications()
+    {
+        // Karena di interview_details pakainya user_id, hubungkan ke User
+        return $this->user->hasMany(InterviewDetail::class);
+    }
 }

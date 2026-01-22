@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('interviewer_title'); // Nama Perusahaan
             $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
             $table->foreignId('accepting_organization_id')->constrained('accepting_organizations')->onDelete('cascade');
+            $table->enum('type', ['tokuteiginou', 'ginoujisshuu'])->nullable(); // Jenis wawancara
             $table->text('description');
             $table->string('group_chat_link')->nullable(); // Link grup chat
             $table->string('kyuujinhyou_yunerva_uuid')->nullable(); // Upload Kyuujinhyou

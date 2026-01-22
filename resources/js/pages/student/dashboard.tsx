@@ -8,7 +8,7 @@ import {
     AlertCircle, Info, ClipboardList, BookOpen, HeartPulse, Sparkles, ChevronRight,
     Eye, UploadCloud, Loader2, X, ShieldCheck, AlertTriangle, Download, Clock,
     MapPin, Phone, Activity, Heart, Plane, Droplet, Cigarette, Wine, Globe,
-    Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff
+    Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff,
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -27,9 +27,21 @@ import { Badge } from '@/components/ui/badge'
 interface Props {
     student: any;
     interviews: any[];
+    // Tambahkan prop baru ini
+    passedApplication?: {
+        interview: {
+            interviewer_title: string;
+            type: string;
+            date_fly_to_japan?: string;
+            company?: {
+                name: string;
+                address: string;
+            }
+        }
+    } | null;
 }
 
-export default function StudentDashboard({ student, interviews }: Props) {
+export default function StudentDashboard({ student, interviews, passedApplication }: Props) {
     // 1. Breadcrumbs
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: route('student.dashboard') },
@@ -964,38 +976,141 @@ export default function StudentDashboard({ student, interviews }: Props) {
                                     </CollapsibleSection>
                                 )}
 
-                                {/* WAWANCARA */}
-                                <div className="rounded-[2rem] border bg-card p-8 shadow-sm">
-                                    <div className="mb-6 flex items-center justify-between">
-                                        <h2 className="flex items-center gap-3 font-black uppercase text-sm tracking-widest text-muted-foreground">
-                                            <Calendar className="size-5 text-emerald-600" /> Agenda Wawancara
-                                        </h2>
-                                    </div>
-                                    
-                                    {interviews && interviews.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {interviews.map((item, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
-                                                   <div className="flex items-center gap-4">
-                                                        <div className="bg-emerald-100 p-3 rounded-xl text-emerald-700">
-                                                            <Clock size={20} />
+                                {/* Logic: Jika SUDAH LULUS -> Tampilkan Info Perusahaan */}
+                                {passedApplication ? (
+                                    <div className="rounded-[2rem] border bg-gradient-to-br from-emerald-50 to-teal-50 p-8 shadow-sm relative overflow-hidden">
+                                        {/* Background decoration */}
+                                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
+
+                                        <div className="mb-6 flex items-center justify-between relative z-10">
+                                            <h2 className="flex items-center gap-3 font-black uppercase text-sm tracking-widest text-emerald-700">
+                                                <Building2 className="size-5" /> Perusahaan Penempatan
+                                            </h2>
+                                            <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-none px-4 py-1 uppercase tracking-wider font-bold">
+                                                Lulus Seleksi
+                                            </Badge>
+                                        </div>
+
+                                        <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-emerald-100/50 shadow-sm">
+                                            <div className="grid md:grid-cols-2 gap-8">
+                                                <div>
+                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Posisi Pekerjaan</p>
+                                                    <h3 className="text-2xl font-black text-foreground mb-1">
+                                                        {passedApplication.interview.interviewer_title}
+                                                    </h3>
+                                                    <p className="text-sm font-medium text-emerald-600 bg-emerald-100/50 px-3 py-1 rounded-full w-fit">
+                                                        Program: {passedApplication.interview.type === 'ginoujisshuu' ? 'Magang (Ginou Jisshuu)' : 'Tokutei Ginou (TG)'}
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="mt-1 p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                                            <Building2 className="size-5" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-foreground">{item.job_title || 'Interview Kerja'}</p>
-                                                            <p className="text-xs text-muted-foreground font-medium">{item.date} • {item.time}</p>
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Nama Perusahaan</p>
+                                                            <p className="font-bold text-lg text-foreground">
+                                                                {passedApplication.interview.company?.name || 'Nama Perusahaan Dirahasiakan'}
+                                                            </p>
                                                         </div>
-                                                   </div>
-                                                   <Badge className="bg-emerald-600">Mendatang</Badge>
+                                                    </div>
+
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="mt-1 p-2 bg-orange-50 text-orange-600 rounded-lg">
+                                                            <MapPin className="size-5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Lokasi</p>
+                                                            <p className="font-semibold text-foreground">
+                                                                {passedApplication.interview.company?.address || 'Jepang'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {passedApplication.interview.date_fly_to_japan && (
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="mt-1 p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                                                <PlaneTakeoff className="size-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Estimasi Keberangkatan</p>
+                                                                <p className="font-bold text-foreground">
+                                                                    {new Date(passedApplication.interview.date_fly_to_japan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            </div>
+
+                                            <div className="mt-6 pt-6 border-t border-emerald-100 flex justify-end">
+                                                <Button 
+                                                    onClick={() => router.visit(route('student.interviews.index'))} // Arahkan ke halaman dokumen
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200"
+                                                >
+                                                    <FileText className="size-4 mr-2" /> Lengkapi Dokumen Keberangkatan
+                                                </Button>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-secondary/20 rounded-[1.5rem] border-2 border-dashed border-muted">
-                                            <AlertCircle className="mb-3 size-8 opacity-20" />
-                                            <p className="text-sm font-bold opacity-40 uppercase tracking-tighter">Belum ada jadwal wawancara aktif</p>
+                                    </div>
+
+                                ) : (
+                                    /* Logic: Jika BELUM Lulus -> Tampilkan Jadwal Wawancara (Kode Lama Anda) */
+                                    <div className="rounded-[2rem] border bg-card p-8 shadow-sm">
+                                        <div className="mb-6 flex items-center justify-between">
+                                            <h2 className="flex items-center gap-3 font-black uppercase text-sm tracking-widest text-muted-foreground">
+                                                <Calendar className="size-5 text-emerald-600" /> Agenda Wawancara
+                                            </h2>
                                         </div>
-                                    )}
-                                </div>
+                                        
+                                        {interviews && interviews.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {interviews.map((item, idx) => {
+                                                    const dateObj = new Date(item.interview_date);
+                                                    const formattedDate = dateObj.toLocaleDateString('id-ID', {
+                                                        day: 'numeric',
+                                                        month: 'long',
+                                                        year: 'numeric'
+                                                    }).toUpperCase();
+
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="bg-emerald-100 p-3 rounded-xl text-emerald-700">
+                                                                    <Clock size={20} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-bold text-foreground uppercase">
+                                                                        {item.interviewer_title || 'INTERVIEW KERJA'}
+                                                                    </p>
+                                                                    {item.company && (
+                                                                        <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">
+                                                                            {item.company.name}
+                                                                        </p>
+                                                                    )}
+                                                                    <p className="text-xs text-muted-foreground font-medium">
+                                                                        {formattedDate}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <Badge className="bg-emerald-600 hover:bg-emerald-700 border-none shadow-none">
+                                                                MENDATANG
+                                                            </Badge>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-secondary/20 rounded-[1.5rem] border-2 border-dashed border-muted">
+                                                <AlertCircle className="mb-3 size-8 opacity-20" />
+                                                <p className="text-sm font-bold opacity-40 uppercase tracking-tighter">
+                                                    Belum ada jadwal wawancara aktif
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

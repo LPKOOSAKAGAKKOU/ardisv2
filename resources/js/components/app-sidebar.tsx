@@ -53,7 +53,9 @@ const senseiNavItems = (): NavItem[] => [
 
 const studentNavItems = (): NavItem[] => [
     { title: 'Dashboard', href: route('student.dashboard'), icon: LayoutGrid },
-    { title: 'Kelas Saya', href: '#', icon: School },
+    { 
+        title: 'Wawancara', href: route('student.interviews.index'), icon: School 
+    },
 ]
 
 
