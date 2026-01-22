@@ -13,6 +13,7 @@ use Inertia\Inertia;
 use App\Models\Province;
 use App\Models\JobSector;
 use Illuminate\Support\Str;
+use App\Models\Major;
 
 class StudentController extends Controller
 {
