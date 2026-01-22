@@ -8,7 +8,7 @@ import axios from 'axios';
 import { 
     Calendar, CheckCircle2, Clock, FileText, AlertCircle, 
     Download, Eye, Loader2, Users, ChevronDown, ChevronUp, 
-    UploadCloud, FileCheck, XCircle 
+    UploadCloud, FileCheck, XCircle, ExternalLink
 } from 'lucide-react';
 import { route } from 'ziggy-js';
 
@@ -120,19 +120,23 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
         }
     };
 
+// --- LOGIC PREVIEW YANG DIPERBAIKI ---
     const handlePreviewKyuujinhyou = async (id: number) => {
         setIsLoadingId(id);
         try {
-            const response = await axios.post(route('student.interviews.preview-kyuujinhyou', id));
+            // Gunakan GET sesuai perbaikan route sebelumnya
+            const response = await axios.get(route('student.interviews.preview-kyuujinhyou', id));
+            
             if (response.data.status === 'success' && response.data.data.view_url) {
                 setPreviewUrl(response.data.data.view_url);
                 setPreviewTitle("Pratinjau Dokumen Lowongan");
-                setIsPreviewOpen(true);
+                setIsPreviewOpen(true); // Buka Modal
             } else {
                 alert(response.data.message || "Gagal mendapatkan dokumen.");
             }
         } catch (err: any) {
-            alert(err.response?.data?.message || "Dokumen tidak tersedia.");
+            console.error(err);
+            alert(err.response?.data?.message || "Dokumen tidak tersedia atau terjadi kesalahan.");
         } finally {
             setIsLoadingId(null);
         }
@@ -548,6 +552,53 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
                     </DialogContent>
                 </Dialog>
             </div>
+            {/* --- MODAL PREVIEW PDF (VERSI ADMIN YANG DI-PORTING KE SISWA) --- */}
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+                <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden bg-zinc-900 border-none shadow-2xl">
+                    {/* Header Modal */}
+                    <DialogHeader className="p-4 bg-white dark:bg-zinc-950 border-b flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                                <FileText size={18} />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-sm font-bold">
+                                    {previewTitle}
+                                </DialogTitle>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                    Dokumen Resmi Kyuujinhyou
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 pr-8">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => window.open(previewUrl, '_blank')} 
+                                className="h-8 text-xs"
+                            >
+                                <ExternalLink className="mr-2 h-3 w-3" /> Buka Tab Baru
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    
+                    {/* Body Modal (Iframe) */}
+                    <div className="flex-1 h-full w-full bg-zinc-800 relative">
+                        {previewUrl ? (
+                            <iframe 
+                                src={`${previewUrl}#toolbar=0`} 
+                                className="w-full h-[calc(90vh-65px)] border-none"
+                                title="Kyuujinhyou PDF"
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-white space-y-4">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                <p className="text-sm animate-pulse">Menyiapkan dokumen...</p>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
