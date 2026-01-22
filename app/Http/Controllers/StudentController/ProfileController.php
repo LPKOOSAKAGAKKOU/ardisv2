@@ -57,34 +57,66 @@ class ProfileController extends Controller
             'dob' => 'required|date',
         ]);
 
+        // Fungsi pembantu (helper) untuk kapitalisasi string non-Jepang
+        $convertToUpper = function ($data) {
+            if (!is_array($data)) return $data;
+
+            return array_map(function ($value) {
+                if (is_string($value)) {
+                    // Cek apakah string mengandung karakter Jepang (Hiragana/Katakana/Kanji)
+                    // Jika mengandung karakter Jepang, jangan di-upper
+                    if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
+                        return $value;
+                    }
+                    return strtoupper($value);
+                }
+                return $value;
+            }, $data);
+        };
+
         DB::beginTransaction();
         try {
-            $data = $request->except(['email', 'educations', 'experiences', 'families']);
-            $data['user_id'] = $user->id;
+            // 1. Ambil data dasar & bersihkan dari field relasi
+            $rawValues = $request->except(['email', 'educations', 'experiences', 'families']);
             
+            // 2. Ubah ke Kapital (kecuali field sensitif atau bahasa Jepang)
+            $data = $convertToUpper($rawValues);
+            
+            // Field tambahan yang tidak boleh hilang/berubah case sembarangan
+            $data['user_id'] = $user->id;
+
             if (!$profile) {
-                // Jika belum ada, buat baru
                 $data['yunerva_file_password'] = Str::random(8);
                 $data['student_status'] = 'matching';
                 $data['program_expert'] = 'BAHASA JEPANG';
                 $profile = StudentProfile::create($data);
             } else {
-                // Jika sudah ada, update
                 $profile->update($data);
             }
 
-            // Sync Relasi (Hapus lama, isi baru)
+            // 3. Sync Educations (Kapitalisasi Otomatis)
             $profile->educations()->delete();
-            $profile->educations()->createMany($request->educations ?? []);
+            if ($request->has('educations')) {
+                $upperEducations = array_map($convertToUpper, $request->educations);
+                $profile->educations()->createMany($upperEducations);
+            }
 
+            // 4. Sync Experiences (Kapitalisasi Otomatis)
             $profile->experiences()->delete();
-            $profile->experiences()->createMany($request->experiences ?? []);
+            if ($request->has('experiences')) {
+                $upperExperiences = array_map($convertToUpper, $request->experiences);
+                $profile->experiences()->createMany($upperExperiences);
+            }
 
+            // 5. Sync Families (Kapitalisasi Otomatis)
             $profile->families()->delete();
-            $profile->families()->createMany($request->families ?? []);
+            if ($request->has('families')) {
+                $upperFamilies = array_map($convertToUpper, $request->families);
+                $profile->families()->createMany($upperFamilies);
+            }
 
             DB::commit();
-            return redirect()->route('student.dashboard')->with('success', 'Biodata berhasil disimpan.');
+            return redirect()->route('student.dashboard')->with('success', 'Biodata berhasil disimpan dengan format rapi.');
         } catch (\Exception $e) {
             DB::rollback();
             return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()])->withInput();

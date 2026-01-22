@@ -15,16 +15,45 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { route } from 'ziggy-js';
 
 interface Props {
     student?: any;
     provinces: { id: number; name: string }[];
     jobSectors: { id: number; name: string; code: string }[];
+    majors: { id: number; name: string }[]; // Tambahkan baris ini
 }
 
-export default function StudentForm({ student, provinces, jobSectors }: Props) {
+export default function StudentForm({ student, provinces, jobSectors, majors }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
+    const validateStep = (currentStep: number) => {
+        switch (currentStep) {
+            case 1:
+                return (data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
+            case 2:
+                return (data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
+            case 5:
+                const isValid = !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
+                if (!isValid) {
+                    console.log("Field yang kosong:", {
+                        status: !!data.student_status,
+                        expert: !!data.program_expert,
+                        level: !!data.class_level,
+                        date: !!data.entry_date_lpk,
+                        strength: !!data.strength,
+                        weakness: !!data.weakness,
+                        skill: !!data.skill_technical,
+                        hobby: !!data.hobby,
+                        target: !!data.savings_target,
+                        reason: !!data.savings_reason
+                    });
+                }
+                return isValid;
+            default:
+                return true;
+        }
+    };
 
     const { data, setData, post, put, processing, errors } = useForm({
         // 1. Akun & Identitas
@@ -155,27 +184,49 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormItem label="NIK" error={errors.nik}>
+                                        <FormItem label="NIK" error={errors.nik} required>
                                             <Input value={data.nik} onChange={e => setData('nik', e.target.value)} placeholder="16 digit NIK" />
                                         </FormItem>
-                                        <FormItem label="Email Akun" error={errors.email}>
-                                            <Input type="email" value={data.email} onChange={e => setData('email', e.target.value)} placeholder="email@siswa.com" />
+                                        <FormItem label="Email Akun (Read Only)" error={errors.email}>
+                                            <Input 
+                                                type="email" 
+                                                value={data.email} 
+                                                disabled={true} // Kunci input email
+                                                className="bg-muted cursor-not-allowed font-semibold text-muted-foreground" 
+                                            />
+                                            <p className="text-[10px] text-blue-600 mt-1">* Email otomatis menggunakan akun login Anda.</p>
                                         </FormItem>
-                                        <FormItem label="Nama Lengkap"><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} /></FormItem>
-                                        <FormItem label="Nama Katakana"><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" /></FormItem>
-                                        <FormItem label="Tempat Lahir"><Input value={data.pob} onChange={e => setData('pob', e.target.value)} /></FormItem>
-                                        <FormItem label="Provinsi Lahir"><Input value={data.pob_province} onChange={e => setData('pob_province', e.target.value)} /></FormItem>
-                                        <FormItem label="Tgl Lahir"><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} /></FormItem>
-                                        <FormItem label="Jenis Kelamin">
+                                        <FormItem label="Nama Lengkap" required><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} /></FormItem>
+                                        <FormItem label="Nama Katakana" required><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" /></FormItem>
+                                        <FormItem label="Tempat Lahir" required><Input value={data.pob} onChange={e => setData('pob', e.target.value)} /></FormItem>
+                                        <FormItem label="Provinsi Lahir" required error={errors.pob_province}>
+                                            <Select 
+                                                value={data.pob_province} 
+                                                onValueChange={v => setData('pob_province', v)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Pilih Provinsi" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {provinces.map((prov) => (
+                                                        <SelectItem key={prov.id} value={prov.name_id}>
+                                                            {prov.name_id}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                        <FormItem label="Tgl Lahir" required><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} /></FormItem>
+                                        <FormItem label="Jenis Kelamin" required>
                                             <Select value={data.gender} onValueChange={v => setData('gender', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent><SelectItem value="Laki-laki">Laki-laki</SelectItem><SelectItem value="Perempuan">Perempuan</SelectItem></SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="HP Siswa"><Input value={data.phone_student} onChange={e => setData('phone_student', e.target.value)} /></FormItem>
-                                        <FormItem label="HP Orang Tua"><Input value={data.phone_parent} onChange={e => setData('phone_parent', e.target.value)} /></FormItem>
+                                        <FormItem label="HP Siswa" required><Input value={data.phone_student} onChange={e => setData('phone_student', e.target.value)} /></FormItem>
+                                        <FormItem label="HP Orang Tua" required><Input value={data.phone_parent} onChange={e => setData('phone_parent', e.target.value)} /></FormItem>
                                     </div>
-                                    <FormItem label="Alamat KTP"><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} /></FormItem>
+                                    <FormItem label="Alamat KTP" required><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} /></FormItem>
                                 </CardContent>
                             </Card>
                         )}
@@ -189,15 +240,15 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <FormItem label="Tinggi (cm)"><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} /></FormItem>
-                                        <FormItem label="Berat (kg)"><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} /></FormItem>
-                                        <FormItem label="Gol. Darah">
+                                        <FormItem label="Tinggi (cm)" required><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} /></FormItem>
+                                        <FormItem label="Berat (kg)" required><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} /></FormItem>
+                                        <FormItem label="Gol. Darah" required>
                                             <Select value={data.blood_type} onValueChange={v => setData('blood_type', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['A','B','O','AB'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="Agama">
+                                        <FormItem label="Agama" required>
                                             <Select value={data.religion} onValueChange={v => setData('religion', v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['Islam','Kristen','Katholik','Hindu','Budha','Kong Hu Chu'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent>
@@ -205,15 +256,15 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                         </FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-xl bg-muted/20">
-                                        <FormItem label="Tato"><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Merokok"><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok">Ya</SelectItem><SelectItem value="tidak merokok">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Alkohol"><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum">Ya</SelectItem><SelectItem value="tidak minum">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Status Nikah"><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></FormItem>
-                                        <FormItem label="Buta Warna"><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal">Normal</SelectItem><SelectItem value="parsial">Parsial</SelectItem><SelectItem value="total">Total</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Keluarga di Jepang"><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Tato" required><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Merokok" required><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok">Ya</SelectItem><SelectItem value="tidak merokok">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Alkohol" required><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum">Ya</SelectItem><SelectItem value="tidak minum">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Status Nikah" required><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select></FormItem>
+                                        <FormItem label="Buta Warna" required><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal">Normal</SelectItem><SelectItem value="parsial">Parsial</SelectItem><SelectItem value="total">Total</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Keluarga di Jepang" required><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Ada</SelectItem><SelectItem value="tidak">Tidak</SelectItem></SelectContent></Select></FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormItem label="Riwayat TBC"><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Pernah</SelectItem><SelectItem value="tidak">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Riwayat TBC" required><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada">Pernah</SelectItem><SelectItem value="tidak">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
                                         <FormItem label="Penyakit Lainnya"><Textarea value={data.other_illness} onChange={e => setData('other_illness', e.target.value)} placeholder="Sebutkan jika ada riwayat operasi/penyakit berat" /></FormItem>
                                     </div>
                                 </CardContent>
@@ -264,9 +315,10 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button" // Tambahkan ini
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors" 
+                                                                className="..." 
                                                                 onClick={() => removeRow('educations', idx)}
                                                             >
                                                                 <Trash2 size={18}/>
@@ -304,13 +356,26 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                     onChange={e => { const updated = [...data.educations]; updated[idx].school_name = e.target.value; setData('educations', updated); }} 
                                                                 />
                                                             </FormItem>
-
                                                             <FormItem label="Jurusan / Konsentrasi">
-                                                                <Input 
-                                                                    placeholder="Contoh: Teknik Mesin / IPA" 
+                                                                <Select 
                                                                     value={edu.major} 
-                                                                    onChange={e => { const updated = [...data.educations]; updated[idx].major = e.target.value; setData('educations', updated); }} 
-                                                                />
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.educations]; 
+                                                                        updated[idx].major = v; 
+                                                                        setData('educations', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Jurusan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {majors.map((m) => (
+                                                                            <SelectItem key={m.id} value={m.name_id}>
+                                                                                {m.name_id}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
 
                                                             <FormItem label="Tanggal Masuk">
@@ -442,6 +507,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors" 
@@ -462,11 +528,25 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                             </FormItem>
 
                                                             <FormItem label="Bidang / Jenis Pekerjaan">
-                                                                <Input 
-                                                                    placeholder="Contoh: Konstruksi / Operator" 
+                                                                <Select 
                                                                     value={exp.job_type} 
-                                                                    onChange={e => { const updated = [...data.experiences]; updated[idx].job_type = e.target.value; setData('experiences', updated); }} 
-                                                                />
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.experiences]; 
+                                                                        updated[idx].job_type = v; 
+                                                                        setData('experiences', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Bidang" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {jobSectors.map((job) => (
+                                                                            <SelectItem key={job.id} value={job.name_id}>
+                                                                                {job.name_id} ({job.code})
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
 
                                                             <FormItem label="Gaji Bulanan (Rp)">
@@ -551,6 +631,7 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                 </span>
                                                             </div>
                                                             <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive" 
@@ -561,8 +642,34 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                         </div>
                                                         
                                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                                            <FormItem label="Hubungan">
-                                                                <Input placeholder="Ayah / Ibu / Istri" value={fam.relationship} onChange={e => { const updated = [...data.families]; updated[idx].relationship = e.target.value; setData('families', updated); }} />
+                                                            <FormItem label="Hubungan Keluarga">
+                                                                <Select 
+                                                                    value={fam.relationship} 
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.families]; 
+                                                                        updated[idx].relationship = v; 
+                                                                        setData('families', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Hubungan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="父">Ayah</SelectItem>
+                                                                        <SelectItem value="母">Ibu</SelectItem>
+                                                                        <SelectItem value="姉">Kakak Perempuan</SelectItem>
+                                                                        <SelectItem value="兄">Kakak Laki-Laki</SelectItem>
+                                                                        <SelectItem value="妹">Adik Perempuan</SelectItem>
+                                                                        <SelectItem value="弟">Adik Laki-Laki</SelectItem>
+                                                                        <SelectItem value="祖父">Kakek</SelectItem>
+                                                                        <SelectItem value="祖母">Nenek</SelectItem>
+                                                                        <SelectItem value="兄弟">Saudara Kandung</SelectItem>
+                                                                        <SelectItem value="夫">Suami</SelectItem>
+                                                                        <SelectItem value="妻">Istri</SelectItem>
+                                                                        <SelectItem value="娘">Anak Perempuan</SelectItem>
+                                                                        <SelectItem value="息子">Anak Laki-Laki</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
                                                             <FormItem label="Nama Lengkap">
                                                                 <Input placeholder="Nama anggota keluarga" value={fam.name} onChange={e => { const updated = [...data.families]; updated[idx].name = e.target.value; setData('families', updated); }} />
@@ -571,7 +678,30 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                                 <Input type="number" placeholder="Tahun" value={fam.age} onChange={e => { const updated = [...data.families]; updated[idx].age = e.target.value; setData('families', updated); }} />
                                                             </FormItem>
                                                             <FormItem label="Pekerjaan">
-                                                                <Input placeholder="Pekerjaan saat ini" value={fam.occupation} onChange={e => { const updated = [...data.families]; updated[idx].occupation = e.target.value; setData('families', updated); }} />
+                                                                <Select 
+                                                                    value={fam.occupation} 
+                                                                    onValueChange={v => { 
+                                                                        const updated = [...data.families]; 
+                                                                        updated[idx].occupation = v; 
+                                                                        setData('families', updated); 
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Pilih Pekerjaan" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {/* Menggunakan daftar yang sama dengan jobSectors */}
+                                                                        {jobSectors.map((job) => (
+                                                                            <SelectItem key={job.id} value={job.name_id}>
+                                                                                {job.name_id}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                        <SelectItem value="Ibu Rumah Tangga">Ibu Rumah Tangga</SelectItem>
+                                                                        <SelectItem value="Wiraswasta">Wiraswasta</SelectItem>
+                                                                        <SelectItem value="Petani">Petani</SelectItem>
+                                                                        <SelectItem value="Tidak Bekerja">Tidak Bekerja / Pensiun</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </FormItem>
                                                         </div>
                                                     </div>
@@ -636,11 +766,20 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                             </FormItem>
 
                                             <FormItem label="Level Kelas">
-                                                <Input 
+                                                <Select 
                                                     value={data.class_level} 
-                                                    onChange={e => setData('class_level', e.target.value)} 
-                                                    placeholder="Contoh: BAB 1-10" 
-                                                />
+                                                    onValueChange={(value) => setData('class_level', value)}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Pilih Level Kelas" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="SISWA BARU">SISWA BARU</SelectItem>
+                                                        <SelectItem value="KELAS N5">KELAS N5</SelectItem>
+                                                        <SelectItem value="KELAS N4">KELAS N4</SelectItem>
+                                                        <SelectItem value="KELAS PRA-PEMBERANGKATAN">KELAS PRA-PEMBERANGKATAN</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
 
                                             {/* PASTIKAN INI TERISI: Tgl Masuk LPK */}
@@ -652,12 +791,74 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                                 />
                                             </FormItem>
 
-                                            <FormItem label="Kelebihan (Strength)">
-                                                <Input value={data.strength} onChange={e => setData('strength', e.target.value)} placeholder="Kelebihan siswa" />
+<FormItem label="Kelebihan Diri" required error={errors.strength}>
+                                                <Select 
+                                                    value={data.strength} 
+                                                    onValueChange={v => setData('strength', v)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Pilih Kelebihan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="リーダーシップがある">Memiliki sifat kepemimpinan</SelectItem>
+                                                        <SelectItem value="ストレス耐性が強い">Kuat dalam menghadapi stres</SelectItem>
+                                                        <SelectItem value="世話好き">Suka menolong / Merawat orang lain</SelectItem>
+                                                        <SelectItem value="努力家">Pekerja keras / Rajin berusaha</SelectItem>
+                                                        <SelectItem value="協調性がある">Memiliki sikap kerja sama (Kooperatif)</SelectItem>
+                                                        <SelectItem value="几帳面">Rapi / Teratur</SelectItem>
+                                                        <SelectItem value="主体性がある">Memiliki inisiatif / Mandiri</SelectItem>
+                                                        <SelectItem value="論理的思考力がある">Berpikir logis / Rasional</SelectItem>
+                                                        <SelectItem value="行動力がある">Aktif dalam bertindak</SelectItem>
+                                                        <SelectItem value="相手の気持ちを尊重できる">Menghargai perasaan orang lain</SelectItem>
+                                                        <SelectItem value="忍耐力がある">Memiliki ketahanan / Sabar</SelectItem>
+                                                        <SelectItem value="好奇心旺盛">Rasa ingin tahu yang besar</SelectItem>
+                                                        <SelectItem value="調整力がある">Mampu mengatur situasi / Adaptif</SelectItem>
+                                                        <SelectItem value="責任感がある">Memiliki rasa tanggung jawab</SelectItem>
+                                                        <SelectItem value="計画性がある">Memiliki perencanaan yang baik</SelectItem>
+                                                        <SelectItem value="積極性がある">Proaktif</SelectItem>
+                                                        <SelectItem value="前向きな性格">Sikap positif / Optimis</SelectItem>
+                                                        <SelectItem value="柔軟性がある">Fleksibel / Mudah beradaptasi</SelectItem>
+                                                        <SelectItem value="負けず嫌い">Sangat gigih (Tidak suka kalah)</SelectItem>
+                                                        <SelectItem value="目の前の事に集中できる">Mampu fokus pada tugas</SelectItem>
+                                                        <SelectItem value="自分に厳しい">Kritis terhadap diri sendiri</SelectItem>
+                                                        <SelectItem value="素直な性格">Jujur / Tulus</SelectItem>
+                                                        <SelectItem value="礼儀正しい">Berperilaku sopan (Etika baik)</SelectItem>
+                                                        <SelectItem value="仕事が早い">Cepat dan efisien dalam bekerja</SelectItem>
+                                                        <SelectItem value="器用な人">Terampil / Pandai berbagai hal</SelectItem>
+                                                        <SelectItem value="明るい性格">Sifat ceria / Ramah</SelectItem>
+                                                        <SelectItem value="頑張り屋">Orang yang rajin / Gigih</SelectItem>
+                                                        <SelectItem value="真面目">Serius / Tekun</SelectItem>
+                                                        <SelectItem value="社交的">Senang berinteraksi sosial</SelectItem>
+                                                        <SelectItem value="コミュニケーション能力がある">Kemampuan komunikasi baik</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
 
-                                            <FormItem label="Kekurangan (Weakness)">
-                                                <Input value={data.weakness} onChange={e => setData('weakness', e.target.value)} placeholder="Kekurangan siswa" />
+                                            <FormItem label="Kekurangan Diri" required error={errors.weakness}>
+                                                <Select 
+                                                    value={data.weakness} 
+                                                    onValueChange={v => setData('weakness', v)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Pilih Kekurangan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="我が強い">Egois / Keras kepala</SelectItem>
+                                                        <SelectItem value="頑固">Keras kepala (Sulit diubah)</SelectItem>
+                                                        <SelectItem value="慎重すぎる">Terlalu cemas / Sangat sensitif</SelectItem>
+                                                        <SelectItem value="理屈っぽい">Terlalu mencari pembenaran logis</SelectItem>
+                                                        <SelectItem value="気が弱い">Cemas / Mudah tertekan</SelectItem>
+                                                        <SelectItem value="諦めが悪い">Sulit menerima kegagalan</SelectItem>
+                                                        <SelectItem value="飽き性">Mudah bosan / Jenuh</SelectItem>
+                                                        <SelectItem value="心配性">Khawatir / Cemas berlebih</SelectItem>
+                                                        <SelectItem value="楽親的">Terlalu santai / Meremehkan</SelectItem>
+                                                        <SelectItem value="緊張しやすい">Mudah gugup / Tegang</SelectItem>
+                                                        <SelectItem value="恥ずかしがり屋">Pemalu / Penakut</SelectItem>
+                                                        <SelectItem value="せっかち">Tergesa-gesa / Cerewet</SelectItem>
+                                                        <SelectItem value="人見知り">Canggung dengan orang baru</SelectItem>
+                                                        <SelectItem value="一つの事に集中しやすい">Hanya bisa fokus pada satu hal</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
 
                                             <FormItem label="Skill Teknis">
@@ -701,18 +902,22 @@ export default function StudentForm({ student, provinces, jobSectors }: Props) {
                                     type="button"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        e.stopPropagation();
-                                        setStep(s => s + 1);
+                                        if (validateStep(step)) {
+                                            setStep(s => s + 1);
+                                        } else {
+                                            alert("Mohon lengkapi semua field yang wajib diisi pada tahap ini.");
+                                        }
                                     }}
-                                    className="px-8 bg-blue-600 hover:bg-blue-700 text-white"
+                                    className={`px-8 transition-all ${validateStep(step) ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-400 opacity-50'}`}
                                 >
                                     Lanjut <ChevronRight className="ml-2" size={18} />
                                 </Button>
                             ) : (
                                 <Button 
                                     type="submit"
-                                    disabled={processing} 
-                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md"
+                                    // Tombol aktif HANYA JIKA tidak sedang processing DAN validasi step 5 lolos
+                                    disabled={processing || !validateStep(5)} 
+                                    className="px-10 bg-green-600 hover:bg-green-700 text-white shadow-md disabled:bg-slate-300 disabled:cursor-not-allowed"
                                 >
                                     {processing ? 'Menyimpan...' : (
                                         <>
@@ -803,10 +1008,12 @@ function StepBadge({ step, current, icon }: { step: number, current: number, ico
     );
 }
 
-function FormItem({ label, children, error }: { label: string, children: any, error?: string }) {
+function FormItem({ label, children, error, required }: { label: string, children: any, error?: string, required?: boolean }) {
     return (
         <div className="space-y-1.5 w-full">
-            <Label className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground/80 ml-1">{label}</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground/80 ml-1">
+                {label} {required && <span className="text-red-500 font-bold">*</span>}
+            </Label>
             {children}
             {error && <p className="text-[10px] text-destructive font-bold ml-1">*{error}</p>}
         </div>

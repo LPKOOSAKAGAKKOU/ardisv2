@@ -58,10 +58,12 @@ class StudentController extends Controller
         // Mengambil master data dari database
         $provinces = Province::all(); // Contoh tabel provinsi
         $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
+        $majors = Major::all(); // Contoh tabel jurusan
 
         return Inertia::render('admin/student/StudentForm', [
-            'provinces' => Province::all() ?? [],
-            'jobSectors' => JobSector::all() ?? []
+            'provinces' => Province::all(),
+            'jobSectors' => JobSector::all(),
+            'majors' => Major::all(),
         ]);
     }
 
@@ -73,48 +75,70 @@ class StudentController extends Controller
             'nik' => 'required|unique:student_profiles,nik',
             'full_name' => 'required|string|max:255',
             'dob' => 'required|date',
-            // Tambahkan validasi lain jika perlu
         ]);
+
+        // Fungsi Helper untuk Kapitalisasi (Non-Jepang)
+        $makeUpper = function ($value) {
+            if (!is_string($value)) return $value;
+            
+            // Cek karakter Jepang (Hiragana, Katakana, Kanji)
+            if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
+                return $value;
+            }
+            
+            return strtoupper($value);
+        };
+
+        // Fungsi Helper untuk memproses array (recursive)
+        $processArray = function ($array) use ($makeUpper) {
+            return array_map(function ($item) use ($makeUpper) {
+                if (is_array($item)) {
+                    return array_map($makeUpper, $item);
+                }
+                return $makeUpper($item);
+            }, $array);
+        };
 
         DB::beginTransaction();
         try {
-            // 2. Buat User Login
+            // 2. Buat User Login (Nama User diset Kapital)
             $user = User::create([
-                'name' => $request->full_name,
-                'email' => $request->email,
+                'name'     => strtoupper($request->full_name),
+                'email'    => $request->email, // Email tetap kecil (standar)
                 'password' => Hash::make('password123'), 
-                'role' => 'student', // Pastikan role diset
+                'role'     => 'student',
             ]);
 
             // 3. Simpan Data Profil Utama
-            // Gunakan $request->only atau $request->except agar lebih aman
             $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
+            
+            // Kapitalisasi semua data profil
+            $profileData = array_map($makeUpper, $profileData);
+            
             $profileData['user_id'] = $user->id;
             $profileData['yunerva_file_password'] = Str::random(8);
             
             $profile = StudentProfile::create($profileData);
 
-            // 4. Simpan Relasi (Hanya jika ada datanya)
+            // 4. Simpan Relasi (Kapitalisasi Otomatis)
             if (!empty($request->educations)) {
-                $profile->educations()->createMany($request->educations);
+                $profile->educations()->createMany($processArray($request->educations));
             }
 
             if (!empty($request->experiences)) {
-                $profile->experiences()->createMany($request->experiences);
+                $profile->experiences()->createMany($processArray($request->experiences));
             }
 
             if (!empty($request->families)) {
-                $profile->families()->createMany($request->families);
+                $profile->families()->createMany($processArray($request->families));
             }
 
             DB::commit();
 
-            // Gunakan nama route yang benar sesuai php artisan route:list
-            return redirect('/admin/students')->with('success', 'Siswa berhasil didaftarkan.');
+            return redirect('/admin/students')->with('success', 'Siswa berhasil didaftarkan dengan format kapital.');
 
         } catch (\Exception $e) {
             DB::rollback();
-            // Log::error($e->getMessage()); // Opsional: catat di storage/logs/laravel.log
             return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()])->withInput();
         }
     }
@@ -126,14 +150,17 @@ class StudentController extends Controller
             ->findOrFail($id);
 
         // Ambil data provinces dan jobSectors seperti di method create()
-        $provinces = Province::select('id', 'name')->orderBy('name')->get();
-        $jobSectors = JobSector::select('id', 'name', 'code')->orderBy('name')->get();
+        $provinces = Province::all(); // Contoh tabel provinsi
+        $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
+        $majors = Major::all(); // Contoh tabel jurusan
+
 
         // Inertia akan mengirimkan objek $student sebagai PROPS ke React
         return Inertia::render('admin/student/StudentForm', [
             'student' => $student,
             'provinces' => $provinces,      // TAMBAHKAN INI
             'jobSectors' => $jobSectors,    // TAMBAHKAN INI
+            'majors' => $majors,            // TAMBAHKAN INI
         ]);
     }
 
