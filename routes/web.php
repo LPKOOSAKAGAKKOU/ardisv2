@@ -117,7 +117,7 @@ Route::middleware([
         Route::get('interviews', [StudentInterviewController::class, 'index'])->name('interviews.index');
         // Rute Baru
         Route::post('interviews/{id}/apply', [StudentInterviewController::class, 'apply'])->name('interviews.apply');
-        Route::post('interviews/{id}/preview', [StudentInterviewController::class, 'previewKyuujinhyou'])->name('interviews.preview-kyuujinhyou');
+        Route::get('interviews/{id}/preview', [StudentInterviewController::class, 'previewKyuujinhyou'])->name('interviews.preview-kyuujinhyou');
         Route::get('interviews/{id}/participants', [StudentInterviewController::class, 'participants'])->name('interviews.participants');
         Route::post('interviews/{id}/cancel', [StudentInterviewController::class, 'cancel'])->name('interviews.cancel');
 
