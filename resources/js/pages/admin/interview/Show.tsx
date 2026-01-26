@@ -4,9 +4,9 @@ import {
     FileText, Upload, Users, CheckCircle, XCircle, 
     Clock, Building2, MapPin, Briefcase, Calendar,
     ExternalLink, Download, ArrowLeft, Info, Eye,
-    UserPlus, Trash2, Hash, ChevronUp, ChevronDown
+    UserPlus, Trash2, Hash, GripVertical, Save
 } from 'lucide-react';
-import { useState, useEffect } from 'react'; // Menambahkan useEffect untuk search
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,9 +30,92 @@ import axios from 'axios';
 import { format, isValid } from 'date-fns';
 import { route } from 'ziggy-js';
 
+// --- IMPORT DND-KIT ---
+import {
+    DndContext, 
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 interface Props {
     interview: any;
-    availableStudents?: any[]; // Tambahan data dari controller untuk search
+    availableStudents?: any[];
+}
+
+// --- KOMPONEN BARIS TABEL YANG BISA DI DRAG ---
+function SortableRow({ detail, index, onRemove, onUpdateModal }: any) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: detail.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        position: 'relative' as const,
+    };
+
+    return (
+        <tr 
+            ref={setNodeRef} 
+            style={style} 
+            className={`hover:bg-neutral-50/50 transition-colors group ${isDragging ? 'bg-white shadow-2xl opacity-80' : ''}`}
+        >
+            <td className="px-4 py-4 text-center">
+                <div className="flex items-center justify-center gap-3">
+                    <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-neutral-400 hover:text-blue-600">
+                        <GripVertical size={18} />
+                    </button>
+                    <span className="font-mono font-bold text-xs text-blue-600 bg-blue-50 w-7 h-7 flex items-center justify-center rounded-full border border-blue-100">
+                        {index + 1}
+                    </span>
+                </div>
+            </td>
+            <td className="px-6 py-4 font-bold capitalize">
+                {detail.user?.student_profile?.full_name || 'No Name'}
+            </td>
+            <td className="px-6 py-4 text-center">
+                <Badge variant="outline" className={
+                    detail.result === 'passed' ? "bg-green-50 text-green-700 border-green-200" :
+                    detail.result === 'failed' ? "bg-red-50 text-red-700 border-red-200" : ""
+                }>
+                    {detail.result?.toUpperCase() || 'PENDING'}
+                </Badge>
+            </td>
+            <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
+            <td className="px-6 py-4 text-right space-x-1">
+                <Button onClick={() => onUpdateModal(detail)} variant="outline" size="sm" className="h-8">Set Status</Button>
+                <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
+                    <Button variant="ghost" size="sm" className="h-8 text-blue-600">Profil</Button>
+                </Link>
+                <Button 
+                    onClick={() => onRemove(detail.id)} 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 text-neutral-300 hover:text-red-600 transition-colors"
+                >
+                    <Trash2 size={16} />
+                </Button>
+            </td>
+        </tr>
+    );
 }
 
 export default function InterviewShow({ interview, availableStudents = [] }: Props) {
@@ -41,12 +124,50 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-
-    // State untuk Preview Modal
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
 
-    // --- FITUR BARU: ASSIGN & SEARCH ---
+    // --- FITUR BARU: DRAG & DROP LOGIC ---
+    const [localDetails, setLocalDetails] = useState(interview?.details || []);
+    const [hasChanges, setHasChanges] = useState(false);
+
+    // Sync local state jika data dari server berubah
+    useEffect(() => {
+        setLocalDetails(interview?.details?.sort((a: any, b: any) => a.order_number - b.order_number) || []);
+        setHasChanges(false);
+    }, [interview.details]);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setLocalDetails((items: any[]) => {
+                const oldIndex = items.findIndex((i) => i.id === active.id);
+                const newIndex = items.findIndex((i) => i.id === over.id);
+                const newArray = arrayMove(items, oldIndex, newIndex);
+                setHasChanges(true);
+                return newArray;
+            });
+        }
+    };
+
+    const saveNewOrder = () => {
+        const orders = localDetails.map((item, index) => ({
+            id: item.id,
+            order_number: index + 1
+        }));
+
+        router.patch(`/admin/interviews/${interview.id}/batch-reorder`, { orders }, {
+            preserveScroll: true,
+            onSuccess: () => setHasChanges(false)
+        });
+    };
+    // ------------------------------------
+
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
     
@@ -74,23 +195,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         }
     };
 
-    const handleUpdateOrder = (detailId: number, newOrder: string) => {
-        router.patch(`/admin/interview-details/${detailId}/order`, { order_number: newOrder }, {
-            preserveScroll: true
-        });
-    };
-
-    // FITUR REORDER (SWAP)
-    const handleReorder = (detailId: number, currentOrder: number, direction: 'up' | 'down') => {
-        router.patch(`/admin/interview-details/${detailId}/reorder`, {
-            direction: direction,
-            current_order: currentOrder
-        }, {
-            preserveScroll: true
-        });
-    };
-    // ------------------------------------
-
     const { data, setData, patch, processing, reset } = useForm({
         result: '',
         remarks: ''
@@ -107,7 +211,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         { title: 'Detail', href: '#' },
     ];
 
-    // --- LOGIKA UPDATE HASIL ---
     const openUpdateModal = (candidate: any) => {
         setSelectedCandidate(candidate);
         setData({
@@ -119,9 +222,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
     const handleUpdateResult = (e: React.FormEvent) => {
         e.preventDefault();
-        // PROTEKSI: Cek ID sebelum kirim
         if (!selectedCandidate?.id) return;
-
         patch(`/admin/interview-details/${selectedCandidate.id}`, {
             onSuccess: () => {
                 setIsModalOpen(false);
@@ -133,12 +234,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     };
 
     const handlePreview = async () => {
-        // Aktifkan loading
         setIsLoadingPreview(true);
-        
         try {
             const response = await axios.post(route('admin.interviews.preview-kyuujinhyou', interview.id));
-            
             if (response.data.status === 'success' && response.data.data.view_url) {
                 setPreviewUrl(response.data.data.view_url);
                 setIsPreviewOpen(true);
@@ -146,11 +244,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 alert(response.data.message || "Gagal mendapatkan link pratinjau.");
             }
         } catch (err: any) {
-            console.error("Preview error:", err);
             const msg = err.response?.data?.message || "Terjadi kesalahan pada server.";
             alert(msg);
         } finally {
-            // Matikan loading apapun hasilnya (sukses/gagal)
             setIsLoadingPreview(false);
         }
     };
@@ -165,10 +261,8 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             alert("Hanya file PDF yang diperbolehkan!");
             return;
         }
-
         setIsUploading(true);
         setUploadProgress(0);
-
         try {
             const req = await axios.post('/admin/upload-request', {
                 filename: file.name,
@@ -176,14 +270,11 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 mime_type: 'application/pdf',
                 size: file.size
             });
-
             const { upload_url, upload_ticket } = req.data.data;
-
             await axios.put(upload_url, file, {
                 headers: { 'Content-Type': 'application/pdf' },
                 onUploadProgress: (p) => setUploadProgress(Math.round((p.loaded * 100) / (p.total || file.size))),
             });
-
             router.post(`/admin/interviews/${interview.id}/upload-kyuujinhyou`, {
                 upload_ticket: upload_ticket
             }, {
@@ -212,7 +303,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </Link>
                 </div>
 
-                {/* Header Card */}
                 <div className="bg-white dark:bg-zinc-950 rounded-2xl border border-sidebar-border shadow-sm overflow-hidden">
                     <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between gap-6">
                         <div className="space-y-4">
@@ -243,7 +333,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             </div>
                         </div>
 
-                        {/* Kyuujinhyou Section */}
                         <div className="md:w-72 bg-neutral-50 dark:bg-neutral-900 p-5 rounded-2xl border border-dashed border-neutral-300 flex flex-col items-center justify-center text-center">
                             <FileText className={interview?.kyuujinhyou_yunerva_uuid ? "text-green-600 mb-2" : "text-neutral-300 mb-2"} size={40} />
                             <p className="text-[10px] font-bold uppercase tracking-wider mb-3 text-muted-foreground">Dokumen Kyuujinhyou (PDF)</p>
@@ -264,21 +353,12 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     size="sm" 
                                                     className="h-8 text-[10px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" 
                                                     onClick={handlePreview}
-                                                    disabled={isLoadingPreview} // Nonaktifkan saat loading
+                                                    disabled={isLoadingPreview}
                                                 >
-                                                    {isLoadingPreview ? (
-                                                        <>
-                                                            <div className="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
-                                                            LOADING...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Eye className="mr-1.5 h-3 w-3" /> PREVIEW
-                                                        </>
-                                                    )}
+                                                    {isLoadingPreview ? "LOADING..." : "PREVIEW"}
                                                 </Button>
                                                 <Button variant="secondary" size="sm" className="h-8 text-[10px] font-bold text-green-700" onClick={handleDownload}>
-                                                    <Download className="mr-1 h-3 w-3" /> UNDUH
+                                                    UNDUH
                                                 </Button>
                                             </div>
                                         )}
@@ -299,7 +379,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
                 </div>
 
-                {/* --- FITUR BARU: PANEL ASSIGN SISWA --- */}
                 <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
                     <div className="bg-blue-600 p-2.5 rounded-xl text-white">
                         <UserPlus size={20} />
@@ -332,14 +411,27 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </div>
 
                 <Tabs defaultValue="candidates" className="w-full">
-                    <TabsList className="bg-transparent border-b border-sidebar-border w-full justify-start rounded-none h-auto p-0 gap-8">
-                        <TabsTrigger value="candidates" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-2 pb-4 font-bold">
-                            Daftar Peserta ({interview?.details?.length || 0})
-                        </TabsTrigger>
-                        <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-2 pb-4 font-bold">
-                            Detail Lowongan
-                        </TabsTrigger>
-                    </TabsList>
+                    <div className="flex justify-between items-center border-b border-sidebar-border">
+                        <TabsList className="bg-transparent w-auto justify-start rounded-none h-auto p-0 gap-8">
+                            <TabsTrigger value="candidates" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-2 pb-4 font-bold">
+                                Daftar Peserta ({localDetails.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-2 pb-4 font-bold">
+                                Detail Lowongan
+                            </TabsTrigger>
+                        </TabsList>
+                        
+                        {/* --- TOMBOL SIMPAN URUTAN --- */}
+                        {hasChanges && (
+                            <Button 
+                                onClick={saveNewOrder} 
+                                className="mb-2 bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                size="sm"
+                            >
+                                <Save className="mr-2 h-4 w-4" /> Simpan Urutan Baru
+                            </Button>
+                        )}
+                    </div>
 
                     <TabsContent value="candidates" className="mt-6">
                         <div className="bg-white dark:bg-zinc-950 rounded-xl border border-sidebar-border overflow-hidden shadow-sm text-sm">
@@ -354,65 +446,36 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border">
-                                    {interview?.details?.length > 0 ? interview.details.sort((a: any, b: any) => a.order_number - b.order_number).map((detail: any, index: number) => (
-                                        <tr key={detail.id} className="hover:bg-neutral-50/50 transition-colors group">
-                                            <td className="px-4 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <input 
-                                                        type="number"
-                                                        defaultValue={detail.order_number || index + 1}
-                                                        onBlur={(e) => handleUpdateOrder(detail.id, e.target.value)}
-                                                        className="w-10 h-8 text-center text-xs font-bold border-none bg-neutral-100 rounded focus:bg-white focus:ring-1 focus:ring-blue-500"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <button 
-                                                            onClick={() => handleReorder(detail.id, detail.order_number || index + 1, 'up')}
-                                                            className="p-0.5 hover:bg-neutral-200 rounded text-neutral-400 hover:text-blue-600 transition-colors"
-                                                        >
-                                                            <ChevronUp size={14} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleReorder(detail.id, detail.order_number || index + 1, 'down')}
-                                                            className="p-0.5 hover:bg-neutral-200 rounded text-neutral-400 hover:text-blue-600 transition-colors"
-                                                        >
-                                                            <ChevronDown size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 font-bold capitalize">
-                                                {detail.user?.student_profile?.full_name || 'No Name'}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <Badge variant="outline" className={
-                                                    detail.result === 'passed' ? "bg-green-50 text-green-700 border-green-200" :
-                                                    detail.result === 'failed' ? "bg-red-50 text-red-700 border-red-200" : ""
-                                                }>
-                                                    {detail.result?.toUpperCase() || 'PENDING'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
-                                            <td className="px-6 py-4 text-right space-x-1">
-                                                <Button onClick={() => openUpdateModal(detail)} variant="outline" size="sm" className="h-8">Set Status</Button>
-                                                <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
-                                                    <Button variant="ghost" size="sm" className="h-8 text-blue-600">Profil</Button>
-                                                </Link>
-                                                <Button 
-                                                    onClick={() => handleRemoveStudent(detail.id)} 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-8 text-neutral-300 hover:text-red-600 transition-colors"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">Belum ada pendaftar.</td></tr>
-                                    )}
+                                    <DndContext 
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
+                                    >
+                                        <SortableContext 
+                                            items={localDetails.map((i:any) => i.id)}
+                                            strategy={verticalListSortingStrategy}
+                                        >
+                                            {localDetails.length > 0 ? localDetails.map((detail: any, index: number) => (
+                                                <SortableRow 
+                                                    key={detail.id} 
+                                                    detail={detail} 
+                                                    index={index}
+                                                    onRemove={handleRemoveStudent}
+                                                    onUpdateModal={openUpdateModal}
+                                                />
+                                            )) : (
+                                                <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">Belum ada pendaftar.</td></tr>
+                                            )}
+                                        </SortableContext>
+                                    </DndContext>
                                 </tbody>
                             </table>
                         </div>
+                        {hasChanges && (
+                            <p className="mt-4 text-xs text-amber-600 font-medium flex items-center gap-2">
+                                <Info size={14} /> Anda telah merubah urutan. Jangan lupa menekan tombol "Simpan Urutan Baru" di atas.
+                            </p>
+                        )}
                     </TabsContent>
                     
                     <TabsContent value="details" className="mt-6">
@@ -423,7 +486,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </Tabs>
             </div>
 
-            {/* MODAL UPDATE HASIL */}
+            {/* MODAL & PREVIEW DIBAWAH TETAP SAMA */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent>
                     <form onSubmit={handleUpdateResult}>
@@ -457,46 +520,36 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL PREVIEW PDF */}
-                <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                    <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden bg-zinc-900 border-none shadow-2xl">
-                        <DialogHeader className="p-4 bg-white dark:bg-zinc-950 border-b flex flex-row items-center justify-between space-y-0">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-red-100 text-red-600 rounded-lg">
-                                    <FileText size={18} />
-                                </div>
-                                <div>
-                                    <DialogTitle className="text-sm font-bold">
-                                        Preview Kyuujinhyou
-                                    </DialogTitle>
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
-                                        {interview?.interviewer_title}
-                                    </p>
-                                </div>
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+                <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden bg-zinc-900 border-none shadow-2xl">
+                    <DialogHeader className="p-4 bg-white dark:bg-zinc-950 border-b flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+                                <FileText size={18} />
                             </div>
-                            <div className="flex gap-2 pr-8">
-                                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')} className="h-8 text-xs">
-                                    <ExternalLink className="mr-2 h-3 w-3" /> Buka Tab Baru
-                                </Button>
+                            <div>
+                                <DialogTitle className="text-sm font-bold">Preview Kyuujinhyou</DialogTitle>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-tight">{interview?.interviewer_title}</p>
                             </div>
-                        </DialogHeader>
-                        
-                        <div className="flex-1 h-full w-full bg-zinc-800 relative">
-                            {previewUrl ? (
-                                <iframe 
-                                    src={`${previewUrl}#toolbar=0`} 
-                                    className="w-full h-[calc(90vh-65px)] border-none"
-                                    title="Kyuujinhyou PDF"
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-white space-y-4">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                    <p className="text-sm animate-pulse">Menyiapkan dokumen...</p>
-                                </div>
-                            )}
                         </div>
-                    </DialogContent>
-                </Dialog>
+                        <div className="flex gap-2 pr-8">
+                            <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')} className="h-8 text-xs">
+                                <ExternalLink className="mr-2 h-3 w-3" /> Buka Tab Baru
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    <div className="flex-1 h-full w-full bg-zinc-800 relative">
+                        {previewUrl ? (
+                            <iframe src={`${previewUrl}#toolbar=0`} className="w-full h-[calc(90vh-65px)] border-none" title="Kyuujinhyou PDF" />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-white space-y-4">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                <p className="text-sm animate-pulse">Menyiapkan dokumen...</p>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
