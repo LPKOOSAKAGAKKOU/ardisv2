@@ -689,10 +689,6 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                                 {job.name_id}
                                                                             </SelectItem>
                                                                         ))}
-                                                                        <SelectItem value="Ibu Rumah Tangga">Ibu Rumah Tangga</SelectItem>
-                                                                        <SelectItem value="Wiraswasta">Wiraswasta</SelectItem>
-                                                                        <SelectItem value="Petani">Petani</SelectItem>
-                                                                        <SelectItem value="Tidak Bekerja">Tidak Bekerja / Pensiun</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                             </FormItem>
