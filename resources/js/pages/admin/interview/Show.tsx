@@ -4,7 +4,8 @@ import {
     FileText, Upload, Users, CheckCircle, XCircle, 
     Clock, Building2, MapPin, Briefcase, Calendar,
     ExternalLink, Download, ArrowLeft, Info, Eye,
-    UserPlus, Trash2, Hash, GripVertical, Save
+    UserPlus, Trash2, Hash, GripVertical, Save,
+    FileSpreadsheet // --- TAMBAHKAN IKON INI ---
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,8 @@ interface Props {
 }
 
 // --- KOMPONEN BARIS TABEL YANG BISA DI DRAG ---
-function SortableRow({ detail, index, onRemove, onUpdateModal }: any) {
+// --- TAMBAHKAN interviewId KE PROPS ---
+function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: any) {
     const {
         attributes,
         listeners,
@@ -100,11 +102,28 @@ function SortableRow({ detail, index, onRemove, onUpdateModal }: any) {
                 </Badge>
             </td>
             <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
-            <td className="px-6 py-4 text-right space-x-1">
+            <td className="px-6 py-4 text-right space-x-1 flex items-center justify-end">
+                {/* --- TOMBOL GENERATE CV (EXCEL) --- */}
+                <a 
+                    href={`/generate-cv/${detail.user_id}/${interviewId}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                >
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 border-green-600 text-green-600 hover:bg-green-50 hover:text-green-700 font-bold"
+                    >
+                        <FileSpreadsheet size={14} className="mr-1.5" /> CV
+                    </Button>
+                </a>
+
                 <Button onClick={() => onUpdateModal(detail)} variant="outline" size="sm" className="h-8">Set Status</Button>
+                
                 <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
-                    <Button variant="ghost" size="sm" className="h-8 text-blue-600">Profil</Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-blue-600 font-bold">Profil</Button>
                 </Link>
+                
                 <Button 
                     onClick={() => onRemove(detail.id)} 
                     variant="ghost" 
@@ -131,7 +150,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const [localDetails, setLocalDetails] = useState(interview?.details || []);
     const [hasChanges, setHasChanges] = useState(false);
 
-    // Sync local state jika data dari server berubah
     useEffect(() => {
         setLocalDetails(interview?.details?.sort((a: any, b: any) => a.order_number - b.order_number) || []);
         setHasChanges(false);
@@ -166,7 +184,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             onSuccess: () => setHasChanges(false)
         });
     };
-    // ------------------------------------
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
@@ -303,6 +320,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </Link>
                 </div>
 
+                {/* Header Info */}
                 <div className="bg-white dark:bg-zinc-950 rounded-2xl border border-sidebar-border shadow-sm overflow-hidden">
                     <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between gap-6">
                         <div className="space-y-4">
@@ -379,6 +397,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
                 </div>
 
+                {/* Assign Panel */}
                 <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
                     <div className="bg-blue-600 p-2.5 rounded-xl text-white">
                         <UserPlus size={20} />
@@ -421,7 +440,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             </TabsTrigger>
                         </TabsList>
                         
-                        {/* --- TOMBOL SIMPAN URUTAN --- */}
                         {hasChanges && (
                             <Button 
                                 onClick={saveNewOrder} 
@@ -462,6 +480,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     index={index}
                                                     onRemove={handleRemoveStudent}
                                                     onUpdateModal={openUpdateModal}
+                                                    interviewId={interview.id} // --- PASS INTERVIEW ID KE ROW ---
                                                 />
                                             )) : (
                                                 <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">Belum ada pendaftar.</td></tr>
@@ -486,7 +505,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </Tabs>
             </div>
 
-            {/* MODAL & PREVIEW DIBAWAH TETAP SAMA */}
+            {/* Modals & Dialogs */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent>
                     <form onSubmit={handleUpdateResult}>
@@ -514,7 +533,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             />
                         </div>
                         <DialogFooter>
-                            <Button type="submit" disabled={processing} className="bg-blue-600 text-white w-full h-11">Simpan Keputusan</Button>
+                            <Button type="submit" disabled={processing} className="bg-blue-600 text-white w-full h-11 font-bold">Simpan Keputusan</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -533,7 +552,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             </div>
                         </div>
                         <div className="flex gap-2 pr-8">
-                            <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')} className="h-8 text-xs">
+                            <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')} className="h-8 text-xs font-bold">
                                 <ExternalLink className="mr-2 h-3 w-3" /> Buka Tab Baru
                             </Button>
                         </div>
