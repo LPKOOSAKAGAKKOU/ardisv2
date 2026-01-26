@@ -38,7 +38,7 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        return Inertia::render('student/Dashboard', [
+        return Inertia::render('student/dashboard', [
             'student' => $student,
             'passedApplication' => $passedApplication, // Kirim data kelulusan ke frontend
             'interviews' => $interviews,
