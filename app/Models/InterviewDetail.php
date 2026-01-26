@@ -10,6 +10,7 @@ class InterviewDetail extends Model
     protected $fillable = [
         'interview_id',
         'user_id',
+        'order_number',
         'result',
         'remarks',
     ];
