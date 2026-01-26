@@ -104,19 +104,15 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
             <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
             <td className="px-6 py-4 text-right space-x-1 flex items-center justify-end">
                 {/* --- TOMBOL GENERATE CV (EXCEL) --- */}
-                <a 
-                    href={`/generate-cv/${detail.user_id}/${interviewId}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                >
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 border-green-600 text-green-600 hover:bg-green-50 hover:text-green-700 font-bold"
-                    >
-                        <FileSpreadsheet size={14} className="mr-1.5" /> CV
-                    </Button>
-                </a>
+                    <a href={`/generate-cv/${detail.user_id}/${interviewId}`} target="_blank" rel="noopener noreferrer">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 border-green-600 text-green-600 hover:bg-green-50"
+                        >
+                            <FileSpreadsheet size={14} className="mr-1.5" /> CV
+                        </Button>
+                    </a>
 
                 <Button onClick={() => onUpdateModal(detail)} variant="outline" size="sm" className="h-8">Set Status</Button>
                 
