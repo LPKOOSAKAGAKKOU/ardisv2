@@ -71,7 +71,7 @@ Route::middleware([
     
     Route::post('/interviews/{id}/assign', [InterviewController::class, 'assignStudent']);
     Route::delete('/interview-details/{id}', [InterviewController::class, 'removeStudent']);
-    Route::patch('/admin/interview-details/{id}/reorder', [InterviewController::class, 'reorder']);
+    Route::patch('/interview-details/{id}/reorder', [InterviewController::class, 'reorder']);
 
     // --- MANAJEMEN ORGANISASI ---
     Route::resource('organizations', AcceptingOrganizationController::class);
