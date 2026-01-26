@@ -194,33 +194,21 @@ class InterviewController extends Controller
         return back()->with('success', 'Siswa dihapus dari daftar.');
     }
 
-    public function reorder(Request $request, $id)
+    public function batchReorder(Request $request, $id)
     {
         $request->validate([
-            'direction' => 'required|in:up,down',
-            'current_order' => 'required|integer'
+            'orders' => 'required|array',
+            'orders.*.id' => 'required|exists:interview_details,id',
+            'orders.*.order_number' => 'required|integer',
         ]);
 
-        $currentDetail = InterviewDetail::findOrFail($id);
-        $interviewId = $currentDetail->interview_id;
-        $direction = $request->direction;
-        $currentOrder = $request->current_order;
-
-        // Cari tetangga (atas atau bawah)
-        $neighbor = InterviewDetail::where('interview_id', $interviewId)
-            ->where('order_number', $direction === 'up' ? '<' : '>', $currentOrder)
-            ->orderBy('order_number', $direction === 'up' ? 'desc' : 'asc')
-            ->first();
-
-        if ($neighbor) {
-            // Tukar nomor urut
-            $neighborOrder = $neighbor->order_number;
-            
-            $neighbor->update(['order_number' => $currentOrder]);
-            $currentDetail->update(['order_number' => $neighborOrder]);
+        foreach ($request->orders as $order) {
+            \App\Models\InterviewDetail::where('id', $order['id'])->update([
+                'order_number' => $order['order_number']
+            ]);
         }
 
-        return back()->with('success', 'Urutan berhasil diperbarui.');
+        return back()->with('success', 'Urutan wawancara berhasil diperbarui.');
     }
 
     /**
