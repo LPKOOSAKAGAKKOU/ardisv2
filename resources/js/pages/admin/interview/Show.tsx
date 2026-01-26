@@ -104,7 +104,7 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
             <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
             <td className="px-6 py-4 text-right space-x-1 flex items-center justify-end">
                 {/* --- TOMBOL GENERATE CV (EXCEL) --- */}
-                    <a href={`/generate-cv/${detail.user_id}/${interviewId}`} target="_blank" rel="noopener noreferrer">
+                    <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
                         <Button 
                             variant="outline" 
                             size="sm" 
