@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\InterviewDetail; // Pastikan import model ini
 use App\Services\YunervaService;
