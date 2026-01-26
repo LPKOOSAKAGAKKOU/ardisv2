@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Controllers\CvGenerator;
 use App\Http\Controllers\AdminController\StudentController;
 use App\Http\Controllers\AdminController\StudentDocumentController;
 use App\Http\Controllers\AdminController\InterviewController;
