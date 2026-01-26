@@ -3,9 +3,10 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import { 
     FileText, Upload, Users, CheckCircle, XCircle, 
     Clock, Building2, MapPin, Briefcase, Calendar,
-    ExternalLink, Download, ArrowLeft, Info, Eye
+    ExternalLink, Download, ArrowLeft, Info, Eye,
+    UserPlus, Trash2, Hash, ChevronUp, ChevronDown
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Menambahkan useEffect untuk search
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,9 +32,10 @@ import { route } from 'ziggy-js';
 
 interface Props {
     interview: any;
+    availableStudents?: any[]; // Tambahan data dari controller untuk search
 }
 
-export default function InterviewShow({ interview }: Props) {
+export default function InterviewShow({ interview, availableStudents = [] }: Props) {
     const [isUploading, setIsUploading] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,6 +45,51 @@ export default function InterviewShow({ interview }: Props) {
     // State untuk Preview Modal
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
+
+    // --- FITUR BARU: ASSIGN & SEARCH ---
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+    
+    useEffect(() => {
+        if (searchQuery.length > 1) {
+            const filtered = availableStudents.filter(s => 
+                s.student_profile?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setFilteredStudents(filtered);
+        } else {
+            setFilteredStudents([]);
+        }
+    }, [searchQuery, availableStudents]);
+
+    const handleAssignStudent = (userId: number) => {
+        router.post(`/admin/interviews/${interview.id}/assign`, { user_id: userId }, {
+            preserveScroll: true,
+            onSuccess: () => setSearchQuery('')
+        });
+    };
+
+    const handleRemoveStudent = (detailId: number) => {
+        if (confirm('Apakah Anda yakin ingin menghapus siswa ini dari daftar wawancara?')) {
+            router.delete(`/admin/interview-details/${detailId}`, { preserveScroll: true });
+        }
+    };
+
+    const handleUpdateOrder = (detailId: number, newOrder: string) => {
+        router.patch(`/admin/interview-details/${detailId}/order`, { order_number: newOrder }, {
+            preserveScroll: true
+        });
+    };
+
+    // FITUR REORDER (SWAP)
+    const handleReorder = (detailId: number, currentOrder: number, direction: 'up' | 'down') => {
+        router.patch(`/admin/interview-details/${detailId}/reorder`, {
+            direction: direction,
+            current_order: currentOrder
+        }, {
+            preserveScroll: true
+        });
+    };
+    // ------------------------------------
 
     const { data, setData, patch, processing, reset } = useForm({
         result: '',
@@ -252,6 +299,38 @@ export default function InterviewShow({ interview }: Props) {
                     </div>
                 </div>
 
+                {/* --- FITUR BARU: PANEL ASSIGN SISWA --- */}
+                <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="bg-blue-600 p-2.5 rounded-xl text-white">
+                        <UserPlus size={20} />
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <Input 
+                            placeholder="Ketik nama siswa untuk menambahkan ke daftar wawancara ini..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-white dark:bg-zinc-950 border-blue-200 focus-visible:ring-blue-500"
+                        />
+                        {filteredStudents.length > 0 && (
+                            <div className="absolute z-50 w-full mt-2 bg-white dark:bg-zinc-900 border rounded-xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden">
+                                {filteredStudents.map((student) => (
+                                    <button
+                                        key={student.id}
+                                        onClick={() => handleAssignStudent(student.id)}
+                                        className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-zinc-800 flex items-center justify-between group transition-colors"
+                                    >
+                                        <div>
+                                            <p className="font-bold text-sm">{student.student_profile?.full_name}</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase">{student.email}</p>
+                                        </div>
+                                        <Badge variant="secondary" className="group-hover:bg-blue-600 group-hover:text-white transition-colors">Assign</Badge>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 <Tabs defaultValue="candidates" className="w-full">
                     <TabsList className="bg-transparent border-b border-sidebar-border w-full justify-start rounded-none h-auto p-0 gap-8">
                         <TabsTrigger value="candidates" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-2 pb-4 font-bold">
@@ -267,6 +346,7 @@ export default function InterviewShow({ interview }: Props) {
                             <table className="w-full text-left">
                                 <thead className="bg-neutral-50 dark:bg-neutral-900/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-b border-sidebar-border">
                                     <tr>
+                                        <th className="px-6 py-4 w-24 text-center">Urutan</th>
                                         <th className="px-6 py-4">Siswa</th>
                                         <th className="px-6 py-4 text-center">Status</th>
                                         <th className="px-6 py-4">Catatan</th>
@@ -274,8 +354,32 @@ export default function InterviewShow({ interview }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border">
-                                    {interview?.details?.length > 0 ? interview.details.map((detail: any) => (
-                                        <tr key={detail.id} className="hover:bg-neutral-50/50 transition-colors">
+                                    {interview?.details?.length > 0 ? interview.details.sort((a: any, b: any) => a.order_number - b.order_number).map((detail: any, index: number) => (
+                                        <tr key={detail.id} className="hover:bg-neutral-50/50 transition-colors group">
+                                            <td className="px-4 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <input 
+                                                        type="number"
+                                                        defaultValue={detail.order_number || index + 1}
+                                                        onBlur={(e) => handleUpdateOrder(detail.id, e.target.value)}
+                                                        className="w-10 h-8 text-center text-xs font-bold border-none bg-neutral-100 rounded focus:bg-white focus:ring-1 focus:ring-blue-500"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <button 
+                                                            onClick={() => handleReorder(detail.id, detail.order_number || index + 1, 'up')}
+                                                            className="p-0.5 hover:bg-neutral-200 rounded text-neutral-400 hover:text-blue-600 transition-colors"
+                                                        >
+                                                            <ChevronUp size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleReorder(detail.id, detail.order_number || index + 1, 'down')}
+                                                            className="p-0.5 hover:bg-neutral-200 rounded text-neutral-400 hover:text-blue-600 transition-colors"
+                                                        >
+                                                            <ChevronDown size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 font-bold capitalize">
                                                 {detail.user?.student_profile?.full_name || 'No Name'}
                                             </td>
@@ -288,15 +392,23 @@ export default function InterviewShow({ interview }: Props) {
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 text-xs italic text-muted-foreground">{detail.remarks || '-'}</td>
-                                            <td className="px-6 py-4 text-right space-x-2">
+                                            <td className="px-6 py-4 text-right space-x-1">
                                                 <Button onClick={() => openUpdateModal(detail)} variant="outline" size="sm" className="h-8">Set Status</Button>
                                                 <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
                                                     <Button variant="ghost" size="sm" className="h-8 text-blue-600">Profil</Button>
                                                 </Link>
+                                                <Button 
+                                                    onClick={() => handleRemoveStudent(detail.id)} 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-8 text-neutral-300 hover:text-red-600 transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
                                             </td>
                                         </tr>
                                     )) : (
-                                        <tr><td colSpan={4} className="px-6 py-12 text-center text-muted-foreground italic">Belum ada pendaftar.</td></tr>
+                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">Belum ada pendaftar.</td></tr>
                                     )}
                                 </tbody>
                             </table>

@@ -140,14 +140,87 @@ class InterviewController extends Controller
         $interview = Interview::with([
             'company',
             'acceptingOrganization',
-            'details.user.studentProfile.educations',
-            'details.user.studentProfile.experiences',
-            'details.user.studentProfile.families'
+            'details.user.student_profile.educations',
+            'details.user.student_profile.experiences',
+            'details.user.student_profile.families'
         ])->findOrFail($id);
 
+        // TAMBAHKAN INI: Ambil daftar user dengan role student untuk fitur Assign
+        // Anda bisa memfilter agar siswa yang sudah terdaftar tidak muncul lagi
+        $alreadyAssignedIds = $interview->details->pluck('user_id');
+        // Ganti baris 151
+        $availableStudents = \App\Models\User::where('role', 'student') // Sesuaikan nama kolomnya, misal 'role' atau 'type'
+            ->with('student_profile')
+            ->whereNotIn('id', $alreadyAssignedIds)
+            ->get();
+
         return Inertia::render('admin/interview/Show', [
-            'interview' => $interview
+            'interview' => $interview,
+            'availableStudents' => $availableStudents // Kirim ke Frontend
         ]);
+    }
+
+    // Menambah siswa ke daftar wawancara (Assign)
+    public function assignStudent(Request $request, $interviewId) {
+        $request->validate(['user_id' => 'required|exists:users,id']);
+        
+        // Cek duplikasi agar tidak double assign
+        $exists = InterviewDetail::where('interview_id', $interviewId)
+            ->where('user_id', $request->user_id)
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['error' => 'Siswa sudah terdaftar.']);
+        }
+
+        // Hitung nomor urut terakhir
+        $lastOrder = InterviewDetail::where('interview_id', $interviewId)->max('order_number') ?? 0;
+
+        InterviewDetail::create([
+            'interview_id' => $interviewId,
+            'user_id' => $request->user_id,
+            'order_number' => $lastOrder + 1, // Otomatis nomor selanjutnya
+            'result' => 'waiting'
+        ]);
+
+        return back()->with('success', 'Siswa berhasil ditambahkan ke daftar.');
+    }
+
+    // Menghapus siswa dari daftar (Remove)
+    public function removeStudent($detailId) {
+        $detail = InterviewDetail::findOrFail($detailId);
+        $detail->delete();
+        
+        return back()->with('success', 'Siswa dihapus dari daftar.');
+    }
+
+    public function reorder(Request $request, $id)
+    {
+        $request->validate([
+            'direction' => 'required|in:up,down',
+            'current_order' => 'required|integer'
+        ]);
+
+        $currentDetail = InterviewDetail::findOrFail($id);
+        $interviewId = $currentDetail->interview_id;
+        $direction = $request->direction;
+        $currentOrder = $request->current_order;
+
+        // Cari tetangga (atas atau bawah)
+        $neighbor = InterviewDetail::where('interview_id', $interviewId)
+            ->where('order_number', $direction === 'up' ? '<' : '>', $currentOrder)
+            ->orderBy('order_number', $direction === 'up' ? 'desc' : 'asc')
+            ->first();
+
+        if ($neighbor) {
+            // Tukar nomor urut
+            $neighborOrder = $neighbor->order_number;
+            
+            $neighbor->update(['order_number' => $currentOrder]);
+            $currentDetail->update(['order_number' => $neighborOrder]);
+        }
+
+        return back()->with('success', 'Urutan berhasil diperbarui.');
     }
 
     /**

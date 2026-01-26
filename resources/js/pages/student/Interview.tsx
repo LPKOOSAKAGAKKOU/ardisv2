@@ -364,7 +364,7 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
                                         onClick={(e) => { e.stopPropagation(); handleShowParticipants(item.id, item.interviewer_title); }}
                                         className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 hover:bg-secondary hover:text-emerald-600 w-fit px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                                     >
-                                        <Users className="size-3" /> <span>{participantCount} Peserta Mendaftar (Lihat)</span>
+                                        <Users className="size-3" /> <span>Lihat Daftar Peserta</span>
                                     </button>
                                 )}
                             </div>

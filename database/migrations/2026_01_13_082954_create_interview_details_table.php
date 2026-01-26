@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('interview_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // Siswa
+            $table->integer('order_number')->nullable();
             $table->enum('result', ['waiting', 'passed', 'failed', 'reserved'])->default('waiting');
             $table->text('remarks')->nullable(); // Catatan performa siswa saat interview
             $table->timestamps();

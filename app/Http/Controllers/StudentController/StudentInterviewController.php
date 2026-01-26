@@ -127,11 +127,17 @@ class StudentInterviewController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Anda sudah terdaftar.'], 422);
         }
 
-        // Simpan
+        // --- TAMBAHAN LOGIKA NOMOR URUT ---
+        // Ambil nomor urut tertinggi saat ini untuk wawancara ini
+        $lastOrder = \App\Models\InterviewDetail::where('interview_id', $id)
+            ->max('order_number') ?? 0;
+
+        // Simpan dengan nomor urut baru
         \App\Models\InterviewDetail::create([
             'interview_id' => $id,
-            'user_id' => $user->id,
-            'result' => 'waiting',
+            'user_id'      => $user->id,
+            'order_number' => $lastOrder + 1, // <--- Masukkan ke sini
+            'result'       => 'waiting',
         ]);
 
         return response()->json(['status' => 'success', 'message' => 'Berhasil mendaftar!']);

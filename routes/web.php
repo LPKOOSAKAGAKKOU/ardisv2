@@ -68,6 +68,10 @@ Route::middleware([
     Route::post('/interviews/{id}/upload-kyuujinhyou', [InterviewController::class, 'uploadKyuujinhyou'])->name('interviews.upload-kyuujinhyou');
     Route::post('/interviews/{id}/preview-kyuujinhyou', [InterviewController::class, 'previewKyuujinhyou'])
         ->name('interviews.preview-kyuujinhyou');
+    
+    Route::post('/interviews/{id}/assign', [InterviewController::class, 'assignStudent']);
+    Route::delete('/interview-details/{id}', [InterviewController::class, 'removeStudent']);
+    Route::patch('/admin/interview-details/{id}/reorder', [InterviewController::class, 'reorder']);
 
     // --- MANAJEMEN ORGANISASI ---
     Route::resource('organizations', AcceptingOrganizationController::class);
