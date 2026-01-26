@@ -324,10 +324,10 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 <Select value={edu.level} onValueChange={v => { const updated = [...data.educations]; updated[idx].level = v; setData('educations', updated); }}>
                                                                     <SelectTrigger><SelectValue placeholder="Pilih Jenjang" /></SelectTrigger>
                                                                     <SelectContent>
-                                                                        <SelectItem value="SD">Sekolah Dasar (SD)</SelectItem>
-                                                                        <SelectItem value="SMP">SMP / Sederajat</SelectItem>
-                                                                        <SelectItem value="SMA/SMK">SMA / SMK / Sederajat</SelectItem>
-                                                                        <SelectItem value="Perguruan Tinggi">Perguruan Tinggi / Sarjana</SelectItem>
+                                                                        <SelectItem value="小学校">Sekolah Dasar (SD)</SelectItem>
+                                                                        <SelectItem value="中学校">SMP / Sederajat</SelectItem>
+                                                                        <SelectItem value="高校">SMA / SMK / Sederajat</SelectItem>
+                                                                        <SelectItem value="大学">Perguruan Tinggi / Sarjana</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                             </FormItem>
@@ -336,8 +336,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 <Select value={edu.school_type} onValueChange={v => { const updated = [...data.educations]; updated[idx].school_type = v; setData('educations', updated); }}>
                                                                     <SelectTrigger><SelectValue placeholder="Pilih Tipe" /></SelectTrigger>
                                                                     <SelectContent>
-                                                                        <SelectItem value="Negeri">Negeri</SelectItem>
-                                                                        <SelectItem value="Swasta">Swasta</SelectItem>
+                                                                        <SelectItem value="国立">Negeri</SelectItem>
+                                                                        <SelectItem value="私立">Swasta</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
                                                             </FormItem>

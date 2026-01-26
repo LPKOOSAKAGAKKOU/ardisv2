@@ -123,7 +123,7 @@ class CvGenerator extends Controller
         foreach ($profile->educations->take(4) as $edu) {
             $sheet->setCellValue('E'.$row, Carbon::parse($edu->entry_date)->format('Y年 m月'));
             $sheet->setCellValue('I'.$row, Carbon::parse($edu->graduation_date)->format('Y年 m月'));
-            $sheet->setCellValue('M'.$row, $edu->school_type . ' ' . $edu->school_name);
+            $sheet->setCellValue('M'.$row, $edu->school_type . $edu->school_level . ' ' . $edu->school_name);
             $sheet->setCellValue('AI'.$row, $masterMajors[strtolower(trim($edu->major))] ?? $edu->major);
             $sheet->getStyle("E$row:AI$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $row++;
