@@ -340,99 +340,94 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Detail - ${interview?.interviewer_title || 'Wawancara'}`} />
 
-            <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto pb-32">
-                {/* Navigation & Actions */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* CONTAINER UTAMA: Mengikuti pola Dashboard agar tidak terpotong */}
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8 w-full overflow-x-hidden overflow-y-auto">
+                
+                {/* Header Actions */}
+                <div className="flex items-center justify-between">
                     <Link href="/admin/interviews">
-                        <Button variant="ghost" size="sm" className="-ml-2"><ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Index</Button>
+                        <Button variant="ghost" size="sm" className="-ml-2">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> 
+                            <span className="hidden sm:inline">Kembali</span>
+                        </Button>
                     </Link>
                     <Link href={`/admin/interviews/${interview?.id}/edit`}>
-                        <Button variant="default" className="w-full sm:w-auto shadow-sm">Edit Jadwal</Button>
+                        <Button variant="outline" size="sm">Edit Jadwal</Button>
                     </Link>
                 </div>
 
-                {/* Hero Information Card */}
-                <div className="relative bg-white dark:bg-zinc-950 rounded-3xl border border-neutral-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-                    
-                    <div className="p-6 md:p-10 flex flex-col lg:flex-row gap-8 relative z-10">
-                        {/* Info Section */}
-                        <div className="flex-1 space-y-6">
-                            <div className="space-y-2">
-                                <Badge className="bg-blue-600 text-white hover:bg-blue-700 rounded-md px-3 py-1 text-[10px] tracking-widest font-bold">
-                                    {interview?.accepting_organization?.type || 'INTERVIEW JOB'}
+                {/* Info Card: Dibuat responsif tanpa memaksa lebar */}
+                <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 dark:border-sidebar-border overflow-hidden">
+                    <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-sidebar-border/70">
+                        {/* Detail Utama */}
+                        <div className="flex-1 p-6 space-y-4">
+                            <div>
+                                <Badge className="bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 border-none mb-2">
+                                    {interview?.accepting_organization?.type || 'JOB'}
                                 </Badge>
-                                <h1 className="text-2xl md:text-4xl font-black text-neutral-900 dark:text-white leading-tight">
+                                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
                                     {interview?.interviewer_title || 'No Title'}
                                 </h1>
                             </div>
                             
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-12">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Company</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600"><Building2 size={18} /></div>
-                                        <span className="font-bold text-sm">{interview?.company?.name || '-'}</span>
-                                    </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Building2 size={16} className="text-blue-500 flex-shrink-0" />
+                                    <span className="font-medium truncate">{interview?.company?.name || '-'}</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Location</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-rose-600"><MapPin size={18} /></div>
-                                        <span className="font-bold text-sm">{interview?.company?.prefecture || 'Japan'}</span>
-                                    </div>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <MapPin size={16} className="text-red-500 flex-shrink-0" />
+                                    <span>{interview?.company?.prefecture || 'Japan'}</span>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Interview Date</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg text-amber-600"><Calendar size={18} /></div>
-                                        <span className="font-bold text-sm">{formatDateSafe(interview?.interview_date)}</span>
-                                    </div>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Calendar size={16} className="text-amber-500 flex-shrink-0" />
+                                    <span>{formatDateSafe(interview?.interview_date)}</span>
                                 </div>
-                                <div className="space-y-1 text-rose-600">
-                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Registration Deadline</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-lg"><Clock size={18} /></div>
-                                        <span className="font-black text-sm">{formatDateSafe(interview?.interview_registration_deadline)}</span>
-                                    </div>
+                                <div className="flex items-center gap-2 text-rose-600 font-semibold">
+                                    <Clock size={16} className="flex-shrink-0" />
+                                    <span>Deadline: {formatDateSafe(interview?.interview_registration_deadline)}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Document Panel */}
-                        <div className="lg:w-80 flex flex-col items-center justify-center p-8 bg-neutral-50 dark:bg-zinc-900/50 rounded-2xl border-2 border-dashed border-neutral-200 dark:border-zinc-800 transition-colors">
-                            <FileText className={interview?.kyuujinhyou_yunerva_uuid ? "text-emerald-500" : "text-neutral-300"} size={48} />
-                            <h3 className="mt-4 font-bold text-sm">Kyuujinhyou PDF</h3>
-                            <p className="text-[11px] text-neutral-500 mb-6 text-center">Pastikan dokumen sesuai dengan spesifikasi pekerjaan.</p>
+                        {/* Kyuujinhyou Section: Dibuat lebih ringkas di mobile */}
+                        <div className="bg-neutral-50/50 dark:bg-zinc-900/30 p-6 lg:w-80 flex flex-col justify-center gap-4">
+                            <div className="flex items-center gap-3 lg:flex-col lg:text-center">
+                                <FileText className={interview?.kyuujinhyou_yunerva_uuid ? "text-green-600" : "text-muted-foreground"} size={32} />
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wider">Kyuujinhyou</p>
+                                    <p className="text-[10px] text-muted-foreground">PDF Document</p>
+                                </div>
+                            </div>
                             
-                            <div className="w-full space-y-3">
+                            <div className="grid grid-cols-1 gap-2">
                                 {!isUploading ? (
                                     <>
-                                        <label className="block w-full">
+                                        <label className="w-full">
                                             <Input type="file" className="hidden" onChange={handleUploadKyuujinhyou} accept="application/pdf" />
-                                            <Button variant={interview?.kyuujinhyou_yunerva_uuid ? "outline" : "default"} className="w-full h-11 text-xs font-bold gap-2" asChild>
-                                                <span><Upload size={16} /> {interview?.kyuujinhyou_yunerva_uuid ? "Update Dokumen" : "Upload Dokumen"}</span>
+                                            <Button variant="outline" className="w-full h-9 text-xs" asChild>
+                                                <span><Upload className="mr-2 h-3.5 w-3.5" /> Upload</span>
                                             </Button>
                                         </label>
                                         {interview?.kyuujinhyou_yunerva_uuid && (
-                                            <div className="flex gap-2">
-                                                <Button variant="secondary" className="flex-1 h-10 text-[11px] font-black tracking-tighter" onClick={handlePreview} disabled={isLoadingPreview}>
-                                                    {isLoadingPreview ? "LOADING..." : "PREVIEW"}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Button variant="secondary" size="sm" className="h-8 text-[10px] font-bold" onClick={handlePreview} disabled={isLoadingPreview}>
+                                                    PREVIEW
                                                 </Button>
-                                                <Button variant="secondary" className="flex-1 h-10 text-[11px] font-black tracking-tighter text-emerald-600" onClick={handleDownload}>
+                                                <Button variant="secondary" size="sm" className="h-8 text-[10px] font-bold text-green-700" onClick={handleDownload}>
                                                     UNDUH
                                                 </Button>
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <div className="w-full space-y-3">
-                                        <div className="flex justify-between text-[11px] font-bold text-blue-600">
-                                            <span className="animate-pulse">UPLOADING...</span>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[10px] font-bold text-blue-600">
+                                            <span>UPLOADING...</span>
                                             <span>{uploadProgress}%</span>
                                         </div>
-                                        <div className="w-full bg-neutral-200 dark:bg-zinc-800 rounded-full h-2 overflow-hidden shadow-inner">
-                                            <div className="bg-blue-600 h-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }} />
+                                        <div className="w-full bg-neutral-200 rounded-full h-1 overflow-hidden">
+                                            <div className="bg-blue-600 h-full transition-all" style={{ width: `${uploadProgress}%` }} />
                                         </div>
                                     </div>
                                 )}
@@ -441,89 +436,97 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
                 </div>
 
-                {/* Main Content Tabs */}
-                <Tabs defaultValue="candidates" className="w-full">
-                    <div className="sticky top-0 z-20 bg-neutral-50 dark:bg-zinc-950/80 backdrop-blur-md pt-2 border-b border-neutral-200 dark:border-zinc-800">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2">
-                            <TabsList className="bg-transparent w-auto justify-start rounded-none h-auto p-0 gap-6">
-                                <TabsTrigger value="candidates" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 font-black text-sm uppercase tracking-tighter">
-                                    Daftar Peserta <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">{localDetails.length}</Badge>
-                                </TabsTrigger>
-                                <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 font-black text-sm uppercase tracking-tighter">
-                                    Deskripsi
-                                </TabsTrigger>
-                            </TabsList>
-
-                            {/* Assign Input Inline with Tabs for Desktop */}
-                            <div className="w-full md:w-80 relative mb-2">
-                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-neutral-400">
-                                    <UserPlus size={16} />
-                                </div>
-                                <Input 
-                                    placeholder="Cari siswa untuk ditambahkan..." 
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 h-10 bg-white dark:bg-zinc-900 border-neutral-200 focus-visible:ring-blue-500 rounded-full"
-                                />
-                                {filteredStudents.length > 0 && (
-                                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-zinc-900 border rounded-2xl shadow-2xl max-h-80 overflow-auto border-neutral-100 p-2 space-y-1">
-                                        {filteredStudents.map((student) => (
-                                            <button
-                                                key={student.id}
-                                                onClick={() => handleAssignStudent(student.id)}
-                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl flex items-center justify-between group transition-all"
-                                            >
-                                                <div className="min-w-0">
-                                                    <p className="font-bold text-sm truncate">{student.student_profile?.full_name}</p>
-                                                    <p className="text-[10px] text-neutral-400 truncate uppercase">{student.email}</p>
-                                                </div>
-                                                <ChevronRight size={16} className="text-neutral-300 group-hover:text-blue-600" />
-                                            </button>
-                                        ))}
+                {/* Assignment Input: Meniru pola Dashboard search */}
+                <div className="relative group">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground">
+                        <UserPlus size={18} />
+                    </div>
+                    <Input 
+                        placeholder="Tambahkan siswa ke daftar..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 h-12 bg-white dark:bg-zinc-950 border-sidebar-border/70 rounded-xl focus-visible:ring-blue-500"
+                    />
+                    {filteredStudents.length > 0 && (
+                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-zinc-900 border border-sidebar-border rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                            {filteredStudents.map((student) => (
+                                <button
+                                    key={student.id}
+                                    onClick={() => handleAssignStudent(student.id)}
+                                    className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-zinc-800 flex items-center justify-between border-b last:border-0 border-sidebar-border"
+                                >
+                                    <div className="min-w-0 pr-4">
+                                        <p className="font-bold text-sm truncate">{student.student_profile?.full_name}</p>
+                                        <p className="text-[10px] text-muted-foreground truncate uppercase">{student.email}</p>
                                     </div>
-                                )}
-                            </div>
+                                    <Badge variant="outline" className="flex-shrink-0">Pilih</Badge>
+                                </button>
+                            ))}
                         </div>
+                    )}
+                </div>
+
+                {/* Tabs & List */}
+                <Tabs defaultValue="candidates" className="w-full flex flex-col">
+                    <div className="flex items-center justify-between border-b border-sidebar-border/70 mb-4">
+                        <TabsList className="bg-transparent h-auto p-0 gap-4">
+                            <TabsTrigger value="candidates" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-3 font-bold text-sm">
+                                Peserta ({localDetails.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-3 font-bold text-sm">
+                                Deskripsi
+                            </TabsTrigger>
+                        </TabsList>
+
+                        {hasChanges && (
+                            <Button 
+                                onClick={saveNewOrder} 
+                                className="bg-green-600 hover:bg-green-700 text-white h-8 mb-2 px-3 text-xs"
+                                size="sm"
+                            >
+                                <Save className="mr-2 h-3.5 w-3.5" /> Simpan Urutan
+                            </Button>
+                        )}
                     </div>
 
-                    <TabsContent value="candidates" className="mt-8">
-                        <div className="bg-white dark:bg-zinc-950 rounded-2xl border border-neutral-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                            {/* Table Header Desktop */}
-                            <div className="hidden md:flex bg-neutral-50 dark:bg-zinc-900/50 border-b border-neutral-100 dark:border-zinc-800 py-3 px-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                                <div className="w-20 pl-6 text-center">Urutan</div>
-                                <div className="flex-1">Nama Siswa</div>
-                                <div className="w-32 text-center">Status</div>
-                                <div className="flex-1">Evaluasi/Catatan</div>
-                                <div className="w-64 text-right pr-4">Opsi</div>
-                            </div>
-
-                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <SortableContext items={localDetails.map((i:any) => i.id)} strategy={verticalListSortingStrategy}>
-                                    <div className="flex flex-col">
-                                        {localDetails.length > 0 ? localDetails.map((detail: any, index: number) => (
-                                            <SortableRow 
-                                                key={detail.id} 
-                                                detail={detail} 
-                                                index={index}
-                                                onRemove={handleRemoveStudent}
-                                                onUpdateModal={openUpdateModal}
-                                                interviewId={interview.id}
-                                            />
-                                        )) : (
-                                            <div className="py-20 text-center flex flex-col items-center justify-center opacity-40">
-                                                <Users size={48} className="mb-4" />
-                                                <p className="text-sm font-medium italic">Belum ada kandidat yang terdaftar.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </SortableContext>
-                            </DndContext>
+                    <TabsContent value="candidates" className="m-0">
+                        {/* Wrapper tabel dengan overflow-x-auto agar tidak memotong layar */}
+                        <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 overflow-hidden overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
+                                <thead className="bg-neutral-50/50 dark:bg-zinc-900/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-sidebar-border/70">
+                                    <tr>
+                                        <th className="px-4 py-3 w-16 text-center">#</th>
+                                        <th className="px-4 py-3">Nama Siswa</th>
+                                        <th className="px-4 py-3 text-center">Status</th>
+                                        <th className="px-4 py-3">Catatan</th>
+                                        <th className="px-4 py-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-sidebar-border/70">
+                                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                        <SortableContext items={localDetails.map((i:any) => i.id)} strategy={verticalListSortingStrategy}>
+                                            {localDetails.length > 0 ? localDetails.map((detail: any, index: number) => (
+                                                <SortableRow 
+                                                    key={detail.id} 
+                                                    detail={detail} 
+                                                    index={index}
+                                                    onRemove={handleRemoveStudent}
+                                                    onUpdateModal={openUpdateModal}
+                                                    interviewId={interview.id}
+                                                />
+                                            )) : (
+                                                <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground italic text-sm">Belum ada pendaftar.</td></tr>
+                                            )}
+                                        </SortableContext>
+                                    </DndContext>
+                                </tbody>
+                            </table>
                         </div>
                     </TabsContent>
                     
-                    <TabsContent value="details" className="mt-8">
-                        <div className="bg-white dark:bg-zinc-950 p-8 rounded-2xl border border-neutral-200 dark:border-zinc-800 whitespace-pre-line text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 max-w-4xl shadow-sm">
-                            {interview?.description || "Tidak ada rincian deskripsi tambahan untuk lowongan ini."}
+                    <TabsContent value="details" className="m-0">
+                        <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 p-6 text-sm leading-relaxed whitespace-pre-line">
+                            {interview?.description || "Tidak ada deskripsi."}
                         </div>
                     </TabsContent>
                 </Tabs>
