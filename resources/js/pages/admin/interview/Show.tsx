@@ -63,109 +63,72 @@ interface Props {
 
 // --- KOMPONEN BARIS / CARD YANG BISA DI DRAG ---
 function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: any) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: detail.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 'auto',
-    };
-
-    const statusColors: any = {
-        passed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        failed: "bg-rose-50 text-rose-700 border-rose-200",
-        waiting: "bg-amber-50 text-amber-700 border-amber-200",
-        reserved: "bg-blue-50 text-blue-700 border-blue-200",
+        position: 'relative' as const,
     };
 
     return (
-        <div 
+        <tr 
             ref={setNodeRef} 
             style={style} 
-            className={`group relative flex flex-col md:flex-row items-start md:items-center gap-4 p-4 md:px-6 md:py-4 bg-white dark:bg-zinc-950 border-b border-neutral-100 dark:border-zinc-800 transition-all ${isDragging ? 'shadow-xl ring-1 ring-blue-200 z-10 scale-[1.02] rounded-lg' : ''}`}
+            className={`group transition-colors ${isDragging ? 'bg-white shadow-lg opacity-80' : 'hover:bg-neutral-50/50'}`}
         >
-            {/* Drag Handle & Numbering */}
-            <div className="flex items-center gap-3 w-full md:w-auto">
-                <button {...attributes} {...listeners} className="p-2 -ml-2 cursor-grab active:cursor-grabbing text-neutral-400 hover:text-blue-600 transition-colors">
-                    <GripVertical size={20} />
-                </button>
-                <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-zinc-800 text-xs font-bold text-neutral-600">
-                    {index + 1}
-                </span>
-                
-                {/* Mobile Identity */}
-                <div className="md:hidden flex-1 min-w-0">
-                    <p className="font-bold truncate">{detail.user?.student_profile?.full_name || 'No Name'}</p>
-                    <Badge variant="outline" className={`text-[10px] h-5 ${statusColors[detail.result] || "bg-neutral-50"}`}>
-                        {detail.result?.toUpperCase() || 'PENDING'}
-                    </Badge>
+            {/* Kolom Urutan # */}
+            <td className="px-4 py-4 w-16 text-center">
+                <div className="flex items-center justify-center gap-2">
+                    <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-blue-600 transition-colors">
+                        <GripVertical size={16} />
+                    </button>
+                    <span className="text-xs font-mono font-bold text-neutral-500">{index + 1}</span>
                 </div>
+            </td>
 
-                {/* Mobile Actions Dropdown */}
-                <div className="md:hidden">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreVertical size={18} /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onUpdateModal(detail)}>Set Status</DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">Download CV</a>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>Lihat Profil</Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onRemove(detail.id)} className="text-red-600">Hapus</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+            {/* Kolom Nama Siswa */}
+            <td className="px-4 py-4 min-w-[200px]">
+                <div className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
+                    {detail.user?.student_profile?.full_name || 'No Name'}
                 </div>
-            </div>
+            </td>
 
-            {/* Desktop Content */}
-            <div className="hidden md:block flex-1 min-w-0">
-                <p className="font-bold text-sm truncate">{detail.user?.student_profile?.full_name || 'No Name'}</p>
-            </div>
-
-            <div className="hidden md:block w-32 text-center">
-                <Badge variant="outline" className={`font-bold ${statusColors[detail.result] || "bg-neutral-50"}`}>
-                    {detail.result?.toUpperCase() || 'PENDING'}
+            {/* Kolom Status */}
+            <td className="px-4 py-4 w-32 text-center">
+                <Badge variant="outline" className={`text-[10px] font-bold ${
+                    detail.result === 'passed' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                    detail.result === 'failed' ? "bg-rose-50 text-rose-700 border-rose-100" : 
+                    "bg-neutral-50 text-neutral-600 border-neutral-100"
+                }`}>
+                    {detail.result?.toUpperCase() || 'WAITING'}
                 </Badge>
-            </div>
+            </td>
 
-            <div className="hidden md:block flex-1 text-xs text-muted-foreground line-clamp-1 italic">
-                {detail.remarks || '-'}
-            </div>
+            {/* Kolom Catatan */}
+            <td className="px-4 py-4">
+                <p className="text-xs text-neutral-500 italic line-clamp-1">{detail.remarks || '-'}</p>
+            </td>
 
-            {/* Desktop Action Buttons */}
-            <div className="hidden md:flex items-center gap-1">
-                 <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
-                    <Button variant="outline" size="sm" className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5">
-                        <FileSpreadsheet size={14} /> CV
+            {/* Kolom Aksi */}
+            <td className="px-4 py-4 w-64 text-right">
+                <div className="flex items-center justify-end gap-1">
+                    <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
+                        <Button variant="outline" size="sm" className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5">
+                            <FileSpreadsheet size={14} /> CV
+                        </Button>
+                    </a>
+                    <Button onClick={() => onUpdateModal(detail)} variant="secondary" size="sm" className="h-8">Status</Button>
+                    <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 text-blue-600 font-bold">Profil</Button>
+                    </Link>
+                    <Button onClick={() => onRemove(detail.id)} variant="ghost" size="sm" className="h-8 text-neutral-300 hover:text-rose-600">
+                        <Trash2 size={16} />
                     </Button>
-                </a>
-                <Button onClick={() => onUpdateModal(detail)} variant="secondary" size="sm" className="h-8 font-semibold">Status</Button>
-                <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
-                    <Button variant="ghost" size="sm" className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">Profil</Button>
-                </Link>
-                <Button onClick={() => onRemove(detail.id)} variant="ghost" size="sm" className="h-8 text-neutral-400 hover:text-red-600">
-                    <Trash2 size={16} />
-                </Button>
-            </div>
-
-            {/* Mobile Remarks Overlay (if exists) */}
-            {detail.remarks && (
-                <div className="md:hidden w-full mt-1 p-2 rounded bg-neutral-50 dark:bg-zinc-900 text-[11px] text-neutral-500 italic">
-                    "{detail.remarks}"
                 </div>
-            )}
-        </div>
+            </td>
+        </tr>
     );
 }
 
@@ -501,15 +464,15 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
                     <TabsContent value="candidates" className="m-0">
                         {/* Wrapper tabel dengan overflow-x-auto agar tidak memotong layar */}
-                        <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 overflow-hidden overflow-x-auto">
-                            <table className="w-full text-left border-collapse min-w-[600px]">
-                                <thead className="bg-neutral-50/50 dark:bg-zinc-900/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-sidebar-border/70">
-                                    <tr>
-                                        <th className="px-4 py-3 w-16 text-center">#</th>
-                                        <th className="px-4 py-3">Nama Siswa</th>
-                                        <th className="px-4 py-3 text-center">Status</th>
-                                        <th className="px-4 py-3">Catatan</th>
-                                        <th className="px-4 py-3 text-right">Aksi</th>
+                        <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[800px]">
+                                <thead>
+                                    <tr className="bg-neutral-50/50 dark:bg-zinc-900/50 border-b border-sidebar-border/70">
+                                        <th className="px-4 py-3.5 w-16 text-center text-[10px] font-black uppercase tracking-widest text-neutral-400">#</th>
+                                        <th className="px-4 py-3.5 min-w-[200px] text-[10px] font-black uppercase tracking-widest text-neutral-400">Nama Siswa</th>
+                                        <th className="px-4 py-3.5 w-32 text-center text-[10px] font-black uppercase tracking-widest text-neutral-400">Status</th>
+                                        <th className="px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-neutral-400">Catatan/Evaluasi</th>
+                                        <th className="px-4 py-3.5 w-64 text-right text-[10px] font-black uppercase tracking-widest text-neutral-400">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
@@ -525,7 +488,12 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     interviewId={interview.id}
                                                 />
                                             )) : (
-                                                <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground italic text-sm">Belum ada pendaftar.</td></tr>
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-20 text-center">
+                                                        <Users className="mx-auto h-10 w-10 text-neutral-200 mb-2" />
+                                                        <p className="text-sm text-neutral-400 italic">Belum ada peserta yang ditambahkan.</p>
+                                                    </td>
+                                                </tr>
                                             )}
                                         </SortableContext>
                                     </DndContext>
