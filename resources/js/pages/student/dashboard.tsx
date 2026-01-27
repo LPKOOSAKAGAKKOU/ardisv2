@@ -200,25 +200,192 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-8">
                 {/* --- HEADER --- */}
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight text-foreground">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    {/* Left Side: Greeting */}
+                    <div className="flex-1">
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
                             Halo, {student?.full_name || 'Calon Siswa'}! 👋
                         </h1>
-                        <p className="text-muted-foreground text-sm font-medium">
+                        <p className="text-muted-foreground text-xs sm:text-sm font-medium mt-1">
                             {student 
                                 ? 'Kelola dokumen dan pantau progres karir Jepang Anda.' 
                                 : 'Selamat datang! Langkah pertama Anda dimulai dari pengisian profil.'}
                         </p>
                     </div>
-                    
+
+                    {/* Right Side: Edit Profile Button (Only if student exists) */}
                     {student && (
                         <Link 
                             href={route('student.profile.edit')} 
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-5 py-3 text-sm font-bold text-background shadow-lg hover:opacity-90 transition-all active:scale-95"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-background shadow-lg hover:opacity-90 transition-all active:scale-95 whitespace-nowrap"
                         >
-                            <Edit3 className="size-4" /> Edit Profil Lengkap
+                            <Edit3 className="size-3.5 sm:size-4" /> Edit Profil Lengkap
                         </Link>
+                    )}
+                </div>
+
+                {/* --- CARD SECTION: Company Placement OR Interview Schedule --- */}
+                <div className="mt-6">
+                    {passedApplication ? (
+                        /* ========== CARD: LULUS SELEKSI - INFO PERUSAHAAN ========== */
+                        <div className="rounded-2xl sm:rounded-[2rem] border bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
+                            {/* Background decoration */}
+                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 sm:w-32 sm:h-32 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
+
+                            {/* Header */}
+                            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-emerald-700">
+                                    <Building2 className="size-4 sm:size-5" /> Perusahaan Penempatan
+                                </h2>
+                                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                    Lulus Seleksi
+                                </Badge>
+                            </div>
+
+                            {/* Content Card */}
+                            <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-emerald-100/50 shadow-sm">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                                    {/* Left: Job Position */}
+                                    <div>
+                                        <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Posisi Pekerjaan</p>
+                                        <h3 className="text-xl sm:text-2xl font-black text-foreground mb-2">
+                                            {passedApplication.interview.interviewer_title}
+                                        </h3>
+                                        <p className="text-xs sm:text-sm font-medium text-emerald-600 bg-emerald-100/50 px-3 py-1 rounded-full w-fit">
+                                            Program: {passedApplication.interview.type === 'ginoujisshuu' ? 'Magang (Ginou Jisshuu)' : 'Tokutei Ginou (TG)'}
+                                        </p>
+                                    </div>
+
+                                    {/* Right: Company Details */}
+                                    <div className="space-y-3 sm:space-y-4">
+                                        {/* Company Name */}
+                                        <div className="flex items-start gap-2 sm:gap-3">
+                                            <div className="mt-1 p-1.5 sm:p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
+                                                <Building2 className="size-4 sm:size-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Nama Perusahaan</p>
+                                                <p className="font-bold text-base sm:text-lg text-foreground break-words">
+                                                    {passedApplication.interview.company?.name || 'Nama Perusahaan Dirahasiakan'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Location */}
+                                        <div className="flex items-start gap-2 sm:gap-3">
+                                            <div className="mt-1 p-1.5 sm:p-2 bg-orange-50 text-orange-600 rounded-lg flex-shrink-0">
+                                                <MapPin className="size-4 sm:size-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Lokasi</p>
+                                                <p className="font-semibold text-sm sm:text-base text-foreground break-words">
+                                                    {passedApplication.interview.company?.address || 'Jepang'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Departure Date */}
+                                        {passedApplication.interview.date_fly_to_japan && (
+                                            <div className="flex items-start gap-2 sm:gap-3">
+                                                <div className="mt-1 p-1.5 sm:p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
+                                                    <PlaneTakeoff className="size-4 sm:size-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Estimasi Keberangkatan</p>
+                                                    <p className="font-bold text-sm sm:text-base text-foreground">
+                                                        {new Date(passedApplication.interview.date_fly_to_japan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer: Action Button */}
+                                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-emerald-100 flex justify-end">
+                                    <Button 
+                                        onClick={() => router.visit(route('student.interviews.index'))}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 text-xs sm:text-sm w-full sm:w-auto"
+                                    >
+                                        <FileText className="size-3.5 sm:size-4 mr-2" /> Lengkapi Dokumen Keberangkatan
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                    ) : (
+                        /* ========== CARD: BELUM LULUS - JADWAL WAWANCARA ========== */
+                        <div className="rounded-2xl sm:rounded-[2rem] border bg-card p-4 sm:p-6 lg:p-8 shadow-sm">
+                            {/* Header */}
+                            <div className="mb-4 sm:mb-6 flex items-center justify-between">
+                                <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-muted-foreground">
+                                    <Calendar className="size-4 sm:size-5 text-emerald-600" /> Agenda Wawancara
+                                </h2>
+                            </div>
+                            
+                            {/* Interview List OR Empty State */}
+                            {interviews && interviews.length > 0 ? (
+                                <div className="space-y-3 sm:space-y-4">
+                                    {/* Tampilkan HANYA 1 wawancara teratas */}
+                                    {(() => {
+                                        const item = interviews[0]; // Ambil wawancara pertama
+                                        const dateObj = new Date(item.interview_date);
+                                        const formattedDate = dateObj.toLocaleDateString('id-ID', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric'
+                                        }).toUpperCase();
+
+                                        return (
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl sm:rounded-2xl">
+                                                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                                    <div className="bg-emerald-100 p-2 sm:p-3 rounded-xl text-emerald-700 flex-shrink-0">
+                                                        <Clock size={18} className="sm:w-5 sm:h-5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-bold text-sm sm:text-base text-foreground uppercase truncate">
+                                                            {item.interviewer_title || 'INTERVIEW KERJA'}
+                                                        </p>
+                                                        {item.company && (
+                                                            <p className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase mb-1 truncate">
+                                                                {item.company.name}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">
+                                                            {formattedDate}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Badge className="bg-emerald-600 hover:bg-emerald-700 border-none shadow-none text-xs w-fit">
+                                                    MENDATANG
+                                                </Badge>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* Tombol Lihat Selengkapnya (jika ada lebih dari 1 wawancara) */}
+                                    {interviews.length > 0 && (
+                                        <div className="flex justify-center pt-2">
+                                            <Button 
+                                                onClick={() => router.visit(route('student.interviews.index'))}
+                                                variant="outline"
+                                                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-bold rounded-xl text-xs sm:text-sm"
+                                            >
+                                                <Calendar className="size-3.5 sm:size-4 mr-2" /> 
+                                                Lihat Semua Wawancara ({interviews.length})
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-muted-foreground bg-secondary/20 rounded-xl sm:rounded-[1.5rem] border-2 border-dashed border-muted">
+                                    <AlertCircle className="mb-2 sm:mb-3 size-6 sm:size-8 opacity-20" />
+                                    <p className="text-xs sm:text-sm font-bold opacity-40 uppercase tracking-tighter text-center px-4">
+                                        Belum ada jadwal wawancara aktif
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -347,6 +514,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                             </div>
                         </div>
                     ) : (
+
                             <div className="space-y-6">
                                 {/* STATUS BADGE UTAMA */}
                                 <div className="rounded-[2rem] border bg-card p-6 shadow-sm">
@@ -974,142 +1142,6 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                             Data keluarga inti diperlukan sebagai jaminan darurat dan syarat administrasi penjamin di Jepang
                                         </div>
                                     </CollapsibleSection>
-                                )}
-
-                                {/* Logic: Jika SUDAH LULUS -> Tampilkan Info Perusahaan */}
-                                {passedApplication ? (
-                                    <div className="rounded-[2rem] border bg-gradient-to-br from-emerald-50 to-teal-50 p-8 shadow-sm relative overflow-hidden">
-                                        {/* Background decoration */}
-                                        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
-
-                                        <div className="mb-6 flex items-center justify-between relative z-10">
-                                            <h2 className="flex items-center gap-3 font-black uppercase text-sm tracking-widest text-emerald-700">
-                                                <Building2 className="size-5" /> Perusahaan Penempatan
-                                            </h2>
-                                            <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-none px-4 py-1 uppercase tracking-wider font-bold">
-                                                Lulus Seleksi
-                                            </Badge>
-                                        </div>
-
-                                        <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-2xl p-6 border border-emerald-100/50 shadow-sm">
-                                            <div className="grid md:grid-cols-2 gap-8">
-                                                <div>
-                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Posisi Pekerjaan</p>
-                                                    <h3 className="text-2xl font-black text-foreground mb-1">
-                                                        {passedApplication.interview.interviewer_title}
-                                                    </h3>
-                                                    <p className="text-sm font-medium text-emerald-600 bg-emerald-100/50 px-3 py-1 rounded-full w-fit">
-                                                        Program: {passedApplication.interview.type === 'ginoujisshuu' ? 'Magang (Ginou Jisshuu)' : 'Tokutei Ginou (TG)'}
-                                                    </p>
-                                                </div>
-
-                                                <div className="space-y-4">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="mt-1 p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                                            <Building2 className="size-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Nama Perusahaan</p>
-                                                            <p className="font-bold text-lg text-foreground">
-                                                                {passedApplication.interview.company?.name || 'Nama Perusahaan Dirahasiakan'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="mt-1 p-2 bg-orange-50 text-orange-600 rounded-lg">
-                                                            <MapPin className="size-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Lokasi</p>
-                                                            <p className="font-semibold text-foreground">
-                                                                {passedApplication.interview.company?.address || 'Jepang'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {passedApplication.interview.date_fly_to_japan && (
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="mt-1 p-2 bg-purple-50 text-purple-600 rounded-lg">
-                                                                <PlaneTakeoff className="size-5" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Estimasi Keberangkatan</p>
-                                                                <p className="font-bold text-foreground">
-                                                                    {new Date(passedApplication.interview.date_fly_to_japan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-6 pt-6 border-t border-emerald-100 flex justify-end">
-                                                <Button 
-                                                    onClick={() => router.visit(route('student.interviews.index'))} // Arahkan ke halaman dokumen
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200"
-                                                >
-                                                    <FileText className="size-4 mr-2" /> Lengkapi Dokumen Keberangkatan
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                ) : (
-                                    /* Logic: Jika BELUM Lulus -> Tampilkan Jadwal Wawancara (Kode Lama Anda) */
-                                    <div className="rounded-[2rem] border bg-card p-8 shadow-sm">
-                                        <div className="mb-6 flex items-center justify-between">
-                                            <h2 className="flex items-center gap-3 font-black uppercase text-sm tracking-widest text-muted-foreground">
-                                                <Calendar className="size-5 text-emerald-600" /> Agenda Wawancara
-                                            </h2>
-                                        </div>
-                                        
-                                        {interviews && interviews.length > 0 ? (
-                                            <div className="space-y-4">
-                                                {interviews.map((item, idx) => {
-                                                    const dateObj = new Date(item.interview_date);
-                                                    const formattedDate = dateObj.toLocaleDateString('id-ID', {
-                                                        day: 'numeric',
-                                                        month: 'long',
-                                                        year: 'numeric'
-                                                    }).toUpperCase();
-
-                                                    return (
-                                                        <div key={idx} className="flex items-center justify-between p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="bg-emerald-100 p-3 rounded-xl text-emerald-700">
-                                                                    <Clock size={20} />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-bold text-foreground uppercase">
-                                                                        {item.interviewer_title || 'INTERVIEW KERJA'}
-                                                                    </p>
-                                                                    {item.company && (
-                                                                        <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">
-                                                                            {item.company.name}
-                                                                        </p>
-                                                                    )}
-                                                                    <p className="text-xs text-muted-foreground font-medium">
-                                                                        {formattedDate}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <Badge className="bg-emerald-600 hover:bg-emerald-700 border-none shadow-none">
-                                                                MENDATANG
-                                                            </Badge>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-secondary/20 rounded-[1.5rem] border-2 border-dashed border-muted">
-                                                <AlertCircle className="mb-3 size-8 opacity-20" />
-                                                <p className="text-sm font-bold opacity-40 uppercase tracking-tighter">
-                                                    Belum ada jadwal wawancara aktif
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
                                 )}
                             </div>
                         )}
