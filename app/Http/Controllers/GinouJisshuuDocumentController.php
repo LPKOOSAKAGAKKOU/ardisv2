@@ -72,8 +72,14 @@ class GinouJisshuuDocumentController extends Controller
         // --- 8. TABEL OTOMATIS (Pekerjaan dengan CloneRow) ---
         // Ambil maksimal 5 data terbaru agar tidak merusak halaman berikutnya
         $workExp = $profile->experiences->sortByDesc('start_date')->take(5)->values();
+        // Di dalam fungsi generate
         $tr = new GoogleTranslate('id'); // Target bahasa Indonesia
-        $industriIndo = $tr->translate($passedInterview?->interview->company->industry);
+
+        // Ambil teks aslinya
+        $rawIndustry = $passedInterview?->interview->company->industry ?? '-';
+
+        // Terjemahkan lalu PAKSA JADI KAPITAL
+        $industriIndo = strtoupper($tr->translate($rawIndustry));
 
         // --- 6. DATA IDENTITAS UMUM ---
         $template->setValues([
