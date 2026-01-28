@@ -161,18 +161,6 @@ class GinouJisshuuDocumentController extends Controller
             'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
 
-        // --- 9. TABEL OTOMATIS (Keluarga) ---
-        if ($profile->families->count() > 0) {
-            $template->cloneRow('fam_name', $profile->families->count());
-            foreach ($profile->families as $index => $fam) {
-                $i = $index + 1;
-                $template->setValue("fam_name#$i", $fam->name);
-                $template->setValue("fam_rel#$i", $fam->relationship);
-                $template->setValue("fam_age#$i", $fam->age . ' 歳');
-                $template->setValue("fam_job#$i", $fam->occupation ?? '-');
-            }
-        }
-
         // 10. Final Output
         $cleanName = preg_replace('/[^A-Za-z0-9\-]/', '_', $profile->full_name);
         $outputName = strtoupper($type) . "_" . $cleanName . ".docx";
