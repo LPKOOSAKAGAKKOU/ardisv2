@@ -66,26 +66,7 @@ class GinouJisshuuDocumentController extends Controller
         $univ = $educations->where('level', '大学')->first();
         // --- 8. TABEL OTOMATIS (Pekerjaan dengan CloneRow) ---
         // Ambil maksimal 5 data terbaru agar tidak merusak halaman berikutnya
-        $experiences = $profile->experiences->sortByDesc('start_date')->take(5);
-
-        if ($experiences->count() > 0) {
-            // PHPWord akan menduplikasi baris yang mengandung '${company}'
-            $template->cloneRow('company', $experiences->count());
-            
-            foreach ($experiences->values() as $index => $exp) {
-                $i = $index + 1; // Index untuk penanda baris (#1, #2, dst)
-                
-                $template->setValue("work_in#$i", Carbon::parse($exp->start_date)->format('m/Y'));
-                
-                $expEnd = $exp->end_date 
-                    ? Carbon::parse($exp->end_date)->format('m/Y') 
-                    : 'PRESENT';
-                    
-                $template->setValue("work_out#$i", $expEnd);
-                $template->setValue("company#$i", $exp->company_name);
-                $template->setValue("job_desc#$i", $exp->job_type);
-            }
-        }
+        $workExp = $profile->experiences->sortByDesc('start_date')->take(5)->values();
 
         // --- 6. DATA IDENTITAS UMUM ---
         $template->setValues([
