@@ -5,9 +5,10 @@ import {
     Clock, Building2, MapPin, Briefcase, Calendar,
     ExternalLink, Download, ArrowLeft, Info, Eye,
     UserPlus, Trash2, Hash, GripVertical, Save,
-    FileSpreadsheet, MoreVertical, ChevronRight
+    FileSpreadsheet, MoreVertical, ChevronRight,
+    Loader2, UploadCloud
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,8 +62,27 @@ interface Props {
     availableStudents?: any[];
 }
 
+const GINOU_DOCS = [
+    { label: "Form 1-3 (Resume)", field: "ginou_jisshuu_1-3_document_yunerva_uuid", typeKey: "ginou_1-3" },
+    { label: "Form 1-19 (Agreement)", field: "ginou_jisshuu_1-19_document_yunerva_uuid", typeKey: "ginou_1-19" },
+    { label: "Form 1-20", field: "ginou_jisshuu_1-20_document_yunerva_uuid", typeKey: "ginou_1-20" },
+    { label: "Form 1-21", field: "ginou_jisshuu_1-21_document_yunerva_uuid", typeKey: "ginou_1-21" },
+    { label: "Form 1-39", field: "ginou_jisshuu_1-39_document_yunerva_uuid", typeKey: "ginou_1-39" },
+    { label: "Agreement Letter", field: "ginou_jisshuu_aggreement_document_yunerva_uuid", typeKey: "ginou_agreement" },
+];
+
+const TOKUTEI_DOCS = [
+    { label: "Form 1-1", field: "tokutei_ginou_1-1_document_yunerva_uuid", typeKey: "tg_1-1" },
+    { label: "Form 1-5", field: "tokutei_ginou_1-5_document_yunerva_uuid", typeKey: "tg_1-5" },
+    { label: "Form 1-6", field: "tokutei_ginou_1-6_document_yunerva_uuid", typeKey: "tg_1-6" },
+    { label: "Form 1-16", field: "tokutei_ginou_1-16_document_yunerva_uuid", typeKey: "tg_1-16" },
+    { label: "Form 1-17", field: "tokutei_ginou_1-17_document_yunerva_uuid", typeKey: "tg_1-17" },
+    { label: "Power of Attorney", field: "power_of_attorney_letter_yunerva_uuid", typeKey: "power_attorney" },
+    { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid", typeKey: "ssw_result" },
+];
+
 // --- KOMPONEN BARIS / CARD YANG BISA DI DRAG ---
-function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: any) {
+function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
 
     const style = {
@@ -78,7 +98,6 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
             style={style} 
             className={`group transition-colors ${isDragging ? 'bg-white shadow-lg opacity-80' : 'hover:bg-neutral-50/50'}`}
         >
-            {/* Kolom Urutan # */}
             <td className="px-4 py-4 w-16 text-center">
                 <div className="flex items-center justify-center gap-2">
                     <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-neutral-300 hover:text-blue-600 transition-colors">
@@ -88,14 +107,12 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
                 </div>
             </td>
 
-            {/* Kolom Nama Siswa */}
             <td className="px-4 py-4 min-w-[200px]">
                 <div className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
                     {detail.user?.student_profile?.full_name || 'No Name'}
                 </div>
             </td>
 
-            {/* Kolom Status */}
             <td className="px-4 py-4 w-32 text-center">
                 <Badge variant="outline" className={`text-[10px] font-bold ${
                     detail.result === 'passed' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
@@ -106,14 +123,22 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
                 </Badge>
             </td>
 
-            {/* Kolom Catatan */}
             <td className="px-4 py-4">
                 <p className="text-xs text-neutral-500 italic line-clamp-1">{detail.remarks || '-'}</p>
             </td>
 
-            {/* Kolom Aksi */}
             <td className="px-4 py-4 w-64 text-right">
                 <div className="flex items-center justify-end gap-1">
+                    {detail.result === 'passed' && (
+                        <Button 
+                            onClick={() => onManageDocs(detail)} 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 bg-blue-50 text-blue-700 border-blue-200"
+                        >
+                            <Upload size={14} className="mr-1.5" /> Berkas
+                        </Button>
+                    )}
                     <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
                         <Button variant="outline" size="sm" className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5">
                             <FileSpreadsheet size={14} /> CV
@@ -133,7 +158,6 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId }: an
 }
 
 export default function InterviewShow({ interview, availableStudents = [] }: Props) {
-    // ... (Keep all existing useState and Logic)
     const [isUploading, setIsUploading] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -141,10 +165,16 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState('');
+    const [previewTitle, setPreviewTitle] = useState('');
     const [localDetails, setLocalDetails] = useState(interview?.details || []);
     const [hasChanges, setHasChanges] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+    
+    // State Baru untuk Kelola Dokumen Admin
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+    const [selectedStudentForDoc, setSelectedStudentForDoc] = useState<any>(null);
+    const [isLoadingId, setIsLoadingId] = useState<string | null>(null);
 
     useEffect(() => {
         setLocalDetails(interview?.details?.sort((a: any, b: any) => a.order_number - b.order_number) || []);
@@ -249,6 +279,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             const response = await axios.post(route('admin.interviews.preview-kyuujinhyou', interview.id));
             if (response.data.status === 'success' && response.data.data.view_url) {
                 setPreviewUrl(response.data.data.view_url);
+                setPreviewTitle(interview?.interviewer_title || "Pratinjau Kyuujinhyou");
                 setIsPreviewOpen(true);
             } else {
                 alert(response.data.message || "Gagal mendapatkan link pratinjau.");
@@ -274,7 +305,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         setIsUploading(true);
         setUploadProgress(0);
         try {
-            const req = await axios.post('/admin/upload-request', {
+            const req = await axios.post(route('admin.documents.request'), {
                 filename: file.name,
                 extension: 'pdf',
                 mime_type: 'application/pdf',
@@ -299,14 +330,82 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         }
     };
 
+    // --- LOGIC BARU: ADMIN MANAGE DOKUMEN ---
+
+    const handleManageDocs = (detail: any) => {
+        setSelectedStudentForDoc(detail);
+        setIsDocModalOpen(true);
+    };
+
+    const handleAdminGenerate = (docType: string, studentUserId: number) => {
+        const routeName = interview.type === 'ginoujisshuu' 
+            ? 'student.documents.ginou.generate' 
+            : 'student.documents.tokutei.generate';
+        
+        const url = route(routeName, { type: docType, userId: studentUserId });
+        window.open(url, '_blank');
+    };
+
+    const handleAdminUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string, studentProfileId: number, studentName: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsLoadingId(fieldName);
+        try {
+            const ext = file.name.split('.').pop();
+            const cleanStudentName = studentName.replace(/\s+/g, '_');
+            const newFileName = `${fieldName}_${cleanStudentName}.${ext}`;
+
+            const req = await axios.post(route('admin.documents.request'), {
+                filename: newFileName,
+                extension: ext,
+                mime_type: file.type,
+                size: file.size
+            });
+
+            const { upload_url, upload_ticket } = req.data.data;
+            await axios.put(upload_url, file, { headers: { 'Content-Type': file.type } });
+
+            await axios.post(route('admin.documents.store', studentProfileId), {
+                field_name: fieldName,
+                upload_ticket: upload_ticket 
+            });
+
+            alert(`Berhasil mengunggah dokumen untuk ${studentName}`);
+            router.reload();
+        } catch (err: any) {
+            console.error(err);
+            alert("Gagal mengunggah berkas.");
+        } finally {
+            setIsLoadingId(null);
+        }
+    };
+
+    const handleAdminPreviewDoc = async (fieldName: string, uuid: string, studentProfileId: number) => {
+        setIsLoadingId(fieldName);
+        try {
+            const response = await axios.post(route('admin.documents.preview', studentProfileId), {
+                uuid: uuid
+            });
+
+            if (response.data.data?.view_url) {
+                setPreviewUrl(response.data.data.view_url);
+                setPreviewTitle("Pratinjau Dokumen Siswa");
+                setIsPreviewOpen(true);
+            }
+        } catch (err) {
+            alert("Gagal memuat pratinjau.");
+        } finally {
+            setIsLoadingId(null);
+        }
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Detail - ${interview?.interviewer_title || 'Wawancara'}`} />
 
-            {/* CONTAINER UTAMA: Mengikuti pola Dashboard agar tidak terpotong */}
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 lg:p-8 w-full overflow-x-hidden overflow-y-auto">
                 
-                {/* Header Actions */}
                 <div className="flex items-center justify-between">
                     <Link href="/admin/interviews">
                         <Button variant="ghost" size="sm" className="-ml-2">
@@ -319,10 +418,8 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </Link>
                 </div>
 
-                {/* Info Card: Dibuat responsif tanpa memaksa lebar */}
                 <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 dark:border-sidebar-border overflow-hidden">
                     <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-sidebar-border/70">
-                        {/* Detail Utama */}
                         <div className="flex-1 p-6 space-y-4">
                             <div>
                                 <Badge className="bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 border-none mb-2">
@@ -353,7 +450,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             </div>
                         </div>
 
-                        {/* Kyuujinhyou Section: Dibuat lebih ringkas di mobile */}
                         <div className="bg-neutral-50/50 dark:bg-zinc-900/30 p-6 lg:w-80 flex flex-col justify-center gap-4">
                             <div className="flex items-center gap-3 lg:flex-col lg:text-center">
                                 <FileText className={interview?.kyuujinhyou_yunerva_uuid ? "text-green-600" : "text-muted-foreground"} size={32} />
@@ -399,7 +495,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
                 </div>
 
-                {/* Assignment Input: Meniru pola Dashboard search */}
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground">
                         <UserPlus size={18} />
@@ -429,7 +524,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     )}
                 </div>
 
-                {/* Tabs & List */}
                 <Tabs defaultValue="candidates" className="w-full flex flex-col">
                     <div className="flex items-center justify-between border-b border-sidebar-border/70 mb-4">
                     <TabsList className="bg-transparent w-full justify-start rounded-none h-auto p-0 border-b border-sidebar-border/50 gap-6">
@@ -463,7 +557,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
 
                     <TabsContent value="candidates" className="m-0">
-                        {/* Wrapper tabel dengan overflow-x-auto agar tidak memotong layar */}
                         <div className="rounded-xl border border-sidebar-border/70 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[800px]">
                                 <thead>
@@ -486,6 +579,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     onRemove={handleRemoveStudent}
                                                     onUpdateModal={openUpdateModal}
                                                     interviewId={interview.id}
+                                                    onManageDocs={handleManageDocs}
                                                 />
                                             )) : (
                                                 <tr>
@@ -510,7 +604,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </Tabs>
             </div>
 
-            {/* Floating Save Button - High UX visibility */}
             {hasChanges && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-bottom-10 fade-in duration-300">
                     <Button 
@@ -522,7 +615,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </div>
             )}
 
-            {/* Modals & Dialogs (Refactored for mobile comfort) */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-[425px] rounded-3xl p-0 overflow-hidden">
                     <form onSubmit={handleUpdateResult}>
@@ -572,7 +664,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                         <div className="p-4 bg-white dark:bg-zinc-950 border-b flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-rose-50 text-rose-600 rounded-lg"><FileText size={18} /></div>
-                                <DialogTitle className="text-sm font-bold truncate max-w-[200px] md:max-w-md">{interview?.interviewer_title}</DialogTitle>
+                                <DialogTitle className="text-sm font-bold truncate max-w-[200px] md:max-w-md">{previewTitle}</DialogTitle>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')} className="h-9 px-4 font-bold text-xs">
@@ -585,7 +677,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                         </div>
                         <div className="flex-1 bg-zinc-800">
                             {previewUrl ? (
-                                <iframe src={`${previewUrl}#toolbar=0`} className="w-full h-full border-none shadow-inner" title="Kyuujinhyou PDF" />
+                                <iframe src={`${previewUrl}#toolbar=0`} className="w-full h-full border-none shadow-inner" title="Preview PDF" />
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full text-white/50 space-y-4">
                                     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-white"></div>
@@ -593,6 +685,59 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                 </div>
                             )}
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDocModalOpen} onOpenChange={setIsDocModalOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Kelola Dokumen: {selectedStudentForDoc?.user?.student_profile?.full_name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        {(interview.type === 'ginoujisshuu' ? GINOU_DOCS : TOKUTEI_DOCS).map((doc) => {
+                            const profile = selectedStudentForDoc?.user?.student_profile;
+                            const currentUuid = profile?.[doc.field];
+                            
+                            return (
+                                <div key={doc.field} className="flex items-center justify-between p-3 border rounded-xl">
+                                    <span className="text-sm font-medium">{doc.label}</span>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            size="sm" variant="secondary" 
+                                            title="Generate Word"
+                                            onClick={() => handleAdminGenerate(doc.typeKey, selectedStudentForDoc.user_id)}
+                                        >
+                                            <Download size={14} />
+                                        </Button>
+
+                                        {currentUuid && (
+                                            <Button 
+                                                size="sm" variant="outline" 
+                                                title="Preview File"
+                                                onClick={() => handleAdminPreviewDoc(doc.field, currentUuid, profile.id)}
+                                            >
+                                                {isLoadingId === doc.field ? <Loader2 className="animate-spin size-4" /> : <Eye size={14} />}
+                                            </Button>
+                                        )}
+                                        
+                                        <label className="cursor-pointer">
+                                            <Input 
+                                                type="file" className="hidden" 
+                                                onChange={(e) => handleAdminUpload(e, doc.field, profile.id, profile.full_name)} 
+                                            />
+                                            <Button size="sm" variant={currentUuid ? "outline" : "default"} asChild>
+                                                <span title="Upload File">
+                                                    {isLoadingId === doc.field ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={14} />}
+                                                </span>
+                                            </Button>
+                                        </label>
+                                        
+                                        {currentUuid && <Badge className="bg-emerald-500 text-[10px] h-5">TERSIMPAN</Badge>}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </DialogContent>
             </Dialog>
