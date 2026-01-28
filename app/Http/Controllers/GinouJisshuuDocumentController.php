@@ -176,19 +176,6 @@ class GinouJisshuuDocumentController extends Controller
             'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
 
-        // --- 8. TABEL OTOMATIS (Pekerjaan) ---
-        if ($profile->experiences->count() > 0) {
-            $template->cloneRow('company', $profile->experiences->count());
-            foreach ($profile->experiences as $index => $exp) {
-                $i = $index + 1;
-                $template->setValue("work_in#$i", Carbon::parse($exp->start_date)->format('m/Y'));
-                $expEnd = $exp->end_date ? Carbon::parse($exp->end_date)->format('m/Y') : 'PRESENT';
-                $template->setValue("work_out#$i", $expEnd);
-                $template->setValue("company#$i", $exp->company_name);
-                $template->setValue("job#$i", $exp->job_type);
-            }
-        }
-
         // --- 9. TABEL OTOMATIS (Keluarga) ---
         if ($profile->families->count() > 0) {
             $template->cloneRow('fam_name', $profile->families->count());
