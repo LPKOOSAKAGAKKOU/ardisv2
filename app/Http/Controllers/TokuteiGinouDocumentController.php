@@ -29,7 +29,7 @@ class TokuteiGinouDocumentController extends Controller
         // 4. Ambil data interview kelulusan
         $passedInterview = InterviewDetail::where('user_id', $targetId)
             ->where('result', 'passed')
-            ->with(['interview.company', 'interview.accepting_organization'])
+            ->with(['interview.company', 'interview.acceptingOrganization'])
             ->latest()
             ->first();
 
@@ -73,9 +73,9 @@ class TokuteiGinouDocumentController extends Controller
             'perusahaan_industri'  => $passedInterview?->interview->company->industry ?? '-',
             
             // DATA ORGANISASI PENERIMA (TSK / KUMIAI)
-            'org_penerima_nama'    => $passedInterview?->interview->accepting_organization->name ?? '-',
-            'org_penerima_nama_jp' => $passedInterview?->interview->accepting_organization->name_in_japanese ?? '-',
-            'org_penerima_alamat'  => $passedInterview?->interview->accepting_organization->address_in_japanese ?? '-',
+            'org_penerima_nama'    => $passedInterview?->interview->acceptingOrganization->name ?? '-',
+            'org_penerima_nama_jp' => $passedInterview?->interview->acceptingOrganization->name_in_japanese ?? '-',
+            'org_penerima_alamat'  => $passedInterview?->interview->acceptingOrganization->address_in_japanese ?? '-',
             
             // TANGGAL-TANGGAL PENTING
             'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('Y/m/d') : '-',

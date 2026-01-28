@@ -29,7 +29,7 @@ class GinouJisshuuDocumentController extends Controller
         // 4. Ambil data interview kelulusan
         $passedInterview = InterviewDetail::where('user_id', $targetId)
             ->where('result', 'passed')
-            ->with(['interview.company', 'interview.accepting_organization'])
+            ->with(['interview.company', 'interview.acceptingOrganization'])
             ->latest()
             ->first();
 
@@ -78,8 +78,8 @@ class GinouJisshuuDocumentController extends Controller
             'perusahaan_nama_jp'   => $passedInterview?->interview->company->name_in_japanese ?? '-',
             'perusahaan_alamat_jp' => $passedInterview?->interview->company->address_in_japanese ?? '-',
             'perusahaan_industri'  => $passedInterview?->interview->company->industry ?? '-',
-            'org_penerima_nama'    => $passedInterview?->interview->accepting_organization->name ?? '-',
-            'org_penerima_nama_jp' => $passedInterview?->interview->accepting_organization->name_in_japanese ?? '-',
+            'org_penerima_nama'    => $passedInterview?->interview->acceptingOrganization->name ?? '-',
+            'org_penerima_nama_jp' => $passedInterview?->interview->acceptingOrganization->name_in_japanese ?? '-',
             'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('d/m/Y') : '-',
             'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
