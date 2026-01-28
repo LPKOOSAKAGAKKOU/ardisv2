@@ -427,18 +427,28 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
 
                                                             <FormItem label="Tanggal Masuk">
                                                                 <Input 
-                                                                    type="date" 
-                                                                    value={edu.entry_date} 
-                                                                    onChange={e => { const updated = [...data.educations]; updated[idx].entry_date = e.target.value; setData('educations', updated); }} 
+                                                                    type="month" 
+                                                                    value={edu.entry_date ? edu.entry_date.substring(0, 7) : ''}
+                                                                    onChange={e => { 
+                                                                        const updated = [...data.educations];
+                                                                        // Tambahkan -01 agar jadi YYYY-MM-01 sebelum masuk ke state/DB
+                                                                        updated[idx].entry_date = e.target.value ? `${e.target.value}-01` : ''; 
+                                                                        setData('educations', updated); 
+                                                                    }} 
                                                                     className="text-sm"
                                                                 />
                                                             </FormItem>
 
                                                             <FormItem label="Tanggal Keluar / Lulus">
                                                                 <Input 
-                                                                    type="date" 
-                                                                    value={edu.graduation_date} 
-                                                                    onChange={e => { const updated = [...data.educations]; updated[idx].graduation_date = e.target.value; setData('educations', updated); }} 
+                                                                    type="month" 
+                                                                    value={edu.graduation_date ? edu.graduation_date.substring(0, 7) : ''} 
+                                                                    onChange={e => { 
+                                                                        const updated = [...data.educations];
+                                                                        // Jika dihapus oleh user, simpan sebagai null/empty string agar tidak error
+                                                                        updated[idx].graduation_date = e.target.value ? `${e.target.value}-01` : ''; 
+                                                                        setData('educations', updated); 
+                                                                    }} 
                                                                     className="text-sm"
                                                                 />
                                                             </FormItem>
@@ -612,22 +622,38 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 />
                                                             </FormItem>
 
+
                                                             <FormItem label="Tanggal Mulai">
                                                                 <Input 
-                                                                    type="date" 
-                                                                    value={exp.start_date} 
-                                                                    onChange={e => { const updated = [...data.experiences]; updated[idx].start_date = e.target.value; setData('experiences', updated); }} 
+                                                                    type="month" 
+                                                                    // Potong string dari database (YYYY-MM-DD) jadi (YYYY-MM) agar tampil di input month
+                                                                    value={exp.start_date ? exp.start_date.substring(0, 7) : ''} 
+                                                                    onChange={e => { 
+                                                                        const updated = [...data.experiences]; 
+                                                                        // Tambahkan -01 agar database DATE tidak error
+                                                                        updated[idx].start_date = e.target.value ? `${e.target.value}-01` : ''; 
+                                                                        setData('experiences', updated); 
+                                                                    }} 
                                                                     className="text-sm"
                                                                 />
                                                             </FormItem>
 
                                                             <FormItem label="Tanggal Berakhir">
                                                                 <Input 
-                                                                    type="date" 
-                                                                    value={exp.end_date} 
-                                                                    onChange={e => { const updated = [...data.experiences]; updated[idx].end_date = e.target.value; setData('experiences', updated); }} 
+                                                                    type="month" 
+                                                                    // Sama seperti start_date, potong stringnya
+                                                                    value={exp.end_date ? exp.end_date.substring(0, 7) : ''} 
+                                                                    onChange={e => { 
+                                                                        const updated = [...data.experiences]; 
+                                                                        // Simpan sebagai tanggal 1 di database
+                                                                        updated[idx].end_date = e.target.value ? `${e.target.value}-01` : ''; 
+                                                                        setData('experiences', updated); 
+                                                                    }} 
                                                                     className="text-sm"
                                                                 />
+                                                                <p className="text-[10px] text-muted-foreground mt-1 italic">
+                                                                    *Kosongkan jika masih bekerja di tempat ini.
+                                                                </p>
                                                             </FormItem>
 
                                                             <div className="flex items-center pt-2 sm:pt-6 px-2">
