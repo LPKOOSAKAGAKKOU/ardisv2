@@ -225,10 +225,23 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                         </FormItem>
                                         <FormItem label="Tgl Lahir" required><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} className="text-sm" /></FormItem>
                                         <FormItem label="Jenis Kelamin" required>
-                                            <Select value={data.gender} onValueChange={v => setData('gender', v as any)}>
-                                                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                                                <SelectContent><SelectItem value="Laki-laki" className="text-sm">Laki-laki</SelectItem><SelectItem value="Perempuan" className="text-sm">Perempuan</SelectItem></SelectContent>
-                                            </Select>
+                                        <Select
+                                            value={data.gender || ""}
+                                            onValueChange={(v) => setData("gender", v)}
+                                        >
+                                            <SelectTrigger className="text-sm">
+                                            <SelectValue placeholder="Pilih jenis kelamin" />
+                                            </SelectTrigger>
+
+                                            <SelectContent>
+                                            <SelectItem value="Laki-laki" className="text-sm">
+                                                Laki-laki
+                                            </SelectItem>
+                                            <SelectItem value="Perempuan" className="text-sm">
+                                                Perempuan
+                                            </SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                         </FormItem>
                                         <FormItem label="HP Siswa" required>
                                             <Input 
