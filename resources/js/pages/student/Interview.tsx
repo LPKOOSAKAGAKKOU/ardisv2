@@ -251,15 +251,15 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
         const isUploaded = !!currentUuid;
         const isLoading = isLoadingId === doc.field;
         const fileInputRef = useRef<HTMLInputElement>(null);
-        const handleGenerate = (docType: string, programType: string) => {
-            // Memilih route berdasarkan jenis lowongan (ginoujisshuu atau tokuteiginou)
-            const routeName = programType === 'ginoujisshuu' 
-                ? 'student.documents.ginou.generate' 
-                : 'student.documents.tokutei.generate';
-            
-            const url = route(routeName, { type: docType });
-            window.open(url, '_blank');
-        };
+        const handleGenerate = (docType: string) => { 
+                // Langsung gunakan 'programType' dari props di atas
+                const routeName = programType === 'ginoujisshuu' 
+                    ? 'student.documents.ginou.generate' 
+                    : 'student.documents.tokutei.generate';
+                
+                const url = route(routeName, { type: docType });
+                window.open(url, '_blank');
+            };
 
         return (
             <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-slate-50 transition-colors">
