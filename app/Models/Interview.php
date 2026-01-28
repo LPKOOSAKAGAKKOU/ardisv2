@@ -12,6 +12,7 @@ class Interview extends Model
         'interviewer_title',
         'company_id',
         'accepting_organization_id',
+        'type',
         'description',
         'group_chat_link',
         'kyuujinhyou_yunerva_uuid',

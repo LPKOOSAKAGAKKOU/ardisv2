@@ -35,8 +35,10 @@ export default function InterviewForm({ interview, companies, organizations }: P
         interviewer_title: interview?.interviewer_title || '',
         company_id: interview?.company_id?.toString() || '',
         accepting_organization_id: interview?.accepting_organization_id?.toString() || '',
+        type: interview?.type || 'ginoujisshuu',
         description: interview?.description || '',
         interview_date: interview?.interview_date ? new Date(interview.interview_date) : undefined,
+        interview_announcement_date: interview?.interview_announcement_date ? new Date(interview.interview_announcement_date) : undefined,
         interview_registration_deadline: interview?.interview_registration_deadline ? new Date(interview.interview_registration_deadline) : undefined,
         date_fly_to_japan: interview?.date_fly_to_japan ? new Date(interview.date_fly_to_japan) : undefined,
         group_chat_link: interview?.group_chat_link || '',
@@ -53,8 +55,11 @@ export default function InterviewForm({ interview, companies, organizations }: P
         // Format tanggal kembali ke string YYYY-MM-DD sebelum dikirim ke Laravel
         const payload = {
             ...data,
-            interview_date: data.interview_date ? format(data.interview_date as Date, "yyyy-MM-dd") : '',
-            interview_registration_deadline: data.interview_registration_deadline ? format(data.interview_registration_deadline as Date, "yyyy-MM-dd") : '',
+            interview_date: data.interview_date ? format(data.interview_date, "yyyy-MM-dd") : '',
+            interview_registration_deadline: data.interview_registration_deadline ? format(data.interview_registration_deadline, "yyyy-MM-dd") : '',
+            // Tambahkan ini jika di Laravel kolomnya wajib string
+            interview_announcement_date: data.interview_announcement_date ? format(data.interview_announcement_date, "yyyy-MM-dd") : '',
+            date_fly_to_japan: data.date_fly_to_japan ? format(data.date_fly_to_japan, "yyyy-MM-dd") : '',
         };
 
         if (isEdit) {
@@ -131,6 +136,31 @@ export default function InterviewForm({ interview, companies, organizations }: P
                                 </SelectContent>
                             </Select>
                         </div>
+                        {/* Select Tipe Wawancara */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Tipe Wawancara</label>
+                            <Select 
+                                value={data.type} 
+                                onValueChange={(val) => setData('type', val)}
+                            >
+                                <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Pilih Tipe Wawancara" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ginoujisshuu">Ginou Jisshuu (Magang)</SelectItem>
+                                    <SelectItem value="tokuteiginou">Tokutei Ginou (SSW)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {/* Group Chat Link */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Link Grup Chat</label>
+                            <Input
+                                placeholder="https://chat.example.com"
+                                value={data.group_chat_link}
+                                onChange={(e) => setData('group_chat_link', e.target.value)}
+                            />
+                        </div>
 
                         {/* Date Picker: Tanggal Wawancara */}
                         <div className="space-y-2">
@@ -191,6 +221,70 @@ export default function InterviewForm({ interview, companies, organizations }: P
                                         mode="single"
                                         selected={data.interview_registration_deadline as any}
                                         onSelect={(date) => setData('interview_registration_deadline', date as any)}
+                                        initialFocus
+                                        className="rounded-md border-none"
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        {/* Date Picker: Tanggal pengumuman wawancara */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                <CalendarIcon size={12} /> Tanggal Pengumuman Wawancara
+                            </label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full h-11 justify-start text-left font-normal",
+                                            !data.interview_announcement_date && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                                        <span className="truncate">
+                                            {data.interview_announcement_date ? format(data.interview_announcement_date as Date, "PPP") : "Pilih tanggal"}
+                                        </span>
+                                    </Button>
+                                </PopoverTrigger>
+                                {/* Samakan lebar dengan Popover sebelumnya */}
+                                <PopoverContent className="w-64 p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={data.interview_announcement_date as any}
+                                        onSelect={(date) => setData('interview_announcement_date', date as any)}
+                                        initialFocus
+                                        className="rounded-md border-none"
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        {/* Date Picker: Tanggal Terbang ke Jepang */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                <CalendarIcon size={12} /> Tanggal Terbang ke Jepang
+                            </label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full h-11 justify-start text-left font-normal",
+                                            !data.date_fly_to_japan && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                                        <span className="truncate">
+                                            {data.date_fly_to_japan ? format(data.date_fly_to_japan as Date, "PPP") : "Pilih tanggal"}
+                                        </span>
+                                    </Button>
+                                </PopoverTrigger>
+                                {/* Samakan lebar dengan Popover sebelumnya */}
+                                <PopoverContent className="w-64 p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={data.date_fly_to_japan as any}
+                                        onSelect={(date) => setData('date_fly_to_japan', date as any)}
                                         initialFocus
                                         className="rounded-md border-none"
                                     />
