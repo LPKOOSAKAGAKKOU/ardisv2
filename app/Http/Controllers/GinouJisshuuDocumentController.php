@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\StudentProfile;
 use App\Models\InterviewDetail; // Tambahkan ini
 use PhpOffice\PhpWord\TemplateProcessor;
-use Illuminate\Support\Facades\{Auth, File};
+use Illuminate\Support\Facades\{Auth, File, DB};
 use Illuminate\Support\Carbon;
 
 class GinouJisshuuDocumentController extends Controller
