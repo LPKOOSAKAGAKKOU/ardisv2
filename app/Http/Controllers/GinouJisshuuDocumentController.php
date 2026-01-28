@@ -51,14 +51,55 @@ class GinouJisshuuDocumentController extends Controller
         }
 
         $template = new TemplateProcessor($templatePath);
+        $dt = $passedInterview?->interview->interview_date 
+                ? Carbon::parse($passedInterview->interview->interview_date)->addDay() 
+                : now();
+        $dob = $profile->dob; // Objek Carbon dari database
+
+        // Ambil semua data pendidikan siswa
+        $educations = $profile->educations;
+
+        // Filter masing-masing jenjang
+        $sd   = $educations->where('level', '小学校')->first();
+        $smp  = $educations->where('level', '中学校')->first();
+        $sma  = $educations->where('level', '高校')->first();
+        $univ = $educations->where('level', '大学')->first();
+        // --- 8. TABEL OTOMATIS (Pekerjaan dengan CloneRow) ---
+        // Ambil maksimal 5 data terbaru agar tidak merusak halaman berikutnya
+        $experiences = $profile->experiences->sortByDesc('start_date')->take(5);
+
+        if ($experiences->count() > 0) {
+            // PHPWord akan menduplikasi baris yang mengandung '${company}'
+            $template->cloneRow('company', $experiences->count());
+            
+            foreach ($experiences->values() as $index => $exp) {
+                $i = $index + 1; // Index untuk penanda baris (#1, #2, dst)
+                
+                $template->setValue("work_in#$i", Carbon::parse($exp->start_date)->format('m/Y'));
+                
+                $expEnd = $exp->end_date 
+                    ? Carbon::parse($exp->end_date)->format('m/Y') 
+                    : 'PRESENT';
+                    
+                $template->setValue("work_out#$i", $expEnd);
+                $template->setValue("company#$i", $exp->company_name);
+                $template->setValue("job_desc#$i", $exp->job_type);
+            }
+        }
 
         // --- 6. DATA IDENTITAS UMUM ---
         $template->setValues([
             'nama_lengkap'   => strtoupper($profile->full_name),
             'nama_katakana'  => $profile->full_name_katakana,
             'jenis_kelamin'  => $profile->gender === 'Laki-laki' ? '男 (L)' : '女 (P)',
+            'm_box'          => $profile->gender === 'Laki-laki' ? '☑' : '☐', // Kotak untuk Laki-laki
+            'f_box' => $profile->gender === 'Perempuan' ? '☑' : '☐', // Kotak untuk Perempuan
             'tempat_lahir'   => strtoupper($profile->pob),
             'tgl_lahir'      => $profile->dob ? $profile->dob->format('d-m-Y') : '-',
+            'b_y'            => $dob ? $dob->format('Y') : '    ', // Tahun lahir
+            'b_m'            => $dob ? $dob->format('n') : '  ',  // Bulan lahir (n = tanpa nol di depan)
+            'b_d'            => $dob ? $dob->format('j') : '  ',  // Tanggal lahir (j = tanpa nol di depan)
+            'usia'           => $dob ? $dob->age : '  ',          // Umur otomatis terhitung hari ini
             'umur'           => $profile->dob ? $profile->dob->age : '0',
             'gol_darah'      => $profile->blood_type ?? '-',
             'status_nikah'   => strtoupper($profile->marital_status),
@@ -71,8 +112,59 @@ class GinouJisshuuDocumentController extends Controller
             'berat_badan'    => $profile->weight . ' kg',
             'hobi'           => $profile->hobby ?? '-',
             'kekuatan'       => $profile->strength ?? '-',
-            'today'          => now()->format('d/m/Y'),
-            
+
+            // SD
+            'sd_in'          => $sd ? Carbon::parse($sd->entry_date)->format('m/Y') : '',
+            'sd_out'         => $sd ? Carbon::parse($sd->graduation_date)->format('m/Y') : '',
+            'sd_name'        => $sd ? "{$sd->school_type} {$sd->level} {$sd->school_name}" : '',
+
+            // SMP
+            'smp_in'         => $smp ? Carbon::parse($smp->entry_date)->format('m/Y') : '',
+            'smp_out'        => $smp ? Carbon::parse($smp->graduation_date)->format('m/Y') : '',
+            'smp_name'       => $smp ? "{$smp->school_type} {$smp->level} {$smp->school_name}" : '',
+
+            // SMA/SMK
+            'sma_in'         => $sma ? Carbon::parse($sma->entry_date)->format('m/Y') : '',
+            'sma_out'        => $sma ? Carbon::parse($sma->graduation_date)->format('m/Y') : '',
+            'sma_name'       => $sma ? "{$sma->school_type} {$sma->level} {$sma->school_name}" : '',
+            'sma_major'      => $sma ? $sma->major : '',
+
+            // Universitas
+            'univ_in'        => $univ ? Carbon::parse($univ->entry_date)->format('m/Y') : '',
+            'univ_out'       => $univ ? Carbon::parse($univ->graduation_date)->format('m/Y') : '',
+            'univ_name'      => $univ ? "{$univ->school_type} {$univ->level} {$univ->school_name}" : '',
+            'univ_major'     => $univ ? $univ->major : '',
+
+            // Pekerjaan 1
+            'w1_in'   => isset($workExp[0]) ? Carbon::parse($workExp[0]->start_date)->format('m/Y') : '',
+            'w1_out'  => isset($workExp[0]) ? ($workExp[0]->end_date ? Carbon::parse($workExp[0]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w1_name' => isset($workExp[0]) ? strtoupper("{$workExp[0]->company_name} ({$workExp[0]->job_type})") : '',
+
+            // Pekerjaan 2
+            'w2_in'   => isset($workExp[1]) ? Carbon::parse($workExp[1]->start_date)->format('m/Y') : '',
+            'w2_out'  => isset($workExp[1]) ? ($workExp[1]->end_date ? Carbon::parse($workExp[1]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w2_name' => isset($workExp[1]) ? strtoupper("{$workExp[1]->company_name} ({$workExp[1]->job_type})") : '',
+
+            // Pekerjaan 3
+            'w3_in'   => isset($workExp[2]) ? Carbon::parse($workExp[2]->start_date)->format('m/Y') : '',
+            'w3_out'  => isset($workExp[2]) ? ($workExp[2]->end_date ? Carbon::parse($workExp[2]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w3_name' => isset($workExp[2]) ? strtoupper("{$workExp[2]->company_name} ({$workExp[2]->job_type})") : '',
+
+            // Pekerjaan 4
+            'w4_in'   => isset($workExp[3]) ? Carbon::parse($workExp[3]->start_date)->format('m/Y') : '',
+            'w4_out'  => isset($workExp[3]) ? ($workExp[3]->end_date ? Carbon::parse($workExp[3]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w4_name' => isset($workExp[3]) ? strtoupper("{$workExp[3]->company_name} ({$workExp[3]->job_type})") : '',
+
+            // Pekerjaan 5
+            'w5_in'   => isset($workExp[4]) ? Carbon::parse($workExp[4]->start_date)->format('m/Y') : '',
+            'w5_out'  => isset($workExp[4]) ? ($workExp[4]->end_date ? Carbon::parse($workExp[4]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w5_name' => isset($workExp[4]) ? strtoupper("{$workExp[4]->company_name} ({$workExp[4]->job_type})") : '',
+
+            // Ambil tanggal interview, tambahkan 1 hari, lalu format
+            'doc_y'         => $dt->format('Y'), // Tahun
+            'doc_m'         => $dt->format('m'), // Bulan
+            'doc_d'         => $dt->format('d'), // Hari
+    
             // DATA INTERVIEW (Khusus Magang istilahnya Implementing Org)
             'perusahaan_nama'      => $passedInterview?->interview->company->name ?? '-',
             'perusahaan_nama_jp'   => $passedInterview?->interview->company->name_in_japanese ?? '-',
@@ -83,19 +175,6 @@ class GinouJisshuuDocumentController extends Controller
             'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('d/m/Y') : '-',
             'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
-
-        // --- 7. TABEL OTOMATIS (Pendidikan) ---
-        if ($profile->educations->count() > 0) {
-            $template->cloneRow('school', $profile->educations->count());
-            foreach ($profile->educations as $index => $edu) {
-                $i = $index + 1;
-                $template->setValue("edu_in#$i", Carbon::parse($edu->entry_date)->format('m/Y'));
-                $grad = $edu->graduation_date ? Carbon::parse($edu->graduation_date)->format('m/Y') : 'PRESENT';
-                $template->setValue("edu_out#$i", $grad);
-                $template->setValue("school#$i", $edu->school_name);
-                $template->setValue("major#$i", $edu->major ?? '-');
-            }
-        }
 
         // --- 8. TABEL OTOMATIS (Pekerjaan) ---
         if ($profile->experiences->count() > 0) {
