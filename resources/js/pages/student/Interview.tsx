@@ -251,10 +251,13 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
         const isUploaded = !!currentUuid;
         const isLoading = isLoadingId === doc.field;
         const fileInputRef = useRef<HTMLInputElement>(null);
-        const handleGenerate = (docType: string) => {
-            // Arahkan ke endpoint generate PDF
-            // window.open membuka tab baru untuk download file
-            const url = route('student.documents.generate', { type: docType });
+        const handleGenerate = (docType: string, programType: string) => {
+            // Memilih route berdasarkan jenis lowongan (ginoujisshuu atau tokuteiginou)
+            const routeName = programType === 'ginoujisshuu' 
+                ? 'student.documents.ginou.generate' 
+                : 'student.documents.tokutei.generate';
+            
+            const url = route(routeName, { type: docType });
             window.open(url, '_blank');
         };
 
@@ -507,13 +510,17 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
                                     </h3>
                                 </div>
                                 
-                                <div className="space-y-3">
-                                    {data.interview.type === 'ginoujisshuu' ? (
-                                        GINOU_DOCS.map((doc, i) => <DocumentRow key={i} doc={doc} />)
-                                    ) : (
-                                        TOKUTEI_DOCS.map((doc, i) => <DocumentRow key={i} doc={doc} />)
-                                    )}
-                                </div>
+                            <div className="space-y-3">
+                                {data.interview.type === 'ginoujisshuu' ? (
+                                    GINOU_DOCS.map((doc, i) => (
+                                        <DocumentRow key={i} doc={doc} programType="ginoujisshuu" /> // Tambahkan programType
+                                    ))
+                                ) : (
+                                    TOKUTEI_DOCS.map((doc, i) => (
+                                        <DocumentRow key={i} doc={doc} programType="tokuteiginou" /> // Tambahkan programType
+                                    ))
+                                )}
+                            </div>
                             </div>
                         </div>
                     </div>

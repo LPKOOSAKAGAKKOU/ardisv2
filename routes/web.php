@@ -35,6 +35,14 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     // Route Global tanpa prefix 'admin' atau 'student'
     Route::get('generate-cv/{userId}/{interviewId?}', [CvGenerator::class, 'generate'])->name('cv.generate');
+
+    // Route untuk Magang
+    Route::get('/ginou/{type}', [GinouJisshuuDocumentController::class, 'generate'])
+        ->name('student.documents.ginou.generate');
+
+    // Route untuk Tokutei Ginou
+    Route::get('/tokutei/{type}', [TokuteiGinouDocumentController::class, 'generate'])
+        ->name('student.documents.tokutei.generate');
 });
 
 /*
