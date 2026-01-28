@@ -12,11 +12,6 @@
                 // Hanya apply dark mode jika user eksplisit memilih 'dark'
                 if (appearance === 'dark') {
                     document.documentElement.classList.add('dark');
-                } else if (appearance === 'system') {
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    if (prefersDark) {
-                        document.documentElement.classList.add('dark');
-                    }
                 } else {
                     // Default: light mode, hapus dark class jika ada
                     document.documentElement.classList.remove('dark');
