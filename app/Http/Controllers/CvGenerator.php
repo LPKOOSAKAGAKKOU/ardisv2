@@ -70,7 +70,7 @@ class CvGenerator extends Controller
         $sheet->setCellValue('M12', $profile->full_name_katakana);
         $sheet->setCellValue('M14', $profile->full_name);
         $sheet->setCellValue('C18', ($profile->gender === 'Laki-laki' ? '男' : '女'));
-        $sheet->setCellValue('H18', Carbon::parse($profile->birth_date)->age . ' 歳');
+        $sheet->setCellValue('H18', Carbon::parse($profile->dob)->age . ' 歳');
         // Logika POB: Nama Kota (tetap) + Provinsi (Jepang)
         $provinceJp = $masterProvinces[strtolower(trim($profile->pob_province))] ?? $profile->pob_province;
         $sheet->setCellValue('M18', $profile->pob . ' ' . $provinceJp);
