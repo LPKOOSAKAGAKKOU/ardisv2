@@ -1,23 +1,31 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'light') == 'dark'])>
+<html
+    lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+    translate="no"
+    class="notranslate"
+    @class(['dark' => ($appearance ?? 'light') === 'dark'])
+>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="google" content="notranslate">
+
 
         {{-- Inline script to detect appearance preference and apply it immediately --}}
         <script>
-            (function() {
+            (function () {
                 const appearance = '{{ $appearance ?? "light" }}';
 
-                // Hanya apply dark mode jika user eksplisit memilih 'dark'
+                // Dark mode HANYA jika user eksplisit memilih 'dark'
                 if (appearance === 'dark') {
                     document.documentElement.classList.add('dark');
                 } else {
-                    // Default: light mode, hapus dark class jika ada
+                    // Default & system → light
                     document.documentElement.classList.remove('dark');
                 }
             })();
         </script>
+
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
