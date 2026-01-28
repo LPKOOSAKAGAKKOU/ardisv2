@@ -15,6 +15,8 @@ use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
+use App\Http\Controllers\GinouJisshuuDocumentController\GinouJisshuuDocumentController;
+use App\Http\Controllers\TokuteiGinouDocumentController\TokuteiGinouDocumentController;
 
 
 
