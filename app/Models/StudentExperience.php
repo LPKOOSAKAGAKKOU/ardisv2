@@ -21,4 +21,10 @@ class StudentExperience extends Model
     {
         return $this->belongsTo(StudentProfile::class);
     }
+
+    // TAMBAHKAN INI
+    public function jobSector()
+    {
+        return $this->belongsTo(JobSector::class, 'job_sector_id');
+    }
 }
