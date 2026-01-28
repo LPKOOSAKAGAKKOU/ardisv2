@@ -4,18 +4,34 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\StudentProfile;
+use App\Models\InterviewDetail; // Tambahkan ini
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 
 class TokuteiGinouDocumentController extends Controller
 {
-    public function generate($type) 
+    public function generate($type, $userId = null) 
     {
-        // Ambil data lengkap beserta relasi pendidikan, pengalaman, dan keluarga
-        $profile = StudentProfile::with(['educations', 'experiences', 'families'])
-            ->where('user_id', Auth::id())
+        // 1. Tentukan target ID dulu (pindahkan ke paling atas)
+        $targetId = $userId ?: Auth::id();
+
+        // 2. Sekarang baru cek keamanan menggunakan variabel $targetId yang sudah ada
+        if (Auth::user()->role !== 'admin' && Auth::id() != $targetId) {
+            abort(403, 'Anda tidak memiliki akses ke dokumen ini.');
+        }
+
+        // 3. Ambil data dengan Eager Loading
+        $profile = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
+            ->where('user_id', $targetId)
             ->firstOrFail();
+
+        // 4. Ambil data interview kelulusan
+        $passedInterview = InterviewDetail::where('user_id', $targetId)
+            ->where('result', 'passed')
+            ->with(['interview.company', 'interview.accepting_organization'])
+            ->latest()
+            ->first();
 
         $fileMap = [
             'tg_1-1'         => 'tg_form_1_1_application.docx',
@@ -48,8 +64,22 @@ class TokuteiGinouDocumentController extends Controller
             'status_nikah'   => strtoupper($profile->marital_status),
             'alamat_ktp'     => $profile->address_ktp,
             'telepon'        => $profile->phone_number ?? '-',
-            'email'          => Auth::user()->email,
+            'email'          => $profile->user->email,
             'today'          => now()->format('Y/m/d'),
+            // DATA INTERVIEW / PERUSAHAAN (Jika Lulus)
+            'perusahaan_nama'      => $passedInterview?->interview->company->name ?? '-',
+            'perusahaan_nama_jp'   => $passedInterview?->interview->company->name_in_japanese ?? '-',
+            'perusahaan_alamat_jp' => $passedInterview?->interview->company->address_in_japanese ?? '-',
+            'perusahaan_industri'  => $passedInterview?->interview->company->industry ?? '-',
+            
+            // DATA ORGANISASI PENERIMA (TSK / KUMIAI)
+            'org_penerima_nama'    => $passedInterview?->interview->accepting_organization->name ?? '-',
+            'org_penerima_nama_jp' => $passedInterview?->interview->accepting_organization->name_in_japanese ?? '-',
+            'org_penerima_alamat'  => $passedInterview?->interview->accepting_organization->address_in_japanese ?? '-',
+            
+            // TANGGAL-TANGGAL PENTING
+            'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('Y/m/d') : '-',
+            'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('Y/m/d') : '-',
         ]);
 
         // --- 2. DATA RIWAYAT PENDIDIKAN (OTOMATIS CLONE BARIS TABEL) ---

@@ -4,20 +4,36 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\StudentProfile;
+use App\Models\InterviewDetail; // Tambahkan ini
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\{Auth, File};
 use Illuminate\Support\Carbon;
 
 class GinouJisshuuDocumentController extends Controller
 {
-    public function generate($type) 
+    public function generate($type, $userId = null) 
     {
-        // 1. Ambil data dengan Eager Loading agar efisien
+        // 1. Tentukan target ID
+        $targetId = $userId ?: Auth::id();
+
+        // 2. Cek keamanan
+        if (Auth::user()->role !== 'admin' && Auth::id() != $targetId) {
+            abort(403, 'Anda tidak memiliki akses ke dokumen ini.');
+        }
+
+        // 3. Ambil data profil (Eager Loading)
         $profile = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
-            ->where('user_id', Auth::id())
+            ->where('user_id', $targetId)
             ->firstOrFail();
 
-        // 2. Mapping File Template
+        // 4. Ambil data interview kelulusan
+        $passedInterview = InterviewDetail::where('user_id', $targetId)
+            ->where('result', 'passed')
+            ->with(['interview.company', 'interview.accepting_organization'])
+            ->latest()
+            ->first();
+
+        // 5. Mapping File Template
         $fileMap = [
             'ginou_1-3'       => 'form_1_3_resume.docx',
             'ginou_1-19'      => 'form_1_19_agreement.docx',
@@ -36,7 +52,7 @@ class GinouJisshuuDocumentController extends Controller
 
         $template = new TemplateProcessor($templatePath);
 
-        // --- 3. DATA IDENTITAS UMUM ---
+        // --- 6. DATA IDENTITAS UMUM ---
         $template->setValues([
             'nama_lengkap'   => strtoupper($profile->full_name),
             'nama_katakana'  => $profile->full_name_katakana,
@@ -49,43 +65,52 @@ class GinouJisshuuDocumentController extends Controller
             'agama'          => strtoupper($profile->religion),
             'alamat'         => $profile->address_ktp,
             'telp'           => $profile->phone_number ?? '-',
-            'email'          => Auth::user()->email,
+            'email'          => $profile->user->email ?? '-', // Gunakan email user terkait
             'no_paspor'      => $profile->passport_number ?? '-',
             'tinggi_badan'   => $profile->height . ' cm',
             'berat_badan'    => $profile->weight . ' kg',
             'hobi'           => $profile->hobby ?? '-',
             'kekuatan'       => $profile->strength ?? '-',
             'today'          => now()->format('d/m/Y'),
+            
+            // DATA INTERVIEW (Khusus Magang istilahnya Implementing Org)
+            'perusahaan_nama'      => $passedInterview?->interview->company->name ?? '-',
+            'perusahaan_nama_jp'   => $passedInterview?->interview->company->name_in_japanese ?? '-',
+            'perusahaan_alamat_jp' => $passedInterview?->interview->company->address_in_japanese ?? '-',
+            'perusahaan_industri'  => $passedInterview?->interview->company->industry ?? '-',
+            'org_penerima_nama'    => $passedInterview?->interview->accepting_organization->name ?? '-',
+            'org_penerima_nama_jp' => $passedInterview?->interview->accepting_organization->name_in_japanese ?? '-',
+            'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('d/m/Y') : '-',
+            'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
 
-        // --- 4. DATA RIWAYAT PENDIDIKAN (Tabel Otomatis) ---
-        // Variabel di Word: ${edu_in}, ${edu_out}, ${school}
+        // --- 7. TABEL OTOMATIS (Pendidikan) ---
         if ($profile->educations->count() > 0) {
             $template->cloneRow('school', $profile->educations->count());
             foreach ($profile->educations as $index => $edu) {
                 $i = $index + 1;
                 $template->setValue("edu_in#$i", Carbon::parse($edu->entry_date)->format('m/Y'));
-                $template->setValue("edu_out#$i", Carbon::parse($edu->graduation_date)->format('m/Y'));
+                $grad = $edu->graduation_date ? Carbon::parse($edu->graduation_date)->format('m/Y') : 'PRESENT';
+                $template->setValue("edu_out#$i", $grad);
                 $template->setValue("school#$i", $edu->school_name);
                 $template->setValue("major#$i", $edu->major ?? '-');
             }
         }
 
-        // --- 5. DATA RIWAYAT PEKERJAAN (Tabel Otomatis) ---
-        // Variabel di Word: ${work_in}, ${work_out}, ${company}
+        // --- 8. TABEL OTOMATIS (Pekerjaan) ---
         if ($profile->experiences->count() > 0) {
             $template->cloneRow('company', $profile->experiences->count());
             foreach ($profile->experiences as $index => $exp) {
                 $i = $index + 1;
                 $template->setValue("work_in#$i", Carbon::parse($exp->start_date)->format('m/Y'));
-                $template->setValue("work_out#$i", $exp->end_date ? Carbon::parse($exp->end_date)->format('m/Y') : 'PRESENT');
+                $expEnd = $exp->end_date ? Carbon::parse($exp->end_date)->format('m/Y') : 'PRESENT';
+                $template->setValue("work_out#$i", $expEnd);
                 $template->setValue("company#$i", $exp->company_name);
                 $template->setValue("job#$i", $exp->job_type);
             }
         }
 
-        // --- 6. DATA KELUARGA (Tabel Otomatis) ---
-        // Variabel di Word: ${fam_name}, ${fam_rel}, ${fam_age}
+        // --- 9. TABEL OTOMATIS (Keluarga) ---
         if ($profile->families->count() > 0) {
             $template->cloneRow('fam_name', $profile->families->count());
             foreach ($profile->families as $index => $fam) {
@@ -97,8 +122,9 @@ class GinouJisshuuDocumentController extends Controller
             }
         }
 
-        // 7. Proses Download
-        $outputName = strtoupper($type) . "_" . str_replace(' ', '_', $profile->full_name) . ".docx";
+        // 10. Final Output
+        $cleanName = preg_replace('/[^A-Za-z0-9\-]/', '_', $profile->full_name);
+        $outputName = strtoupper($type) . "_" . $cleanName . ".docx";
         
         return response()->streamDownload(function () use ($template) {
             $template->saveAs('php://output');
