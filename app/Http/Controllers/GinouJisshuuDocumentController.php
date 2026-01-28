@@ -8,6 +8,7 @@ use App\Models\InterviewDetail; // Tambahkan ini
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\{Auth, File, DB};
 use Illuminate\Support\Carbon;
+use Stichoza\GoogleTranslate\GoogleTranslate;
 
 class GinouJisshuuDocumentController extends Controller
 {
@@ -71,6 +72,8 @@ class GinouJisshuuDocumentController extends Controller
         // --- 8. TABEL OTOMATIS (Pekerjaan dengan CloneRow) ---
         // Ambil maksimal 5 data terbaru agar tidak merusak halaman berikutnya
         $workExp = $profile->experiences->sortByDesc('start_date')->take(5)->values();
+        $tr = new GoogleTranslate('id'); // Target bahasa Indonesia
+        $industriIndo = $tr->translate($passedInterview?->interview->company->industry);
 
         // --- 6. DATA IDENTITAS UMUM ---
         $template->setValues([
@@ -155,6 +158,7 @@ class GinouJisshuuDocumentController extends Controller
             'perusahaan_nama_jp'   => $passedInterview?->interview->company->name_in_japanese ?? '-',
             'perusahaan_alamat_jp' => $passedInterview?->interview->company->address_in_japanese ?? '-',
             'perusahaan_industri'  => $passedInterview?->interview->company->industry ?? '-',
+            'perusahaan_industri_id' => $industriIndo,
             'org_penerima_nama'    => $passedInterview?->interview->acceptingOrganization->name ?? '-',
             'org_penerima_nama_jp' => $passedInterview?->interview->acceptingOrganization->name_in_japanese ?? '-',
             'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('d/m/Y') : '-',
