@@ -95,50 +95,50 @@ class GinouJisshuuDocumentController extends Controller
             'kekuatan'       => $profile->strength ?? '-',
 
             // SD
-            'sd_in'          => $sd ? Carbon::parse($sd->entry_date)->format('m/Y') : '',
-            'sd_out'         => $sd ? Carbon::parse($sd->graduation_date)->format('m/Y') : '',
+            'sd_in'          => $sd ? Carbon::parse($sd->entry_date)->format('Y年m月') : '',
+            'sd_out'         => $sd ? Carbon::parse($sd->graduation_date)->format('Y年m月') : '',
             'sd_name'        => $sd ? "{$sd->school_type} {$sd->level} {$sd->school_name}" : '',
 
             // SMP
-            'smp_in'         => $smp ? Carbon::parse($smp->entry_date)->format('m/Y') : '',
-            'smp_out'        => $smp ? Carbon::parse($smp->graduation_date)->format('m/Y') : '',
+            'smp_in'         => $smp ? Carbon::parse($smp->entry_date)->format('Y年m月') : '',
+            'smp_out'        => $smp ? Carbon::parse($smp->graduation_date)->format('Y年m月') : '',
             'smp_name'       => $smp ? "{$smp->school_type} {$smp->level} {$smp->school_name}" : '',
 
             // SMA/SMK
-            'sma_in'         => $sma ? Carbon::parse($sma->entry_date)->format('m/Y') : '',
-            'sma_out'        => $sma ? Carbon::parse($sma->graduation_date)->format('m/Y') : '',
+            'sma_in'         => $sma ? Carbon::parse($sma->entry_date)->format('Y年m月') : '',
+            'sma_out'        => $sma ? Carbon::parse($sma->graduation_date)->format('Y年m月') : '',
             'sma_name'       => $sma ? "{$sma->school_type} {$sma->level} {$sma->school_name}" : '',
             'sma_major'      => $sma ? $sma->major : '',
 
             // Universitas
-            'univ_in'        => $univ ? Carbon::parse($univ->entry_date)->format('m/Y') : '',
-            'univ_out'       => $univ ? Carbon::parse($univ->graduation_date)->format('m/Y') : '',
+            'univ_in'        => $univ ? Carbon::parse($univ->entry_date)->format('Y年m月') : '',
+            'univ_out'       => $univ ? Carbon::parse($univ->graduation_date)->format('Y年m月') : '',
             'univ_name'      => $univ ? "{$univ->school_type} {$univ->level} {$univ->school_name}" : '',
             'univ_major'     => $univ ? $univ->major : '',
 
             // Pekerjaan 1
-            'w1_in'   => isset($workExp[0]) ? Carbon::parse($workExp[0]->start_date)->format('m/Y') : '',
-            'w1_out'  => isset($workExp[0]) ? ($workExp[0]->end_date ? Carbon::parse($workExp[0]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w1_in'   => isset($workExp[0]) ? Carbon::parse($workExp[0]->start_date)->format('Y年m月') : '',
+            'w1_out'  => isset($workExp[0]) ? ($workExp[0]->end_date ? Carbon::parse($workExp[0]->end_date)->format('Y年m月') : '現在に至る') : '',
             'w1_name' => isset($workExp[0]) ? strtoupper("{$workExp[0]->company_name} ({$workExp[0]->job_type})") : '',
 
             // Pekerjaan 2
-            'w2_in'   => isset($workExp[1]) ? Carbon::parse($workExp[1]->start_date)->format('m/Y') : '',
-            'w2_out'  => isset($workExp[1]) ? ($workExp[1]->end_date ? Carbon::parse($workExp[1]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w2_in'   => isset($workExp[1]) ? Carbon::parse($workExp[1]->start_date)->format('Y年m月') : '',
+            'w2_out'  => isset($workExp[1]) ? ($workExp[1]->end_date ? Carbon::parse($workExp[1]->end_date)->format('Y年m月') : '現在に至る') : '',
             'w2_name' => isset($workExp[1]) ? strtoupper("{$workExp[1]->company_name} ({$workExp[1]->job_type})") : '',
 
             // Pekerjaan 3
-            'w3_in'   => isset($workExp[2]) ? Carbon::parse($workExp[2]->start_date)->format('m/Y') : '',
-            'w3_out'  => isset($workExp[2]) ? ($workExp[2]->end_date ? Carbon::parse($workExp[2]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w3_in'   => isset($workExp[2]) ? Carbon::parse($workExp[2]->start_date)->format('Y年m月') : '',
+            'w3_out'  => isset($workExp[2]) ? ($workExp[2]->end_date ? Carbon::parse($workExp[2]->end_date)->format('Y年m月') : '現在に至る') : '',
             'w3_name' => isset($workExp[2]) ? strtoupper("{$workExp[2]->company_name} ({$workExp[2]->job_type})") : '',
 
             // Pekerjaan 4
-            'w4_in'   => isset($workExp[3]) ? Carbon::parse($workExp[3]->start_date)->format('m/Y') : '',
-            'w4_out'  => isset($workExp[3]) ? ($workExp[3]->end_date ? Carbon::parse($workExp[3]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w4_in'   => isset($workExp[3]) ? Carbon::parse($workExp[3]->start_date)->format('Y年m月') : '',
+            'w4_out'  => isset($workExp[3]) ? ($workExp[3]->end_date ? Carbon::parse($workExp[3]->end_date)->format('Y年m月') : '現在に至る') : '',
             'w4_name' => isset($workExp[3]) ? strtoupper("{$workExp[3]->company_name} ({$workExp[3]->job_type})") : '',
 
             // Pekerjaan 5
-            'w5_in'   => isset($workExp[4]) ? Carbon::parse($workExp[4]->start_date)->format('m/Y') : '',
-            'w5_out'  => isset($workExp[4]) ? ($workExp[4]->end_date ? Carbon::parse($workExp[4]->end_date)->format('m/Y') : '現在に至る') : '',
+            'w5_in'   => isset($workExp[4]) ? Carbon::parse($workExp[4]->start_date)->format('Y年m月') : '',
+            'w5_out'  => isset($workExp[4]) ? ($workExp[4]->end_date ? Carbon::parse($workExp[4]->end_date)->format('Y年m月') : '現在に至る') : '',
             'w5_name' => isset($workExp[4]) ? strtoupper("{$workExp[4]->company_name} ({$workExp[4]->job_type})") : '',
 
             // Ambil tanggal interview, tambahkan 1 hari, lalu format
