@@ -245,7 +245,7 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
     };
 
     // --- SUB-COMPONENT: DOCUMENT ROW (PERBAIKAN) ---
-    const DocumentRow = ({ doc }: { doc: { label: string, field: string } }) => {
+    const DocumentRow = ({ doc, programType }: { doc: any, programType: string }) => {
         const currentUuid = studentProfile?.[doc.field];
         
         const isUploaded = !!currentUuid;
