@@ -384,12 +384,35 @@ export default function InterviewDashboard({ mode, data, upcoming, past, student
                                     <>
                                         {myStatus ? (
                                             myStatus === 'waiting' ? (
-                                                <Button size="sm" className="h-8 px-3 text-xs font-medium uppercase bg-amber-500 hover:bg-red-600 transition-colors"
-                                                    onClick={(e) => { e.stopPropagation(); handleCancel(item.id); }}
-                                                    disabled={isLoadingId === item.id}
-                                                >
-                                                    {isLoadingId === item.id ? <Loader2 className="size-3 animate-spin" /> : 'Terdaftar (Batal?)'}
-                                                </Button>
+                                                <div className="flex gap-2"> {/* Container untuk merapikan posisi tombol */}
+                                                    {/* Tombol Join Group Chat */}
+                                                    {item.group_chat_link && (
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline"
+                                                            className="h-8 px-3 text-xs font-medium uppercase border-blue-600 text-blue-600 hover:bg-blue-50"
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                window.open(item.group_chat_link, '_blank'); 
+                                                            }}
+                                                        >
+                                                            Join Group
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Tombol Batal yang sudah ada */}
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="h-8 px-3 text-xs font-medium uppercase bg-amber-500 hover:bg-red-600 transition-colors"
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            handleCancel(item.id); 
+                                                        }}
+                                                        disabled={isLoadingId === item.id}
+                                                    >
+                                                        {isLoadingId === item.id ? <Loader2 className="size-3 animate-spin" /> : 'Terdaftar (Batal?)'}
+                                                    </Button>
+                                                </div>
                                             ) : (
                                                 <Badge className={`h-8 px-3 text-xs font-medium uppercase ${myStatus === 'passed' ? 'bg-emerald-500' : 'bg-red-500'}`}>{myStatus}</Badge>
                                             )
