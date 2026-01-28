@@ -19,7 +19,7 @@ const GINOU_DOCS = [
     { label: "Form 1-3 (Resume)", field: "ginou_jisshuu_1-3_document_yunerva_uuid", typeKey: "ginou_1-3" },
     { label: "Form 1-19 (Agreement)", field: "ginou_jisshuu_1-19_document_yunerva_uuid", typeKey: "ginou_1-19" },
     { label: "Form 1-20", field: "ginou_jisshuu_1-20_document_yunerva_uuid", typeKey: "ginou_1-20" },
-    { label: "Form 2-21", field: "ginou_jisshuu_2-21_document_yunerva_uuid", typeKey: "ginou_2-21" },
+    { label: "Form 1-21", field: "ginou_jisshuu_1-21_document_yunerva_uuid", typeKey: "ginou_1-21" },
     { label: "Form 1-39", field: "ginou_jisshuu_1-39_document_yunerva_uuid", typeKey: "ginou_1-39" },
     { label: "Agreement Letter", field: "ginou_jisshuu_aggreement_document_yunerva_uuid", typeKey: "ginou_agreement" },
 ];

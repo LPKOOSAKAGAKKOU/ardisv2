@@ -43,7 +43,7 @@ class GinouJisshuuDocumentController extends Controller
             'ginou_1-3'       => 'form_1_3_resume.docx',
             'ginou_1-19'      => 'form_1_19_agreement.docx',
             'ginou_1-20'      => 'form_1_20_data.docx',
-            'ginou_2-21'      => 'form_2_21_report.docx',
+            'ginou_1-21'      => 'form_1_21_report.docx',
             'ginou_1-39'      => 'form_1_39_final.docx',
             'ginou_agreement' => 'agreement_letter_indo.docx',
         ];
