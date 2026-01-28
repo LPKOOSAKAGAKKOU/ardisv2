@@ -22,7 +22,7 @@ class TokuteiGinouDocumentController extends Controller
         }
 
         // 3. Ambil data dengan Eager Loading
-        $profile = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
+        $profile = StudentProfile::with(['user', 'educations', 'experiences.jobSector', 'families'])
             ->where('user_id', $targetId)
             ->firstOrFail();
 

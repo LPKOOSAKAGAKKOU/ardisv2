@@ -22,9 +22,10 @@ class StudentExperience extends Model
         return $this->belongsTo(StudentProfile::class);
     }
 
-    // TAMBAHKAN INI
+    // app/Models/StudentExperience.php
     public function jobSector()
     {
+        // Pastikan foreign key 'job_sector_id' sesuai dengan yang ada di tabel experiences
         return $this->belongsTo(JobSector::class, 'job_sector_id');
     }
 }
