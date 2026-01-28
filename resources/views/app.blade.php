@@ -3,12 +3,11 @@
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     translate="no"
     class="notranslate"
+    @class(['dark' => ($appearance ?? 'light') === 'dark'])
 >
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="google" content="notranslate">
-
 
         {{-- Inline script to detect appearance preference and apply it immediately --}}
         <script>
