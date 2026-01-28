@@ -15,8 +15,8 @@ use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
-use App\Http\Controllers\GinouJisshuuDocumentController\Controller as GinouJisshuuController;
-use App\Http\Controllers\TokuteiGinouDocumentController\Controller as TokuteiGinouController;
+use App\Http\Controllers\GinouJisshuuDocumentController;
+use App\Http\Controllers\TokuteiGinouDocumentController;
 
 
 
@@ -38,11 +38,10 @@ Route::middleware(['auth'])->group(function () {
     // Route Global tanpa prefix 'admin' atau 'student'
     Route::get('generate-cv/{userId}/{interviewId?}', [CvGenerator::class, 'generate'])->name('cv.generate');
 
-// Pakai nama Alias yang baru dibuat
-    Route::get('/ginou/{type}', [GinouJisshuuController::class, 'generate'])
+    Route::get('/ginou/{type}', [GinouJisshuuDocumentController::class, 'generate'])
         ->name('student.documents.ginou.generate');
 
-    Route::get('/tokutei/{type}', [TokuteiGinouController::class, 'generate'])
+    Route::get('/tokutei/{type}', [TokuteiGinouDocumentController::class, 'generate'])
         ->name('student.documents.tokutei.generate');
 });
 
