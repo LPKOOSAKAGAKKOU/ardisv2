@@ -3,7 +3,6 @@
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     translate="no"
     class="notranslate"
-    @class(['dark' => ($appearance ?? 'light') === 'dark'])
 >
     <head>
         <meta charset="utf-8">
