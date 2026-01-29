@@ -20,6 +20,18 @@ class Interview extends Model
         'interview_registration_deadline',
         'interview_date',
         'date_fly_to_japan',
+        'ginou_1_34_uuid', 
+        'ginou_1_10_uuid',
+        'ginou_1_23_uuid',
+        'ginou_1_23_req_uuid',
+        'ginou_1_13_uuid',
+        'ginou_4_8_uuid',
+        'ginou_1_29_uuid',
+        'stmt_jp_teacher_uuid',
+        'stmt_kg_teacher_uuid',
+        'cv_jp_teacher_uuid',
+        'cv_kg_teacher_uuid',
+        'schedule_detail_uuid',
     ];
 
     /**
