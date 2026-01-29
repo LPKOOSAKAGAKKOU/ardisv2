@@ -13,7 +13,7 @@ import {
 import { 
     Building2, Globe, Phone, Mail, User, MapPin, 
     Home, UtensilsCrossed, Banknote, Info, GraduationCap,
-    ArrowLeft, Save
+    ArrowLeft, Save, CheckCircle
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -282,28 +282,69 @@ export default function OrganizationForm({ organization }: Props) {
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-bold text-muted-foreground uppercase">Status Akomodasi</label>
                                     <Select 
-                                        value={data.accommodation_allowance ? 'yes' : 'no'} 
+                                        // Kita gunakan logic: jika keduanya false, berarti "Gratis Penuh"
+                                        value={
+                                            data.accommodation_allowance ? 'allowance' : 
+                                            data.student_pays_accommodation ? 'pay' : 'free'
+                                        } 
                                         onValueChange={v => {
-                                            setData(d => ({ ...d, accommodation_allowance: v === 'yes', student_pays_accommodation: v === 'no' }));
+                                            if (v === 'allowance') {
+                                                setData(d => ({ ...d, accommodation_allowance: true, student_pays_accommodation: false }));
+                                            } else if (v === 'pay') {
+                                                setData(d => ({ ...d, accommodation_allowance: false, student_pays_accommodation: true }));
+                                            } else {
+                                                // Gratis Penuh: Set keduanya false, nominal dikosongkan/0
+                                                setData(d => ({ 
+                                                    ...d, 
+                                                    accommodation_allowance: false, 
+                                                    student_pays_accommodation: false,
+                                                    accommodation_allowance_amount: '0',
+                                                    student_pays_accommodation_amount: '0'
+                                                }));
+                                            }
                                         }}
                                     >
                                         <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="yes">Gratis / Tunjangan Organisasi</SelectItem>
-                                            <SelectItem value="no">Siswa Membayar Sewa Mandiri</SelectItem>
+                                            <SelectItem value="free">Gratis Penuh (Disediakan Organisasi)</SelectItem>
+                                            <SelectItem value="allowance">Diberikan Tunjangan Uang Sewa</SelectItem>
+                                            <SelectItem value="pay">Siswa Membayar Sewa Mandiri</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                {data.accommodation_allowance ? (
+                                {/* TAMPILKAN INPUT HANYA JIKA BUKAN GRATIS PENUH */}
+                                {data.accommodation_allowance && (
                                     <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <label className="text-[10px] font-bold text-indigo-600 uppercase">Nominal Tunjangan Sewa</label>
-                                        <Input value={data.accommodation_allowance_amount} onChange={e => setData('accommodation_allowance_amount', e.target.value)} placeholder="0" className="h-11 mt-1 font-mono" />
+                                        <label className="text-[10px] font-bold text-indigo-600 uppercase">Nominal Tunjangan Sewa (Yen)</label>
+                                        <Input 
+                                            value={data.accommodation_allowance_amount} 
+                                            onChange={e => setData('accommodation_allowance_amount', e.target.value)} 
+                                            placeholder="0" 
+                                            className="h-11 mt-1 font-mono" 
+                                        />
                                     </div>
-                                ) : (
+                                )}
+
+                                {data.student_pays_accommodation && (
                                     <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                         <label className="text-[10px] font-bold text-rose-500 uppercase tracking-tighter italic">Biaya Sewa Ditanggung Siswa (Yen)</label>
-                                        <Input value={data.student_pays_accommodation_amount} onChange={e => setData('student_pays_accommodation_amount', e.target.value)} placeholder="Masukkan angka..." className="h-11 mt-1 border-rose-100 focus-visible:ring-rose-500 font-mono" />
+                                        <Input 
+                                            value={data.student_pays_accommodation_amount} 
+                                            onChange={e => setData('student_pays_accommodation_amount', e.target.value)} 
+                                            placeholder="Masukkan angka..." 
+                                            className="h-11 mt-1 border-rose-100 focus-visible:ring-rose-500 font-mono" 
+                                        />
+                                    </div>
+                                )}
+
+                                {/* FEEDBACK VISUAL UNTUK GRATIS PENUH */}
+                                {!data.accommodation_allowance && !data.student_pays_accommodation && (
+                                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-xl flex items-center gap-3 animate-in zoom-in-95 duration-300">
+                                        <div className="p-1.5 bg-emerald-500 rounded-full text-white">
+                                            <CheckCircle size={12} />
+                                        </div>
+                                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Akomodasi Gratis Tanpa Biaya/Potongan</span>
                                     </div>
                                 )}
                             </div>
