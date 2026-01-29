@@ -168,6 +168,37 @@ class GinouJisshuuDocumentController extends Controller
             'perusahaan_industri_id' => $industriIndo,
             'org_penerima_nama'    => $passedInterview?->interview->acceptingOrganization->name ?? '-',
             'org_penerima_nama_jp' => $passedInterview?->interview->acceptingOrganization->name_in_japanese ?? '-',
+            
+            'training_center'      => $passedInterview?->interview->acceptingOrganization->training_center_name ?? '-',
+            'training_center_address' => $passedInterview?->interview->acceptingOrganization->training_center_address ?? '-',
+            'training_center_phone'   => $passedInterview?->interview->acceptingOrganization->training_center_phone ?? '-',
+            'luas_training_center'    => $passedInterview?->interview->acceptingOrganization->training_center_area ?? '-',
+            'kapasitas_training_center' => $passedInterview?->interview->acceptingOrganization->training_center_capacity ?? '-',
+            'luas_per_orang'        => ($passedInterview && $passedInterview->interview->acceptingOrganization->training_center_area && $passedInterview->interview->acceptingOrganization->training_center_capacity) 
+                                        ? round(intval($passedInterview->interview->acceptingOrganization->training_center_area) / intval($passedInterview->interview->acceptingOrganization->training_center_capacity), 2) . ' m²' 
+                                        : '-',
+            'asrama_box'            => ($passedInterview?->interview->acceptingOrganization->training_center_type === 'asrama') ? '☑' : '☐',
+            'kos_box'               => ($passedInterview?->interview->acceptingOrganization->training_center_type === 'kos') ? '☑' : '☐',
+            'lainnya_box'            => ($passedInterview?->interview->acceptingOrganization->training_center_type === 'lainnya') ? '☑' : '☐',
+
+            'menerima_tunjangan_box' => ($passedInterview?->interview->acceptingOrganization->allowance_in_first_month) ? '☑' : '☐',
+            'tidak_menerima_tunjangan_box' => ($passedInterview?->interview->acceptingOrganization->allowance_in_first_month) ? '☐' : '☑',
+            'besaran_tunjangan'       => $passedInterview?->interview->acceptingOrganization->allowance_amount ?? '-',
+
+            'menerima_tunjangan_makan_box' => ($passedInterview?->interview->acceptingOrganization->meal_allowance) ? '☑' : '☐',
+            'tidak_menerima_tunjangan_makan_box' => ($passedInterview?->interview->acceptingOrganization->meal_allowance) ? '☐' : '☑',
+            'besaran_tunjangan_makan'       => $passedInterview?->interview->acceptingOrganization->meal_allowance_amount ?? '-',
+            'siswa_bayar_makan_box'         => ($passedInterview?->interview->acceptingOrganization->student_pays_meal) ? '☑' : '☐',
+            'siswa_tidak_bayar_makan_box'   => ($passedInterview?->interview->acceptingOrganization->student_pays_meal) ? '☐' : '☑',
+            'besaran_siswa_bayar_makan'     => $passedInterview?->interview->acceptingOrganization->student_pays_meal_amount ?? '-',
+
+            'menerima_tunjangan_akomodasi_box' => ($passedInterview?->interview->acceptingOrganization->accommodation_allowance) ? '☑' : '☐',
+            'tidak_menerima_tunjangan_akomodasi_box' => ($passedInterview?->interview->acceptingOrganization->accommodation_allowance) ? '☐' : '☑',
+            'besaran_tunjangan_akomodasi'       => $passedInterview?->interview->acceptingOrganization->accommodation_allowance_amount ?? '-',
+            'siswa_bayar_akomodasi_box'         => ($passedInterview?->interview->acceptingOrganization->student_pays_accommodation) ? '☑' : '☐',
+            'siswa_tidak_bayar_akomodasi_box'   => ($passedInterview?->interview->acceptingOrganization->student_pays_accommodation) ? '☐' : '☑',
+            'besaran_siswa_bayar_akomodasi'     => $passedInterview?->interview->acceptingOrganization->student_pays_accommodation_amount ?? '-',
+
             'tgl_wawancara'        => $passedInterview?->interview->interview_date ? Carbon::parse($passedInterview->interview->interview_date)->format('d/m/Y') : '-',
             'estimasi_terbang'     => $passedInterview?->interview->date_fly_to_japan ? Carbon::parse($passedInterview->interview->date_fly_to_japan)->format('d/m/Y') : '-',
         ]);
