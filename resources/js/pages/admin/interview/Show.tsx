@@ -613,32 +613,31 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
                 <Tabs defaultValue="candidates" className="w-full flex flex-col">
                     <div className="flex items-center justify-between border-b border-sidebar-border/70 mb-4">
-                    <TabsList className="bg-transparent w-full justify-start rounded-none h-auto p-0 border-b border-sidebar-border/50 gap-6">
-                        <TabsTrigger 
-                            value="candidates" 
-                            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-sm transition-all data-[state=active]:text-blue-600 shadow-none"
-                        >
-                            Daftar Peserta
-                            <span className="ml-2 py-0.5 px-2 text-[10px] rounded-full bg-neutral-100 text-neutral-500 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-600">
-                                {localDetails.length}
-                            </span>
-                        </TabsTrigger>
-                        
-                        <TabsTrigger 
-                            value="details" 
-                            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-sm transition-all data-[state=active]:text-blue-600 shadow-none"
-                        >
-                            Deskripsi Lowongan
-                        </TabsTrigger>
+                        <TabsList className="bg-transparent w-full justify-start rounded-none h-auto p-0 border-b border-sidebar-border/50 gap-4 sm:gap-6 overflow-x-auto flex-nowrap scrollbar-hide">
+                            <TabsTrigger 
+                                value="candidates" 
+                                className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-xs sm:text-sm transition-all data-[state=active]:text-blue-600 shadow-none whitespace-nowrap"
+                            >
+                                Daftar Peserta
+                                <span className="ml-2 py-0.5 px-2 text-[10px] rounded-full bg-neutral-100 text-neutral-500 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-600">
+                                    {localDetails.length}
+                                </span>
+                            </TabsTrigger>
+                            
+                            <TabsTrigger 
+                                value="details" 
+                                className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-xs sm:text-sm transition-all data-[state=active]:text-blue-600 shadow-none whitespace-nowrap"
+                            >
+                                Deskripsi Lowongan
+                            </TabsTrigger>
 
-                        {/* --- TAMBAHKAN INI AGAR TAB DOKUMEN MUNCUL --- */}
-                        <TabsTrigger 
-                            value="documents" 
-                            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-sm transition-all data-[state=active]:text-blue-600 shadow-none"
-                        >
-                            Dokumen Wawancara
-                        </TabsTrigger>
-                    </TabsList>
+                            <TabsTrigger 
+                                value="documents" 
+                                className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-xs sm:text-sm transition-all data-[state=active]:text-blue-600 shadow-none whitespace-nowrap"
+                            >
+                                Dokumen Wawancara
+                            </TabsTrigger>
+                        </TabsList>
 
                         {hasChanges && (
                             <Button 
