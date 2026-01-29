@@ -467,17 +467,20 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     }
 
     const handleInterviewReportPreview = async (uuid: string) => {
-        setIsLoadingId(uuid); // Gunakan UUID sebagai loading state
+        setIsLoadingId(uuid); // Gunakan UUID sebagai loading state sementara
         try {
-            // Buat route khusus di backend: Route::post('interviews/preview-report', ...)
-            const response = await axios.post(route('admin.interviews.preview-report'), { uuid });
+            // Tembak ke route preview khusus interview, bukan student
+            const response = await axios.post(route('admin.interviews.preview-report', interview.id), {
+                uuid: uuid
+            });
+
             if (response.data.data?.view_url) {
                 setPreviewUrl(response.data.data.view_url);
-                setPreviewTitle("Pratinjau Laporan Wawancara");
+                setPreviewTitle("Pratinjau Laporan Kolektif");
                 setIsPreviewOpen(true);
             }
         } catch (err) {
-            alert("Gagal memuat pratinjau laporan.");
+            alert("Gagal membuka pratinjau laporan.");
         } finally {
             setIsLoadingId(null);
         }
@@ -729,10 +732,18 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                             {/* Tombol PREVIEW PDF */}
                                             {currentUuid && (
                                                 <Button 
-                                                    size="sm" variant="outline" className="h-9 w-9 p-0" title="Lihat Dokumen"
-                                                    onClick={() => handleAdminPreviewDoc(report.field, currentUuid, 0)} 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    className="h-9 w-9 p-0" 
+                                                    title="Lihat Dokumen"
+                                                    onClick={() => handleInterviewReportPreview(currentUuid)} // Panggil fungsi baru
+                                                    disabled={isLoadingId === currentUuid}
                                                 >
-                                                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Eye size={14} />}
+                                                    {isLoadingId === currentUuid ? (
+                                                        <Loader2 className="size-4 animate-spin" />
+                                                    ) : (
+                                                        <Eye size={14} />
+                                                    )}
                                                 </Button>
                                             )}
 
