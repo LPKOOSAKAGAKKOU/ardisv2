@@ -287,6 +287,21 @@ class InterviewController extends Controller
         return response()->json(['message' => 'Error'], 400);
     }
 
+    public function previewReport(Request $request, $id)
+    {
+        // Cari data interview-nya
+        $interview = \App\Models\Interview::findOrFail($id);
+        
+        // Gunakan service Yunerva untuk generate link (berlaku 15 detik)
+        // Pastikan Anda sudah mengimport YunervaService di constructor
+        $response = $this->yunerva->generateViewLink(
+            $request->uuid,
+            null // Biasanya file interview tidak pakai password per-siswa
+        );
+
+        return response()->json($response);
+    }
+
     /**
      * Fitur Siswa: Mendaftarkan diri ke wawancara
      */

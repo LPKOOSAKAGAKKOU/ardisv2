@@ -90,6 +90,8 @@ Route::middleware([
     Route::get('/interviews/{id}/report/{type}', [GinouJisshuuDocumentController::class, 'generateInterviewReport'])
         ->name('interviews.report.generate');
     Route::post('/interviews/{id}/store-report', [InterviewController::class, 'storeReport'])->name('interviews.store-report');
+    Route::post('/interviews/{id}/preview-report', [InterviewController::class, 'previewReport'])
+        ->name('interviews.preview-report');
     
     Route::post('/interviews/{id}/assign', [InterviewController::class, 'assignStudent']);
     Route::delete('/interview-details/{id}', [InterviewController::class, 'removeStudent']);
