@@ -85,6 +85,11 @@ Route::middleware([
     Route::post('/interviews/{id}/upload-kyuujinhyou', [InterviewController::class, 'uploadKyuujinhyou'])->name('interviews.upload-kyuujinhyou');
     Route::post('/interviews/{id}/preview-kyuujinhyou', [InterviewController::class, 'previewKyuujinhyou'])
         ->name('interviews.preview-kyuujinhyou');
+
+    // Route khusus download report massal Ginou Jisshuu
+    Route::get('/interviews/{id}/report/{type}', [GinouJisshuuDocumentController::class, 'generateInterviewReport'])
+        ->name('interviews.report.generate');
+    Route::post('/interviews/{id}/store-report', [InterviewController::class, 'storeReport'])->name('interviews.store-report');
     
     Route::post('/interviews/{id}/assign', [InterviewController::class, 'assignStudent']);
     Route::delete('/interview-details/{id}', [InterviewController::class, 'removeStudent']);

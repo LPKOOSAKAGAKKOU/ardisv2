@@ -268,6 +268,25 @@ class InterviewController extends Controller
         return response()->json($response);
     }
 
+    public function storeReport(Request $request, $id)
+    {
+        $interview = Interview::findOrFail($id);
+        $fieldName = $request->field_name;
+
+        $response = $this->yunerva->finalizeUpload($request->upload_ticket);
+
+        if ($response['status'] === 'success') {
+            // Hapus file lama jika ada
+            if ($interview->$fieldName) {
+                $this->yunerva->deleteFile($interview->$fieldName);
+            }
+
+            $interview->update([$fieldName => $response['data']['uuid']]);
+            return response()->json(['status' => 'success']);
+        }
+        return response()->json(['message' => 'Error'], 400);
+    }
+
     /**
      * Fitur Siswa: Mendaftarkan diri ke wawancara
      */

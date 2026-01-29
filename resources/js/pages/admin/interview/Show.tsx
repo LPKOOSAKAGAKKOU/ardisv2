@@ -81,6 +81,32 @@ const TOKUTEI_DOCS = [
     { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid", typeKey: "ssw_result" },
 ];
 
+const INTERVIEW_GINOU_REPORTS = [
+    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
+    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1_10", field: "ginou_1_10_uuid" },
+    { label: "Rekom Pemberangkatan (1-23)", typeKey: "ginou_1_23", field: "ginou_1_23_uuid" },
+    { label: "Surat Pengajuan Rekom (1-23)", typeKey: "ginou_1_23_req", field: "ginou_1_23_req_uuid" },
+    { label: "Profile LPK (1-13)", typeKey: "ginou_1_13", field: "ginou_1_13_uuid" },
+    { label: "Jadwal Pelatihan Pra-Pemberangkatan (4-8)", typeKey: "ginou_4_8", field: "ginou_4_8_uuid" },
+    { label: "Pernyataan Pelatihan Kaigo (1-29)", typeKey: "ginou_1_29", field: "ginou_1_29_uuid" },
+    { label: "Pernyataan Pengajar Bahasa Jepang", typeKey: "stmt_jp_teacher", field: "stmt_jp_teacher_uuid" },
+    { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher", field: "stmt_kg_teacher_uuid" },
+    { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher", field: "cv_jp_teacher_uuid" },
+    { label: "CV Pengajar Keterampilan Kaigo", typeKey: "cv_kg_teacher", field: "cv_kg_teacher_uuid" },
+    { label: "Jadwal Perincian Pelatihan", typeKey: "schedule_detail", field: "schedule_detail_uuid" },
+];
+
+const INTERVIEW_TOKUTEI_REPORTS = [
+    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34" },
+    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1-10" },
+    { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher" },
+    { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher" },
+    { label: "CV Pengajar Keterampilan Kaigo", typeKey: "cv_kg_teacher" },
+    { label: "Jadwal Perincian Pelatihan", typeKey: "schedule_detail" },
+];
+
+
+
 // --- KOMPONEN BARIS / CARD YANG BISA DI DRAG ---
 function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
@@ -332,6 +358,13 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
     // --- LOGIC BARU: ADMIN MANAGE DOKUMEN ---
 
+    // Logika untuk menentukan daftar dokumen yang muncul di Tab Documents
+    const currentReports = useMemo(() => {
+        return interview.type === 'ginoujisshuu' 
+            ? INTERVIEW_GINOU_REPORTS 
+            : INTERVIEW_TOKUTEI_REPORTS;
+    }, [interview.type]);
+
     const handleManageDocs = (detail: any) => {
         setSelectedStudentForDoc(detail);
         setIsDocModalOpen(true);
@@ -399,6 +432,57 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             setIsLoadingId(null);
         }
     };
+
+    const handleInterviewReportUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string, label: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsLoadingId(fieldName);
+    try {
+        const ext = file.name.split('.').pop();
+        const newFileName = `${label}_${interview.interviewer_title}.${ext}`.replace(/\s+/g, '_');
+
+        // 1. Request Upload
+        const req = await axios.post(route('admin.documents.request'), {
+            filename: newFileName, extension: ext, mime_type: file.type, size: file.size
+        });
+        const { upload_url, upload_ticket } = req.data.data;
+
+        // 2. Physical Upload
+        await axios.put(upload_url, file, { headers: { 'Content-Type': file.type } });
+
+        // 3. Store to Interview Table (Bukan Student Table)
+        // Buat route baru di backend: admin.interviews.store-report
+        await axios.post(route('admin.interviews.store-report', interview.id), {
+            field_name: fieldName,
+            upload_ticket: upload_ticket 
+        });
+
+        alert(`Berhasil mengunggah ${label}`);
+        router.reload();
+    } catch (err) {
+        alert("Gagal mengunggah laporan.");
+    } finally {
+        setIsLoadingId(null);
+    }
+
+    const handleInterviewReportPreview = async (uuid: string) => {
+        setIsLoadingId(uuid); // Gunakan UUID sebagai loading state
+        try {
+            // Buat route khusus di backend: Route::post('interviews/preview-report', ...)
+            const response = await axios.post(route('admin.interviews.preview-report'), { uuid });
+            if (response.data.data?.view_url) {
+                setPreviewUrl(response.data.data.view_url);
+                setPreviewTitle("Pratinjau Laporan Wawancara");
+                setIsPreviewOpen(true);
+            }
+        } catch (err) {
+            alert("Gagal memuat pratinjau laporan.");
+        } finally {
+            setIsLoadingId(null);
+        }
+    };
+};
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -543,6 +627,14 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                         >
                             Deskripsi Lowongan
                         </TabsTrigger>
+
+                        {/* --- TAMBAHKAN INI AGAR TAB DOKUMEN MUNCUL --- */}
+                        <TabsTrigger 
+                            value="documents" 
+                            className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-1 pb-4 pt-2 font-bold text-sm transition-all data-[state=active]:text-blue-600 shadow-none"
+                        >
+                            Dokumen Wawancara
+                        </TabsTrigger>
                     </TabsList>
 
                         {hasChanges && (
@@ -601,6 +693,63 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             {interview?.description || "Tidak ada deskripsi."}
                         </div>
                     </TabsContent>
+                    <TabsContent value="documents" className="m-0">
+                    <div className="rounded-xl border bg-white dark:bg-zinc-950 p-6 shadow-sm">
+                        <div className="mb-6 border-b pb-4">
+                            <h3 className="text-lg font-bold">Laporan Kolektif Wawancara</h3>
+                            <p className="text-sm text-muted-foreground">Otomatisasi dokumen berdasarkan data perusahaan dan peserta lulus.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {currentReports.map((report, idx) => {
+                                // Ambil UUID langsung dari object interview yang dipassing dari props
+                                const currentUuid = interview[report.field]; 
+                                const isLoading = isLoadingId === report.field;
+
+                                return (
+                                    <div key={idx} className="flex items-center justify-between p-4 border rounded-xl hover:bg-neutral-50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${currentUuid ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                <FileText size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold leading-none mb-1">{report.label}</p>
+                                                {currentUuid && <p className="text-[10px] text-emerald-600 font-bold uppercase">Sudah Terupload</p>}
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {/* Tombol GENERATE Word */}
+                                            <Button 
+                                                size="sm" variant="secondary" className="h-9 w-9 p-0" title="Generate Word"
+                                                onClick={() => window.open(route('admin.interviews.report.generate', { id: interview.id, type: report.typeKey }), '_blank')}
+                                            >
+                                                <Download size={14} />
+                                            </Button>
+
+                                            {/* Tombol PREVIEW PDF */}
+                                            {currentUuid && (
+                                                <Button 
+                                                    size="sm" variant="outline" className="h-9 w-9 p-0" title="Lihat Dokumen"
+                                                    onClick={() => handleAdminPreviewDoc(report.field, currentUuid, 0)} 
+                                                >
+                                                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Eye size={14} />}
+                                                </Button>
+                                            )}
+
+                                            {/* Tombol UPLOAD */}
+                                            <label className="cursor-pointer">
+                                                <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
+                                                <div className={`flex items-center justify-center h-9 w-9 rounded-md border transition-all ${currentUuid ? 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                                                    {isLoading ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={16} />}
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </TabsContent>
                 </Tabs>
             </div>
 

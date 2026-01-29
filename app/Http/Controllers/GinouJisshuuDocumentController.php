@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\StudentProfile;
-use App\Models\InterviewDetail; // Tambahkan ini
+use App\Models\Interview;
+use App\Models\InterviewDetail;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\{Auth, File, DB};
 use Illuminate\Support\Carbon;
@@ -175,6 +176,82 @@ class GinouJisshuuDocumentController extends Controller
         $cleanName = preg_replace('/[^A-Za-z0-9\-]/', '_', $profile->full_name);
         $outputName = strtoupper($type) . "_" . $cleanName . ".docx";
         
+        return response()->streamDownload(function () use ($template) {
+            $template->saveAs('php://output');
+        }, $outputName);
+    }
+
+   public function generateInterviewReport($type, $interviewId)
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // Mengambil data lowongan (Tabel interviews) 
+        // DAN data peserta yang LULUS (Tabel interview_details)
+        $interview = Interview::with([
+            'company', 
+            'acceptingOrganization', 
+            'details' => function($q) {
+                // Kita hanya mengambil yang 'passed' dari tabel interview_details
+                $q->where('result', 'passed')->with('user.student_profile');
+            }
+        ])->findOrFail($interviewId);
+
+        $subFolder = 'ginou'; // Karena ini controller khusus ginou
+
+        $reportMap = [
+            'ginou_1-34'      => 'form_1_34_bukti_pelatihan_teknis.docx',
+            'ginou_1-10'      => 'form_1_10_perjanjian_sertifikasi.docx',
+            'ginou_1-23'      => 'form_1_23_rekom_pemberangkatan.docx',
+            'ginou_1-23_req'  => 'form_1_23_pengajuan_rekom.docx',
+            'ginou_1-13'      => 'form_1_13_profile_lpk.docx',
+            'ginou_4-8'       => 'form_4_8_jadwal_pra_pemberangkatan.docx',
+            'ginou_1-29'      => 'form_1_29_pernyataan_pelatihan_kaigo.docx',
+            'stmt_jp_teacher' => 'pernyataan_pengajar_b_jepang.docx',
+            'stmt_kg_teacher' => 'pernyataan_pengajar_kaigo.docx',
+            'cv_jp_teacher'   => 'cv_pengajar_b_jepang.docx',
+            'cv_kg_teacher'   => 'cv_pengajar_kaigo.docx',
+            'schedule_detail' => 'jadwal_perincian_pelatihan.docx',
+        ];
+
+        $fileName = $reportMap[$type] ?? abort(404, 'Jenis report tidak ditemukan.');
+        $templatePath = storage_path("app/templates/{$subFolder}/reports/" . $fileName);
+
+        if (!File::exists($templatePath)) {
+            abort(404, "File template tidak ditemukan di: templates/{$subFolder}/reports/{$fileName}");
+        }
+
+        $template = new TemplateProcessor($templatePath);
+
+        // --- DATA HEADER ---
+        $template->setValues([
+            'interview_title' => strtoupper($interview->interviewer_title),
+            'perusahaan_nama' => $interview->company->name ?? '-',
+            'perusahaan_jp'   => $interview->company->name_in_japanese ?? '-',
+            'org_nama'        => $interview->acceptingOrganization->name ?? '-',
+            'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
+            'total_lulus'     => $interview->details->count(), // Menghitung dari interview_details
+        ]);
+
+        // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
+        if ($interview->details->count() > 0) {
+            $template->cloneRow('no', $interview->details->count());
+            foreach ($interview->details as $index => $detail) {
+                $i = $index + 1;
+                // $detail di sini adalah baris dari tabel interview_details
+                $p = $detail->user->student_profile; 
+                
+                $template->setValue("no#$i", $i);
+                $template->setValue("nama_siswa#$i", strtoupper($p->full_name));
+                $template->setValue("nama_jp#$i", $p->full_name_katakana);
+                $template->setValue("pob#$i", strtoupper($p->pob));
+                $template->setValue("dob#$i", Carbon::parse($p->dob)->format('d-m-Y'));
+                $template->setValue("gender#$i", $p->gender === 'Laki-laki' ? '男' : '女');
+            }
+        }
+
+        $outputName = strtoupper($type) . "_" . str_replace(' ', '_', $interview->interviewer_title) . ".docx";
         return response()->streamDownload(function () use ($template) {
             $template->saveAs('php://output');
         }, $outputName);
