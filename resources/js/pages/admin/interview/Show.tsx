@@ -465,7 +465,8 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     } finally {
         setIsLoadingId(null);
     }
-
+    
+    };
     const handleInterviewReportPreview = async (uuid: string) => {
         setIsLoadingId(uuid); // Gunakan UUID sebagai loading state sementara
         try {
@@ -485,7 +486,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             setIsLoadingId(null);
         }
     };
-};
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
