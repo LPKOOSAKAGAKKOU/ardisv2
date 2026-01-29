@@ -21,6 +21,27 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->string('pic_name')->nullable(); // Nama penanggung jawab di Jepang
+
+            $table->string('training_center_name')->nullable();
+            $table->string('training_center_address')->nullable();
+            $table->string('training_center_phone')->nullable();
+            $table->string('training_center_area')->nullable(); // luas training center
+            $table->string('training_center_capacity')->nullable(); // kapasitas training center
+            $table->enum('training_center_type', ['asrama', 'kos', 'lainnya'])->nullable(); // Jenis Training Center
+            
+            $table->boolean('allowance_in_first_month')->default(true); // Besaran uang di bulan pertama
+            $table->string('allowance_amount')->default('60,000'); // Besaran uang di bulan pertama
+
+            $table->boolean('meal_allowance')->default(false);
+            $table->string('meal_allowance_amount')->nullable();
+            $table->boolean('student_pays_meal')->default(false); //apakak siswa membayar makan sendiri
+            $table->string('student_pays_meal_amount')->nullable();
+
+            $table->boolean('accommodation_allowance')->default(false);
+            $table->string('accommodation_allowance_amount')->nullable();
+            $table->boolean('student_pays_accommodation')->default(false); //apakak siswa membayar akomodasi sendiri
+            $table->string('student_pays_accommodation_amount')->nullable();
+
             $table->timestamps();
         });
     }

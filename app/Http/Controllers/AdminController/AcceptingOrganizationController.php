@@ -40,6 +40,25 @@ class AcceptingOrganizationController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'pic_name' => 'nullable|string|max:255',
+            'training_center_name' => 'nullable|string|max:255',
+            'training_center_address' => 'nullable|string|max:255',
+            'training_center_phone' => 'nullable|string|max:20',
+            'training_center_area' => 'nullable|string|max:255',
+            'training_center_capacity' => 'nullable|string|max:255',
+            'training_center_type' => 'nullable|in:asrama,kos,lainnya',
+            
+            'allowance_in_first_month' => 'nullable|boolean',
+            'allowance_amount' => 'nullable|string|max:255',
+
+            'meal_allowance' => 'nullable|boolean',
+            'meal_allowance_amount' => 'nullable|string|max:255',
+            'student_pays_meal' => 'nullable|boolean',
+            'student_pays_meal_amount' => 'nullable|string|max:255',
+
+            'accommodation_allowance' => 'nullable|boolean',
+            'accommodation_allowance_amount' => 'nullable|string|max:255',
+            'student_pays_accommodation' => 'nullable|boolean',
+            'student_pays_accommodation_amount' => 'nullable|string|max:255',
         ]);
 
         AcceptingOrganization::create($validated);
@@ -68,6 +87,26 @@ class AcceptingOrganizationController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'pic_name' => 'nullable|string|max:255',
+                        'training_center_name' => 'nullable|string|max:255',
+            'training_center_address' => 'nullable|string|max:255',
+            'training_center_phone' => 'nullable|string|max:20',
+            'training_center_area' => 'nullable|string|max:255',
+            'training_center_capacity' => 'nullable|string|max:255',
+            'training_center_type' => 'nullable|in:asrama,kos,lainnya',
+            
+            'allowance_in_first_month' => 'nullable|boolean',
+            'allowance_amount' => 'nullable|string|max:255',
+
+            'meal_allowance' => 'nullable|boolean',
+            'meal_allowance_amount' => 'nullable|string|max:255',
+            'student_pays_meal' => 'nullable|boolean',
+            'student_pays_meal_amount' => 'nullable|string|max:255',
+
+            'accommodation_allowance' => 'nullable|boolean',
+            'accommodation_allowance_amount' => 'nullable|string|max:255',
+            'student_pays_accommodation' => 'nullable|boolean',
+            'student_pays_accommodation_amount' => 'nullable|string|max:255',
+
         ]);
 
         $organization->update($request->all());

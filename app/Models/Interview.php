@@ -20,6 +20,30 @@ class Interview extends Model
         'interview_registration_deadline',
         'interview_date',
         'date_fly_to_japan',
+
+        //detail pelatihan ginou jisshuu
+        '1_34_training_start_date',
+        '1_34_training_end_date',
+        '1_34_training_duration_hours',
+        '1_34_training_item',
+
+        '1_23_req_letter_number',
+        '1_29_first_training_start_date',
+        '1_29_first_training_end_date',
+        '1_29_first_training_duration_hours',
+        '1_29_first_training_item',
+
+        '1_29_second_training_start_date',
+        '1_29_second_training_end_date',
+        '1_29_second_training_duration_hours',
+        '1_29_second_training_item',
+        
+        '1_29_third_training_start_date',
+        '1_29_third_training_end_date',
+        '1_29_third_training_duration_hours',
+        '1_29_third_training_item',
+
+        // dokumen ginou jisshuu
         'ginou_1_34_uuid', 
         'ginou_1_10_uuid',
         'ginou_1_23_uuid',
@@ -32,6 +56,7 @@ class Interview extends Model
         'cv_jp_teacher_uuid',
         'cv_kg_teacher_uuid',
         'schedule_detail_uuid',
+
     ];
 
     /**

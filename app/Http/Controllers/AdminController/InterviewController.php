@@ -11,6 +11,7 @@ use App\Services\YunervaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Carbon;
 
 class InterviewController extends Controller
 {
@@ -71,11 +72,97 @@ class InterviewController extends Controller
             'interview_registration_deadline' => 'nullable|date',
         ]);
 
-        // Simpan tanpa file kyuujinhyou terlebih dahulu
-        Interview::create($request->all());
+        // Ambil semua data dari form
+        $data = $request->all();
+
+        if ($request->type === 'ginoujisshuu') {
+            // --- LOGIKA DATA DEFAULT GINOU JISSHUU ---
+            
+            $baseDate = Carbon::parse($request->interview_date)->addMonth();
+
+            // 1. Nomor Surat Otomatis
+            $currentMonthCount = \App\Models\Interview::whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month)
+                ->count() + 1;
+            $sequence = str_pad($currentMonthCount, 3, '0', STR_PAD_LEFT);
+            $letterNumberWithSequence = $sequence . "/SPm/Ardisv2/OG/" . now()->format('m/Y');
+            
+            // 2. detail pelatihan 1-34 otomatis
+            $training1_34StartDate = ($baseDate->dayOfWeek !== Carbon::MONDAY) 
+                ? $baseDate->next(Carbon::MONDAY) 
+                : $baseDate;
+            $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(8)->next(Carbon::FRIDAY);
+            $training1_43TotalDays = $training1_34StartDate->diffInDaysFiltered(function (Carbon $date) {
+                return !$date->isWeekend();
+            }, $training1_34EndDate->copy()->addDay());
+            $training1_43TotalHours = $training1_43TotalDays * 8;
+
+            // 3. detail pelatihan 1-29 otomatis (3 tahap)
+            // Mulai Senin setelah 1-34 selesai
+            $stage1Start = $training1_34EndDate->copy()->next(Carbon::MONDAY);
+            // Logic 23 hari kerja: 4 minggu (20 hari) + 3 hari (Senin, Selasa, Rabu)
+            $stage1End = $stage1Start->copy()->addWeeks(4)->next(Carbon::WEDNESDAY); 
+            
+            // --- Pelatihan 1-29 Tahap 2 (5 Hari Kerja) ---
+            // Mulai Kamis (besoknya setelah Rabu tahap 1)
+            $stage2Start = $stage1End->copy()->addDay(); 
+            // Karena mulai Kamis, 5 hari kerja itu: Kamis, Jumat, (Libur), Senin, Selasa, Rabu
+            $stage2End = $stage2Start->copy()->next(Carbon::WEDNESDAY);
+
+            // --- Pelatihan 1-29 Tahap 3 (7 Hari Kerja) ---
+            // Mulai Kamis (besoknya setelah Rabu tahap 2)
+            $stage3Start = $stage2End->copy()->addDay();
+            // Logic 7 hari kerja: Kamis, Jumat, (Libur), Senin, Selasa, Rabu, Kamis, Jumat
+            $stage3End = $stage3Start->copy()->next(Carbon::FRIDAY);
+
+            // --- MERGE DATA ---
+            $data = array_merge($data, [
+                // Detail Pelatihan 1-34
+                '1_34_training_start_date'          => $training1_34StartDate->format('Y-m-d'),
+                '1_34_training_end_date'            => $training1_34EndDate->format('Y-m-d'),
+                '1_34_training_duration_hours'      => (string)$training1_43TotalHours, 
+                '1_34_training_item'                => '本邦での職業に関する実技、知識、職業マナー、座学、専門用語等',
+
+                // Nomor Surat 1-23
+                '1_23_req_letter_number'            => $letterNumberWithSequence,
+
+                // Pelatihan 1-29 Tahap 1 (4 Minggu)
+                '1_29_first_training_start_date'    => $stage1Start->format('Y-m-d'),
+                '1_29_first_training_end_date'      => $stage1End->format('Y-m-d'),
+                '1_29_first_training_duration_hours'=> '184', // 23 hari * 8 jam
+                '1_29_first_training_item'          => '日本語（読み書き、会話、文法、解釈、文字・語彙）',
+
+                // Pelatihan 1-29 Tahap 2 (2 Minggu)
+                '1_29_second_training_start_date'   => $stage2Start->format('Y-m-d'),
+                '1_29_second_training_end_date'     => $stage2End->format('Y-m-d'),
+                '1_29_second_training_duration_hours'=> '40', // 5 hari * 8 jam
+                '1_29_second_training_item'          => '日本での生活一般に関する知識（日本の歴史、文化、生活様式、職場ルール）',
+
+                // Pelatihan 1-29 Tahap 3 (Selesai bareng 1-34)
+                '1_29_third_training_start_date'    => $stage3Start->format('Y-m-d'),
+                '1_29_third_training_end_date'      => $stage3End->format('Y-m-d'),
+                '1_29_third_training_duration_hours' => '56', // 7 hari * 8 jam
+                '1_29_third_training_item'           => '本邦での円滑な技能等の習得に資する知識（専門用語、使用する機械・器具等）',
+            ]);
+
+        } else if ($request->type === 'tokuteiginou') {
+            // Placeholder untuk masa depan (Default Tokutei Ginou)
+            $data = array_merge($data, [
+                // Isi jika sudah ada kebutuhan default TG
+            ]);
+
+        } else if ($request->type === 'ikusei shuuro') {
+            // Placeholder untuk masa depan (Default Ikusei Shuuro)
+            $data = array_merge($data, [
+                // Isi jika sudah ada kebutuhan default IS
+            ]);
+        }
+
+        // Simpan data yang sudah digabung dengan default
+        \App\Models\Interview::create($data);
 
         return redirect()->route('admin.interviews.index')
-            ->with('success', 'Jadwal wawancara berhasil dibuat.');
+            ->with('success', 'Jadwal wawancara berhasil dibuat dengan data pelatihan otomatis.');
     }
     /**
      * Tampilkan Form Edit
@@ -103,20 +190,72 @@ class InterviewController extends Controller
             'company_id'        => 'required|exists:companies,id',
             'accepting_organization_id' => 'required|exists:accepting_organizations,id',
             'type'              => 'required|string',
-            'group_chat_link'   => 'nullable|string',
-            'interview_announcement_date' => 'nullable|date',
             'description'       => 'required|string',
             'interview_date'    => 'required|date',
+            'interview_announcement_date' => 'nullable|date',
             'interview_registration_deadline' => 'nullable|date',
             'date_fly_to_japan' => 'nullable|date',
             'group_chat_link'   => 'nullable|url',
         ]);
 
-        // Update data teks saja
-        $interview->update($request->all());
+        $data = $request->all();
+
+        // Cek apakah Admin mengubah tanggal interview
+        $isDateChanged = $request->interview_date !== $interview->interview_date;
+
+        if ($isDateChanged) {
+            if ($request->type === 'ginoujisshuu') {
+                // --- SINKRONISASI OTOMATIS: GINOU JISSHUU ---
+                $baseDate = Carbon::parse($request->interview_date)->addMonth();
+
+                // 1. Hitung Ulang detail pelatihan 1-34 otomatis
+                $training1_34StartDate = ($baseDate->dayOfWeek !== Carbon::MONDAY) 
+                    ? $baseDate->next(Carbon::MONDAY) 
+                    : $baseDate;
+                    
+                $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(4)->previous(Carbon::FRIDAY);
+                
+                $training1_43TotalDays = $training1_34StartDate->diffInDaysFiltered(function (Carbon $date) {
+                    return !$date->isWeekend();
+                }, $training1_34EndDate->copy()->addDay());
+                $training1_43TotalHours = $training1_43TotalDays * 8;
+
+                // 2. Hitung Ulang detail pelatihan 1-29 otomatis (3 tahap)
+                $stage1Start = $training1_34EndDate->copy()->next(Carbon::MONDAY);
+                $stage1End   = $stage1Start->copy()->addWeeks(4)->next(Carbon::WEDNESDAY); // 23 hari kerja
+                
+                $stage2Start = $stage1End->copy()->addDay(); 
+                $stage2End   = $stage2Start->copy()->next(Carbon::WEDNESDAY); // 5 hari kerja
+
+                $stage3Start = $stage2End->copy()->addDay();
+                $stage3End   = $stage3Start->copy()->next(Carbon::FRIDAY); // 7 hari kerja
+
+                $data = array_merge($data, [
+                    '1_34_training_start_date'          => $training1_34StartDate->format('Y-m-d'),
+                    '1_34_training_end_date'            => $training1_34EndDate->format('Y-m-d'),
+                    '1_34_training_duration_hours'      => (string)$training1_43TotalHours,
+                    '1_29_first_training_start_date'    => $stage1Start->format('Y-m-d'),
+                    '1_29_first_training_end_date'      => $stage1End->format('Y-m-d'),
+                    '1_29_second_training_start_date'   => $stage2Start->format('Y-m-d'),
+                    '1_29_second_training_end_date'     => $stage2End->format('Y-m-d'),
+                    '1_29_third_training_start_date'    => $stage3Start->format('Y-m-d'),
+                    '1_29_third_training_end_date'      => $stage3End->format('Y-m-d'),
+                ]);
+
+            } else if ($request->type === 'tokuteiginou') {
+                // --- PLACEHOLDER SINKRONISASI: TOKUTEI GINOU ---
+                // $data = array_merge($data, [ ... ]);
+
+            } else if ($request->type === 'ikusei shuuro') {
+                // --- PLACEHOLDER SINKRONISASI: IKUSEI SHUURO ---
+                // $data = array_merge($data, [ ... ]);
+            }
+        }
+
+        $interview->update($data);
 
         return redirect()->route('admin.interviews.index')
-            ->with('success', 'Jadwal wawancara ' . $interview->interviewer_title . ' berhasil diperbarui.');
+            ->with('success', 'Jadwal wawancara dan periode pelatihan berhasil diperbarui.');
     }
 
     /**
