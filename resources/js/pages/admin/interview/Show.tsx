@@ -6,7 +6,7 @@ import {
     ExternalLink, Download, ArrowLeft, Info, Eye,
     UserPlus, Trash2, Hash, GripVertical, Save,
     FileSpreadsheet, MoreVertical, ChevronRight,
-    Loader2, UploadCloud
+    Loader2, UploadCloud, AlertTriangle
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
