@@ -263,9 +263,12 @@ class GinouJisshuuDocumentController extends Controller
         // --- DATA HEADER ---
         $template->setValues([
             'interview_title' => strtoupper($interview->interviewer_title),
-            'perusahaan_nama' => $interview->company->name ?? '-',
-            'perusahaan_jp'   => $interview->company->name_in_japanese ?? '-',
-            'org_nama'        => $interview->acceptingOrganization->name ?? '-',
+            'perusahaan_nama'      => $interview->company->name ?? '-',
+            'perusahaan_nama_jp'   => $interview->company->name_in_japanese ?? '-',
+            'perusahaan_alamat_jp' => $interview->company->address_in_japanese ?? '-',
+            'perusahaan_industri'  => $interview->company->industry ?? '-',
+            'org_penerima_nama'    => $interview->acceptingOrganization->name ?? '-',
+            'org_penerima_nama_jp' => $interview->acceptingOrganization->name_in_japanese ?? '-',
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
             'total_lulus'     => $interview->details->count(), // Menghitung dari interview_details
             
