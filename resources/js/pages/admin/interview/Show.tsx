@@ -1074,9 +1074,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                             <th className="border-2 border-black p-2 w-[25%] text-amber-400">科目（内容）<br/><span className="text-[9px] font-normal text-white">Subject (Editable)</span></th>
                                             <th className="border-2 border-black p-2 w-[22%] text-[9px]">実施機関 / 所在地</th>
                                             <th className="border-2 border-black p-2 w-[8%]">外部委託</th>
+                                            <th className="border-2 border-black p-2 w-[18%]">実施機関場所</th>
                                             <th className="border-2 border-black p-2 w-[18%]">実施期間 (Period)</th>
                                             <th className="border-2 border-black p-2 w-[9%] text-amber-400">時間数</th>
-                                            <th className="border-2 border-black p-2 w-[18%]">備考</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1119,6 +1119,13 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                         ■有
                                                     </td>
 
+                                                    {/* 6. CATATAN LPK (FIXED AS PER IMAGE) */}
+                                                    <td className="border-2 border-black p-2 italic text-[8px] leading-relaxed bg-neutral-50/30">
+                                                        <strong>職業訓練機関</strong><br/>
+                                                        オオサカガッコウ<br/>
+                                                        LPK OOSAKA GAKKOU
+                                                    </td>
+
                                                     {/* 4. EDITABLE: PERIODE */}
                                                     <td className="border-2 border-black p-2">
                                                         <div className="space-y-2">
@@ -1146,12 +1153,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                         />
                                                     </td>
 
-                                                    {/* 6. CATATAN LPK (FIXED AS PER IMAGE) */}
-                                                    <td className="border-2 border-black p-2 italic text-[8px] leading-relaxed bg-neutral-50/30">
-                                                        <strong>職業訓練機関</strong><br/>
-                                                        オオサカガッコウ<br/>
-                                                        LPK OOSAKA GAKKOU
-                                                    </td>
+
                                                 </tr>
                                             );
                                         })}
