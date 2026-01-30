@@ -1169,12 +1169,13 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                         {/* BARIS TOTAL */}
                                         <tr className="bg-neutral-100 font-bold border-t-2 border-black">
                                             <td colSpan={5} className="border-2 border-black p-3 text-center tracking-[1em] uppercase text-[10px]">合 計 時 間 (TOTAL)</td>
+                                            <td className="border-2 border-black bg-neutral-50"></td>
                                             <td className="border-2 border-black p-3 text-center text-2xl underline decoration-double bg-amber-100/50">
                                                 {(Number(scheduleData['1_29_first_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_second_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_third_training_duration_hours']) || 0)} <span className="text-xs font-normal ml-1">時間</span>
                                             </td>
-                                            <td className="border-2 border-black bg-neutral-50"></td>
+                                            
                                         </tr>
                                     </tbody>
                                 </table>
