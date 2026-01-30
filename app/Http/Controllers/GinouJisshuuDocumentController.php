@@ -253,8 +253,9 @@ class GinouJisshuuDocumentController extends Controller
             abort(404, "File template tidak ditemukan di: templates/{$subFolder}/reports/{$fileName}");
         }
 
-        $dt = $passedInterview?->interview->interview_date 
-            ? Carbon::parse($passedInterview->interview->interview_date)->addDay() 
+       // --- FIX DI SINI: Ganti $passedInterview menjadi $interview ---
+        $dt = $interview->interview_date 
+            ? Carbon::parse($interview->interview_date)->addDay() 
             : now();
 
         $template = new TemplateProcessor($templatePath);
