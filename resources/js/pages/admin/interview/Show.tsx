@@ -1131,6 +1131,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                         </div>
                                                     </td>
                                                     <td className="border-2 border-foreground p-1 text-center font-bold bg-muted/5">■有</td>
+                                                    <td className="border-2 border-foreground p-2 italic text-[8px] bg-muted/10">
+                                                        <strong>職業訓練機関</strong><br/>LPK OOSAKA GAKKOU
+                                                    </td>
                                                     <td className="border-2 border-foreground p-2 bg-background">
                                                         <div className="space-y-2">
                                                             <Input type="date" value={String(scheduleData[startKey] || '')} onChange={e => setScheduleData(startKey as any, e.target.value)} className="h-7 text-[10px] p-1 border-foreground rounded-none shadow-none" />
@@ -1145,9 +1148,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                             onChange={e => setScheduleData(hrsKey as any, e.target.value)} 
                                                         />
                                                     </td>
-                                                    <td className="border-2 border-foreground p-2 italic text-[8px] bg-muted/10">
-                                                        <strong>職業訓練機関</strong><br/>LPK OOSAKA GAKKOU
-                                                    </td>
+
                                                 </tr>
                                             );
                                         })}
