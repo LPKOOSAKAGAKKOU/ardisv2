@@ -243,18 +243,17 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
     const handleUpdateSchedule = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Pastikan nama route di sini 'admin.interviews.update-schedule-params' 
-        // sesuai dengan ->name() yang ada di file routes/web.php
-        patchSchedule(route('admin.interviews.update-schedule-params', { id: interview.id }), {
+
+        patchSchedule(`/admin/interviews/${interview.id}/update-schedule-params`, {
             onSuccess: () => {
                 setIsEditScheduleModalOpen(false);
                 setIsScheduleEditConfirmed(false);
-                alert("Data berhasil disinkronkan ke database!");
+                // Biar mantap kasih toast/alert bawaan browser
+                alert("Database berhasil di-update secara manual!");
             },
             onError: (err) => {
-                console.error(err);
-                alert("Gagal menyimpan: " + Object.values(err).flat().join(', '));
+                console.error("Error Detail:", err);
+                alert("Gagal simpan data. Cek console browser.");
             },
             preserveScroll: true
         });
@@ -1169,7 +1168,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                         {/* BARIS TOTAL */}
                                         <tr className="bg-neutral-100 font-bold border-t-2 border-black">
                                             <td colSpan={5} className="border-2 border-black p-3 text-center tracking-[1em] uppercase text-[10px]">合 計 時 間 (TOTAL)</td>
-                                            <td className="border-2 border-black bg-neutral-50"></td>
                                             <td className="border-2 border-black p-3 text-center text-2xl underline decoration-double bg-amber-100/50">
                                                 {(Number(scheduleData['1_29_first_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_second_training_duration_hours']) || 0) + 
