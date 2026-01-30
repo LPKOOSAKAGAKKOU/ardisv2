@@ -86,7 +86,7 @@ Route::middleware([
     Route::post('/interviews/{id}/preview-kyuujinhyou', [InterviewController::class, 'previewKyuujinhyou'])
         ->name('interviews.preview-kyuujinhyou');
     Route::patch('/interviews/{id}/update-schedule-params', [InterviewController::class, 'updateScheduleParams'])
-    ->name('admin.interviews.update-schedule-params');
+        ->name('admin.interviews.update-schedule-params');
 
     // Route khusus download report massal Ginou Jisshuu
     Route::get('/interviews/{id}/report/{type}', [GinouJisshuuDocumentController::class, 'generateInterviewReport'])

@@ -243,10 +243,18 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
     const handleUpdateSchedule = (e: React.FormEvent) => {
         e.preventDefault();
-        patchSchedule(route('admin.interviews.update-schedule-params', interview.id), {
+        
+        // Pastikan nama route di sini 'admin.interviews.update-schedule-params' 
+        // sesuai dengan ->name() yang ada di file routes/web.php
+        patchSchedule(route('admin.interviews.update-schedule-params', { id: interview.id }), {
             onSuccess: () => {
                 setIsEditScheduleModalOpen(false);
                 setIsScheduleEditConfirmed(false);
+                alert("Data berhasil disinkronkan ke database!");
+            },
+            onError: (err) => {
+                console.error(err);
+                alert("Gagal menyimpan: " + Object.values(err).flat().join(', '));
             },
             preserveScroll: true
         });
