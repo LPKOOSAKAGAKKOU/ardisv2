@@ -269,7 +269,7 @@ class GinouJisshuuDocumentController extends Controller
             'perusahaan_industri'  => $interview->company->industry ?? '-',
             'org_penerima_nama'    => $interview->acceptingOrganization->name ?? '-',
             'org_penerima_nama_jp' => $interview->acceptingOrganization->name_in_japanese ?? '-',
-            'org_penerima_alamat_jp' => $interview->acceptingOrganization->address_in_japanese ?? '-',
+            'org_penerima_alamat_jp' => $interview->acceptingOrganization->address ?? '-',
             'pic_name'              => $interview->acceptingOrganization->pic_name ?? '-',
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
             'tgl_keberangkatan' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('d-m-Y') : '-',
