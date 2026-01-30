@@ -41,4 +41,8 @@ return [
         'secret_key' => env('YUNERVA_SECRET_KEY'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

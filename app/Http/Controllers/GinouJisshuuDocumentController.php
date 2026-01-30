@@ -218,18 +218,15 @@ class GinouJisshuuDocumentController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        // Mengambil data lowongan (Tabel interviews) 
-        // DAN data peserta yang LULUS (Tabel interview_details)
         $interview = Interview::with([
             'company', 
             'acceptingOrganization', 
             'details' => function($q) {
-                // Kita hanya mengambil yang 'passed' dari tabel interview_details
                 $q->where('result', 'passed')->with('user.student_profile');
             }
         ])->findOrFail($interviewId);
 
-        $subFolder = 'ginou'; // Karena ini controller khusus ginou
+        $subFolder = 'ginou'; 
 
         $reportMap = [
             'ginou_1-34'      => 'form_1_34_bukti_pelatihan_teknis.docx',
@@ -250,14 +247,10 @@ class GinouJisshuuDocumentController extends Controller
         $templatePath = storage_path("app/templates/{$subFolder}/reports/" . $fileName);
 
         if (!File::exists($templatePath)) {
-            abort(404, "File template tidak ditemukan di: templates/{$subFolder}/reports/{$fileName}");
+            abort(404, "File template tidak ditemukan.");
         }
 
-       // --- FIX DI SINI: Ganti $passedInterview menjadi $interview ---
-        $dt = $interview->interview_date 
-            ? Carbon::parse($interview->interview_date)->addDay() 
-            : now();
-
+        $dt = $interview->interview_date ? Carbon::parse($interview->interview_date)->addDay() : now();
         $template = new TemplateProcessor($templatePath);
 
         // --- DATA HEADER ---
@@ -274,16 +267,14 @@ class GinouJisshuuDocumentController extends Controller
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
             'tgl_keberangkatan' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('d-m-Y') : '-',
             'tgl_keberangkatan_jp' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('Y年m月') : '-',
-            'total_lulus'     => $interview->details->count(), // Menghitung dari interview_details
-            
-            // Ambil tanggal interview, tambahkan 1 hari, lalu format
-            'doc_y'         => $dt->format('Y'), // Tahun
-            'doc_m'         => $dt->format('m'), // Bulan
-            'doc_d'         => $dt->format('d'), // Hari
+            'total_lulus'     => $interview->details->count(),
+            'doc_y'           => $dt->format('Y'),
+            'doc_m'           => $dt->format('m'),
+            'doc_d'           => $dt->format('d'),
 
-            '1_34_training_item'    => $interview->{"1_34_training_item"} ?? '-',
-            '1_34_training_start_date' => $interview->{"1_34_training_start_date"} ? Carbon::parse($interview->{"1_34_training_start_date"})->format('Y年m月d日') : '-',
-            '1_34_training_end_date'   => $interview->{"1_34_training_end_date"} ? Carbon::parse($interview->{"1_34_training_end_date"})->format('Y年m月d日') : '-',
+            '1_34_training_item'           => $interview->{"1_34_training_item"} ?? '-',
+            '1_34_training_start_date'     => $interview->{"1_34_training_start_date"} ? Carbon::parse($interview->{"1_34_training_start_date"})->format('Y年m月d日') : '-',
+            '1_34_training_end_date'       => $interview->{"1_34_training_end_date"} ? Carbon::parse($interview->{"1_34_training_end_date"})->format('Y年m月d日') : '-',
             '1_34_training_duration_hours' => $interview->{"1_34_training_duration_hours"} ?? '-',
 
             '1_29_first_training_start_date' => $interview->{"1_29_first_training_start_date"} ? Carbon::parse($interview->{"1_29_first_training_start_date"})->format('Y年m月d日') : '-',
@@ -308,31 +299,26 @@ class GinouJisshuuDocumentController extends Controller
             ),
         ]);
 
-        // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
-        if ($interview->details->count() > 0) {
+        // --- 1. LOGIC KHUSUS JADWAL HARIAN (4-8) ---
+        if ($type === 'ginou_4-8') {
+            $this->generateDailySchedule48($template, $interview);
+        }
 
-        $nonTableReports = ['ginou_1-10', 'ginou_1-23', 'ginou_1-23_req', 'ginou_1-13'];
+        // --- 2. DATA TABEL PESERTA LULUS (LOGIC ASLI ANDA) ---
+        if ($interview->details->count() > 0) {
+            $nonTableReports = ['ginou_1-10', 'ginou_1-23', 'ginou_1-23_req', 'ginou_1-13'];
             
             if (in_array($type, $nonTableReports)) {
-                $studentsArray = []; // Buat array penampung
-                
+                $studentsArray = [];
                 foreach ($interview->details as $index => $detail) {
                     $num = $index + 1;
                     $name = strtoupper($detail->user->student_profile->full_name);
-                    // Masukkan ke array tanpa \n dulu
                     $studentsArray[] = "{$num}. {$name}";
                 }
-                $studentListText = implode("\n", $studentsArray);
-
-                $template->setValue('nama_siswa', $studentListText);
-
+                $template->setValue('nama_siswa', implode("\n", $studentsArray));
             } else {
-                /**
-                 * FORM LAIN (1-34, dsb): Tetap pakai Clone Row 
-                 * Karena tabelnya standar dan bisa nambah baris ke bawah.
-                 */
                 $template->cloneRow('no', $interview->details->count());
-                
+
                 foreach ($interview->details as $index => $detail) {
                     $i = $index + 1;
                     $p = $detail->user->student_profile; 
@@ -343,6 +329,10 @@ class GinouJisshuuDocumentController extends Controller
                     $template->setValue("pob#$i", strtoupper($p->pob));
                     $template->setValue("dob#$i", Carbon::parse($p->dob)->format('d-m-Y'));
                     $template->setValue("gender#$i", $p->gender === 'Laki-laki' ? '男' : '女');
+                    
+                    // Tambahan tgl_masuk khusus jika variabelnya ada di template 4-8
+                    // Kalau di dokumen lain gak ada variabel ini, PHPWord bakal abaikan, jadi AMAN.
+                    $template->setValue("tgl_masuk#$i", $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('Y/m/d') : '/  /  ');
                 }
             }
         }
@@ -351,5 +341,116 @@ class GinouJisshuuDocumentController extends Controller
         return response()->streamDownload(function () use ($template) {
             $template->saveAs('php://output');
         }, $outputName);
+    }
+
+    /**
+     * Fungsi memecah rentang tanggal 1-29 menjadi baris harian presisi di 4-8
+     * Terintegrasi dengan Gemini AI untuk pembuatan silabus harian
+     */
+    private function generateDailySchedule48(&$template, $interview)
+    {
+        $stages = [
+            ['key' => 'first', 'label' => $interview->{"1_29_first_training_item"}],
+            ['key' => 'second', 'label' => $interview->{"1_29_second_training_item"}],
+            ['key' => 'third', 'label' => $interview->{"1_29_third_training_item"}],
+        ];
+
+        $dailyRows = [];
+
+        foreach ($stages as $stage) {
+            $start = $interview->{"1_29_{$stage['key']}_training_start_date"};
+            $end = $interview->{"1_29_{$stage['key']}_training_end_date"};
+            $totalHours = (float)($interview->{"1_29_{$stage['key']}_training_duration_hours"} ?? 0);
+
+            if ($start && $end && $totalHours > 0) {
+                $period = \Carbon\CarbonPeriod::create($start, $end);
+                
+                // 1. Filter Hari Kerja (Senin - Jumat)
+                $workDates = [];
+                foreach ($period as $date) {
+                    if ($date->isWeekday()) { 
+                        $workDates[] = $date;
+                    }
+                }
+
+                $dayCount = count($workDates);
+                if ($dayCount > 0) {
+                    // 2. Hitung Jam Belajar Murni per Hari
+                    $hoursPerDay = $totalHours / $dayCount;
+                    
+                    // 3. Tentukan Rentang Waktu (08:30 + Jam Belajar + 1 Jam Istirahat)
+                    $startTime = \Carbon\Carbon::createFromTime(8, 30);
+                    // Jam selesai = Jam mulai + (Jam belajar + 1 jam istirahat)
+                    $totalDurationInMinutes = ($hoursPerDay + 1) * 60;
+                    $endTime = (clone $startTime)->addMinutes($totalDurationInMinutes);
+                    
+                    $timeString = $startTime->format('H:i') . " ～ " . $endTime->format('H:i');
+
+                    // 4. Panggil Gemini AI untuk memecah silabus sesuai jumlah hari dan jam
+                    $curriculum = $this->askGeminiToSplitCurriculum($stage['label'], $dayCount, $hoursPerDay);
+
+                    foreach ($workDates as $idx => $date) {
+                        $dailyRows[] = [
+                            'tgl' => $date->format('Y/m/d'),
+                            'jam' => $timeString,
+                            'item' => $curriculum[$idx] ?? $stage['label'],
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 5. Clone Baris ke Template Word
+        if (count($dailyRows) > 0) {
+            $template->cloneRow('tgl', count($dailyRows));
+            foreach ($dailyRows as $idx => $row) {
+                $i = $idx + 1;
+                $template->setValue("tgl#$i", $row['tgl']);
+                $template->setValue("jam#$i", $row['jam']);
+                $template->setValue("item#$i", $row['item']);
+                $template->setValue("guru#$i", "Indra-sensei");
+                $template->setValue("lokasi#$i", "LPK OOSAKA GAKKOU");
+            }
+        }
+    }
+
+    /**
+     * Meminta Gemini AI memecah silabus umum menjadi detail harian
+     */
+    private function askGeminiToSplitCurriculum($generalTopic, $days, $hoursPerDay)
+    {
+        $apiKey = config('services.gemini.key');
+        
+        // Prompt lebih spesifik mencantumkan jumlah jam per hari
+        $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah silabus umum: '{$generalTopic}' menjadi materi spesifik selama {$days} hari kerja. 
+                Setiap harinya berdurasi " . round($hoursPerDay, 1) . " jam pelajaran.
+                Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya.
+                Gunakan Bahasa Jepang.
+                HANYA kembalikan hasilnya dalam format JSON array string tanpa markdown atau penjelasan lain.
+                Contoh: [\"Materi 1\", \"Materi 2\"]";
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+                // Bersihkan format markdown jika AI bandel memberikan ```json
+                $cleanJson = trim(str_replace(['```json', '```'], '', $textResult));
+                $data = json_decode($cleanJson, true);
+
+                return is_array($data) ? $data : array_fill(0, $days, $generalTopic);
+            }
+            
+            return array_fill(0, $days, $generalTopic);
+        } catch (\Exception $e) {
+            // Jika API error atau limit tercapai, fallback ke topik umum
+            return array_fill(0, $days, $generalTopic);
+        }
     }
 }
