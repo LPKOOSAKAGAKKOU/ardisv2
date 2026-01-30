@@ -213,7 +213,7 @@ class InterviewController extends Controller
                     ? $baseDate->next(Carbon::MONDAY) 
                     : $baseDate;
                     
-                $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(4)->previous(Carbon::FRIDAY);
+                $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(8)->previous(Carbon::FRIDAY);
                 
                 $training1_43TotalDays = $training1_34StartDate->diffInDaysFiltered(function (Carbon $date) {
                     return !$date->isWeekend();
