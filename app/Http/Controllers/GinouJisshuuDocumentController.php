@@ -238,7 +238,7 @@ class GinouJisshuuDocumentController extends Controller
             'ginou_1-23_req'  => 'form_1_23_pengajuan_rekom.docx',
             'ginou_1-13'      => 'form_1_13_profile_lpk.docx',
             'ginou_4-8'       => 'form_4_8_jadwal_pra_pemberangkatan.docx',
-            'ginou_1-29'      => 'form_1_29_pernyataan_pelatihan_kaigo.docx',
+            'ginou_1-29'      => 'form_1_29_pernyataan_pelatihan.docx',
             'stmt_jp_teacher' => 'pernyataan_pengajar_b_jepang.docx',
             'stmt_kg_teacher' => 'pernyataan_pengajar_kaigo.docx',
             'cv_jp_teacher'   => 'cv_pengajar_b_jepang.docx',
@@ -269,6 +269,8 @@ class GinouJisshuuDocumentController extends Controller
             'perusahaan_industri'  => $interview->company->industry ?? '-',
             'org_penerima_nama'    => $interview->acceptingOrganization->name ?? '-',
             'org_penerima_nama_jp' => $interview->acceptingOrganization->name_in_japanese ?? '-',
+            'org_penerima_alamat_jp' => $interview->acceptingOrganization->address_in_japanese ?? '-',
+            'pic_name'              => $interview->acceptingOrganization->pic_name ?? '-',
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
             'tgl_keberangkatan' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('d-m-Y') : '-',
             'tgl_keberangkatan_jp' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('Y年m月') : '-',
@@ -283,6 +285,27 @@ class GinouJisshuuDocumentController extends Controller
             '1_34_training_start_date' => $interview->{"1_34_training_start_date"} ? Carbon::parse($interview->{"1_34_training_start_date"})->format('Y年m月d日') : '-',
             '1_34_training_end_date'   => $interview->{"1_34_training_end_date"} ? Carbon::parse($interview->{"1_34_training_end_date"})->format('Y年m月d日') : '-',
             '1_34_training_duration_hours' => $interview->{"1_34_training_duration_hours"} ?? '-',
+
+            '1_29_first_training_start_date' => $interview->{"1_29_first_training_start_date"} ? Carbon::parse($interview->{"1_29_first_training_start_date"})->format('Y年m月d日') : '-',
+            '1_29_first_training_end_date' => $interview->{"1_29_first_training_end_date"} ? Carbon::parse($interview->{"1_29_first_training_end_date"})->format('Y年m月d日') : '-',
+            '1_29_first_training_duration_hours' => $interview->{"1_29_first_training_duration_hours"} ?? '-',
+            '1_29_first_training_item' => $interview->{"1_29_first_training_item"} ?? '-',
+
+            '1_29_second_training_start_date' => $interview->{"1_29_second_training_start_date"} ? Carbon::parse($interview->{"1_29_second_training_start_date"})->format('Y年m月d日') : '-',
+            '1_29_second_training_end_date' => $interview->{"1_29_second_training_end_date"} ? Carbon::parse($interview->{"1_29_second_training_end_date"})->format('Y年m月d日') : '-',
+            '1_29_second_training_duration_hours' => $interview->{"1_29_second_training_duration_hours"} ?? '-',
+            '1_29_second_training_item' => $interview->{"1_29_second_training_item"} ?? '-',
+            
+            '1_29_third_training_start_date' => $interview->{"1_29_third_training_start_date"} ? Carbon::parse($interview->{"1_29_third_training_start_date"})->format('Y年m月d日') : '-',
+            '1_29_third_training_end_date' => $interview->{"1_29_third_training_end_date"} ? Carbon::parse($interview->{"1_29_third_training_end_date"})->format('Y年m月d日') : '-',
+            '1_29_third_training_duration_hours' => $interview->{"1_29_third_training_duration_hours"} ?? '-',
+            '1_29_third_training_item' => $interview->{"1_29_third_training_item"} ?? '-',
+            
+            '1_29_total_duration_hours' => (
+                (float)($interview->{"1_29_first_training_duration_hours"} ?? 0) + 
+                (float)($interview->{"1_29_second_training_duration_hours"} ?? 0) + 
+                (float)($interview->{"1_29_third_training_duration_hours"} ?? 0)
+            ),
         ]);
 
         // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
