@@ -87,12 +87,12 @@ const TOKUTEI_DOCS = [
 
 const INTERVIEW_GINOU_REPORTS = [
     { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
-    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1_10", field: "ginou_1_10_uuid" },
-    { label: "Rekom Pemberangkatan (1-23)", typeKey: "ginou_1_23", field: "ginou_1_23_uuid" },
-    { label: "Surat Pengajuan Rekom (1-23)", typeKey: "ginou_1_23_req", field: "ginou_1_23_req_uuid" },
-    { label: "Profile LPK (1-13)", typeKey: "ginou_1_13", field: "ginou_1_13_uuid" },
-    { label: "Jadwal Pelatihan Pra-Pemberangkatan (4-8)", typeKey: "ginou_4_8", field: "ginou_4_8_uuid" },
-    { label: "Pernyataan Pelatihan Kaigo (1-29)", typeKey: "ginou_1_29", field: "ginou_1_29_uuid" },
+    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1-10", field: "ginou_1_10_uuid" },
+    { label: "Rekom Pemberangkatan (1-23)", typeKey: "ginou_1-23", field: "ginou_1_23_uuid" },
+    { label: "Surat Pengajuan Rekom (1-23)", typeKey: "ginou_1-23_req", field: "ginou_1_23_req_uuid" },
+    { label: "Profile LPK (1-13)", typeKey: "ginou_1-13", field: "ginou_1_13_uuid" },
+    { label: "Jadwal Pelatihan Pra-Pemberangkatan (4-8)", typeKey: "ginou_4-8", field: "ginou_4_8_uuid" },
+    { label: "Pernyataan Pelatihan Kaigo (1-29)", typeKey: "ginou_1-29", field: "ginou_1_29_uuid" },
     { label: "Pernyataan Pengajar Bahasa Jepang", typeKey: "stmt_jp_teacher", field: "stmt_jp_teacher_uuid" },
     { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher", field: "stmt_kg_teacher_uuid" },
     { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher", field: "cv_jp_teacher_uuid" },
@@ -788,8 +788,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                         className="h-9 w-9 p-0" 
                                                         title="Generate Word"
                                                         onClick={() => {
-                                                            // Hajar pake string manual biar gak 404
-                                                            // Format: /admin/interviews/{id}/report/{typeKey}
                                                             const url = `/admin/interviews/${interview.id}/report/${report.typeKey}`;
                                                             window.open(url, '_blank');
                                                         }}
