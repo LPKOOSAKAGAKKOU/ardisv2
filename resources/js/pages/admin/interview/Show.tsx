@@ -1004,20 +1004,34 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
 
                     {!isScheduleEditConfirmed ? (
-                        <div className="p-10 flex flex-col items-center justify-center min-h-[400px]">
-                            <Alert variant="destructive" className="max-w-2xl mb-8">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle className="font-bold">PERINGATAN DOKUMEN IMIGRASI</AlertTitle>
-                                <AlertDescription className="text-sm">
-                                    Data yang Anda ubah akan langsung berdampak pada isi dokumen Word 1-34 dan 1-29. 
-                                    Pastikan seluruh perhitungan jam dan periode tanggal sudah divalidasi sesuai standar OTIT.
-                                </AlertDescription>
-                            </Alert>
-                            <div className="space-y-4 text-center">
-                                <p className="text-sm font-medium text-muted-foreground italic">Klik tombol di bawah untuk membuka lembar kerja dokumen.</p>
-                                <Button onClick={() => setIsScheduleEditConfirmed(true)} size="lg" className="px-10 font-bold uppercase tracking-tight">
-                                    Buka Editor <ChevronRight className="ml-2 h-4 w-4" />
-                                </Button>
+                        <div className="p-10 flex flex-col items-center justify-center min-h-[460px] bg-background">
+                            <div className="max-w-2xl w-full bg-white dark:bg-zinc-950 p-8 rounded-2xl border shadow-sm space-y-8">
+                                <Alert variant="destructive" className="border-2">
+                                    <AlertTriangle className="h-5 w-5" />
+                                    <AlertTitle className="font-bold text-lg tracking-tight">PERINGATAN DOKUMEN IMIGRASI</AlertTitle>
+                                    <AlertDescription className="text-sm leading-relaxed opacity-90">
+                                        Data yang Anda ubah akan langsung berdampak pada isi dokumen Word 1-34 dan 1-29. 
+                                        Pastikan seluruh perhitungan jam dan periode tanggal sudah divalidasi sesuai standar OTIT.
+                                    </AlertDescription>
+                                </Alert>
+
+                                <div className="space-y-6 text-center">
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-semibold text-foreground">Konfirmasi Akses Editor</p>
+                                        <p className="text-xs text-muted-foreground italic">
+                                            Klik tombol di bawah untuk membuka lembar kerja dokumen. 
+                                            Pastikan Anda memahami struktur Dokumen Rencana Pelatihan.
+                                        </p>
+                                    </div>
+                                    
+                                    <Button 
+                                        onClick={() => setIsScheduleEditConfirmed(true)} 
+                                        size="lg" 
+                                        className="w-full sm:w-auto px-12 font-bold uppercase tracking-widest shadow-sm"
+                                    >
+                                        Buka Lembar Kerja <ChevronRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -1082,9 +1096,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                             <th className="border-2 border-foreground p-2 w-[22%]">科目（内容）</th>
                                             <th className="border-2 border-foreground p-2 w-[25%] text-[9px]">実施機関 / 所在地</th>
                                             <th className="border-2 border-foreground p-2 w-[8%] text-center">外部委託</th>
+                                            <th className="border-2 border-foreground p-2 w-[15%]">実施場所</th>
                                             <th className="border-2 border-foreground p-2 w-[20%]">実施期間</th>
                                             <th className="border-2 border-foreground p-2 w-[10%] text-center">時間数</th>
-                                            <th className="border-2 border-foreground p-2 w-[15%]">実施場所</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1139,13 +1153,12 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                         })}
 
                                         <tr className="bg-muted font-bold border-t-2 border-foreground text-[11px]">
-                                            <td colSpan={5} className="border-2 border-foreground p-3 text-center uppercase tracking-widest">Total Hours</td>
+                                            <td colSpan={6} className="border-2 border-foreground p-3 text-center uppercase tracking-widest">Total Hours</td>
                                             <td className="border-2 border-foreground p-3 text-center text-lg underline bg-background">
                                                 {(Number(scheduleData['1_29_first_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_second_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_third_training_duration_hours']) || 0)}
                                             </td>
-                                            <td className="border-2 border-foreground"></td>
                                         </tr>
                                     </tbody>
                                 </table>
