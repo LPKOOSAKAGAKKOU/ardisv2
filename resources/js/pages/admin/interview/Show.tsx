@@ -977,7 +977,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
             {/* MODAL EDIT PARAMETER JADWAL PELATIHAN */}
             <Dialog open={isEditScheduleModalOpen} onOpenChange={setIsEditScheduleModalOpen}>
-                <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto bg-[#f4f4f4] p-0 border-none shadow-2xl font-serif">
+                <DialogContent className="max-w-[95vw] w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-[#f4f4f4] p-0 border-none shadow-2xl font-serif">
                     {/* STICKY HEADER */}
                     <div className="sticky top-0 z-50 bg-white border-b-2 border-neutral-800 p-4 flex items-center justify-between shadow-md">
                         <div className="flex items-center gap-3">
