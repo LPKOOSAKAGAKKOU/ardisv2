@@ -270,6 +270,8 @@ class GinouJisshuuDocumentController extends Controller
             'org_penerima_nama'    => $interview->acceptingOrganization->name ?? '-',
             'org_penerima_nama_jp' => $interview->acceptingOrganization->name_in_japanese ?? '-',
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
+            'tgl_keberangkatan' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('d-m-Y') : '-',
+            'tgl_keberangkatan_jp' => $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan)->format('Y年m月') : '-',
             'total_lulus'     => $interview->details->count(), // Menghitung dari interview_details
             
             // Ambil tanggal interview, tambahkan 1 hari, lalu format
