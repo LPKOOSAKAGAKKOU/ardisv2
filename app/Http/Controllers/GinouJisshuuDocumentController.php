@@ -287,16 +287,16 @@ class GinouJisshuuDocumentController extends Controller
         if ($interview->details->count() > 0) {
             
             if ($type === 'ginou_1-10') {
-                /**
-                 * KHUSUS FORM 1-10: Pakai Newline (Line Break) 
-                 * Karena tabel statis/gambar manual, tidak bisa tambah baris otomatis.
-                 */
-                $studentListText = "";
+                $studentsArray = []; // Buat array penampung
+                
                 foreach ($interview->details as $index => $detail) {
                     $num = $index + 1;
                     $name = strtoupper($detail->user->student_profile->full_name);
-                    $studentListText .= "{$num}. {$name}\n";
+                    // Masukkan ke array tanpa \n dulu
+                    $studentsArray[] = "{$num}. {$name}";
                 }
+                $studentListText = implode("\n", $studentsArray);
+
                 $template->setValue('nama_siswa', $studentListText);
 
             } else {
