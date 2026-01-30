@@ -285,18 +285,38 @@ class GinouJisshuuDocumentController extends Controller
 
         // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
         if ($interview->details->count() > 0) {
-            $template->cloneRow('no', $interview->details->count());
-            foreach ($interview->details as $index => $detail) {
-                $i = $index + 1;
-                // $detail di sini adalah baris dari tabel interview_details
-                $p = $detail->user->student_profile; 
+            
+            if ($type === 'ginou_1-10') {
+                /**
+                 * KHUSUS FORM 1-10: Pakai Newline (Line Break) 
+                 * Karena tabel statis/gambar manual, tidak bisa tambah baris otomatis.
+                 */
+                $studentListText = "";
+                foreach ($interview->details as $index => $detail) {
+                    $num = $index + 1;
+                    $name = strtoupper($detail->user->student_profile->full_name);
+                    $studentListText .= "{$num}. {$name}\n";
+                }
+                $template->setValue('nama_siswa', $studentListText);
+
+            } else {
+                /**
+                 * FORM LAIN (1-34, dsb): Tetap pakai Clone Row 
+                 * Karena tabelnya standar dan bisa nambah baris ke bawah.
+                 */
+                $template->cloneRow('no', $interview->details->count());
                 
-                $template->setValue("no#$i", $i);
-                $template->setValue("nama_siswa#$i", strtoupper($p->full_name));
-                $template->setValue("nama_jp#$i", $p->full_name_katakana);
-                $template->setValue("pob#$i", strtoupper($p->pob));
-                $template->setValue("dob#$i", Carbon::parse($p->dob)->format('d-m-Y'));
-                $template->setValue("gender#$i", $p->gender === 'Laki-laki' ? '男' : '女');
+                foreach ($interview->details as $index => $detail) {
+                    $i = $index + 1;
+                    $p = $detail->user->student_profile; 
+                    
+                    $template->setValue("no#$i", $i);
+                    $template->setValue("nama_siswa#$i", strtoupper($p->full_name));
+                    $template->setValue("nama_jp#$i", $p->full_name_katakana);
+                    $template->setValue("pob#$i", strtoupper($p->pob));
+                    $template->setValue("dob#$i", Carbon::parse($p->dob)->format('d-m-Y'));
+                    $template->setValue("gender#$i", $p->gender === 'Laki-laki' ? '男' : '女');
+                }
             }
         }
 
