@@ -977,7 +977,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
             {/* MODAL EDIT PARAMETER JADWAL PELATIHAN */}
             <Dialog open={isEditScheduleModalOpen} onOpenChange={setIsEditScheduleModalOpen}>
-                <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto bg-[#f4f4f4] p-0 border-none shadow-2xl font-serif">
+                <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto bg-[#f4f4f4] p-0 border-none shadow-2xl font-serif">
                     {/* STICKY HEADER */}
                     <div className="sticky top-0 z-50 bg-white border-b-2 border-neutral-800 p-4 flex items-center justify-between shadow-md">
                         <div className="flex items-center gap-3">
@@ -993,7 +993,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     </div>
 
                     {!isScheduleEditConfirmed ? (
-                        // ... (Bagian Warning tetap sama seperti sebelumnya) ...
                         <div className="p-10 flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 bg-white m-6 rounded-3xl border-2 border-dashed border-rose-200">
                             <div className="p-6 bg-rose-600 text-white rounded-full shadow-2xl"><AlertTriangle size={48} /></div>
                             <div className="max-w-md space-y-2">
@@ -1069,7 +1068,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {/* TAHAP 1 */}
                                         <tr>
                                             <td className="border border-black text-center font-bold">1</td>
                                             <td className="border border-black p-2 font-bold bg-neutral-50/50 italic text-[9px]">
@@ -1089,7 +1087,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                 <textarea className="w-full min-h-[60px] p-2 border-none focus:ring-0 font-japanese" value={scheduleData['1_29_first_training_item']} onChange={e => setScheduleData('1_29_first_training_item', e.target.value)} />
                                             </td>
                                         </tr>
-                                        {/* TAHAP 2 */}
                                         <tr>
                                             <td className="border border-black text-center font-bold">2</td>
                                             <td className="border border-black p-2 font-bold bg-neutral-50/50 italic text-[9px]">
@@ -1109,7 +1106,6 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                 <textarea className="w-full min-h-[60px] p-2 border-none focus:ring-0 font-japanese" value={scheduleData['1_29_second_training_item']} onChange={e => setScheduleData('1_29_second_training_item', e.target.value)} />
                                             </td>
                                         </tr>
-                                        {/* TAHAP 3 */}
                                         <tr>
                                             <td className="border border-black text-center font-bold">3</td>
                                             <td className="border border-black p-2 font-bold bg-neutral-50/50 italic text-[9px]">
