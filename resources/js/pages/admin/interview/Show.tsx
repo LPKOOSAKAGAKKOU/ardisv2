@@ -985,215 +985,180 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL EDIT PARAMETER JADWAL PELATIHAN */}
             <Dialog open={isEditScheduleModalOpen} onOpenChange={setIsEditScheduleModalOpen}>
-                <DialogContent className="max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-[#f4f4f4] p-0 border-none shadow-2xl font-serif">
-                    {/* STICKY HEADER */}
-                    <div className="sticky top-0 z-50 bg-white border-b-2 border-neutral-800 p-4 flex items-center justify-between shadow-md">
+                <DialogContent className="max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-muted/30 p-0 border shadow-2xl">
+                    {/* HEADER STANDAR SHADCN */}
+                    <div className="sticky top-0 z-50 bg-background border-b p-4 flex items-center justify-between shadow-sm">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-neutral-800 rounded text-white font-black text-xl">OTIT</div>
+                            <div className="p-2 bg-primary/10 rounded">
+                                <FileText className="h-5 w-5 text-primary" />
+                            </div>
                             <div>
-                                <DialogTitle className="text-lg font-black uppercase tracking-tighter">Editor Parameter Dokumen Imigrasi (1-34 & 1-29)</DialogTitle>
-                                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Training Implementation Plan - Official Format</p>
+                                <DialogTitle className="text-lg font-bold">Parameter Dokumen (1-34 & 1-29)</DialogTitle>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider">Editor Rencana Pelatihan Magang</p>
                             </div>
                         </div>
-                        <Button variant="ghost" onClick={() => setIsEditScheduleModalOpen(false)} className="rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors">
-                            <XCircle size={24} />
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditScheduleModalOpen(false)} className="rounded-full">
+                            <XCircle className="h-6 w-6 text-muted-foreground" />
                         </Button>
                     </div>
 
                     {!isScheduleEditConfirmed ? (
-                        <div className="p-10 flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 bg-white m-6 rounded-3xl border-2 border-dashed border-rose-200">
-                            <div className="p-6 bg-rose-600 text-white rounded-full shadow-2xl"><AlertTriangle size={48} /></div>
-                            <div className="max-w-md space-y-2">
-                                <h2 className="text-2xl font-black text-rose-600 uppercase italic">Peringatan Dokumen Negara!</h2>
-                                <p className="text-sm font-medium text-neutral-600 italic">"Perubahan data pada form ini akan mengubah isi dokumen 1-34 dan 1-29 secara permanen. Pastikan perhitungan jam (Hours) dan periode sudah sinkron."</p>
+                        <div className="p-10 flex flex-col items-center justify-center min-h-[400px]">
+                            <Alert variant="destructive" className="max-w-2xl mb-8">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle className="font-bold">PERINGATAN DOKUMEN IMIGRASI</AlertTitle>
+                                <AlertDescription className="text-sm">
+                                    Data yang Anda ubah akan langsung berdampak pada isi dokumen Word 1-34 dan 1-29. 
+                                    Pastikan seluruh perhitungan jam dan periode tanggal sudah divalidasi sesuai standar OTIT.
+                                </AlertDescription>
+                            </Alert>
+                            <div className="space-y-4 text-center">
+                                <p className="text-sm font-medium text-muted-foreground italic">Klik tombol di bawah untuk membuka lembar kerja dokumen.</p>
+                                <Button onClick={() => setIsScheduleEditConfirmed(true)} size="lg" className="px-10 font-bold uppercase tracking-tight">
+                                    Buka Editor <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
                             </div>
-                            <Button onClick={() => setIsScheduleEditConfirmed(true)} className="bg-neutral-900 hover:bg-black text-white px-12 h-14 rounded-full font-black uppercase tracking-widest gap-3 shadow-xl">
-                                Buka Lembar Kerja <ChevronRight size={20}/>
-                            </Button>
                         </div>
                     ) : (
-                        <form onSubmit={handleUpdateSchedule} className="p-6 lg:p-10 space-y-12">
+                        <form onSubmit={handleUpdateSchedule} className="p-8 lg:p-12 space-y-12">
                             
-                            {/* --- BAGIAN 1: PERSIS FORM 1-34 --- */}
-                            <div className="bg-white p-8 shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-neutral-300 relative">
-                                <div className="absolute top-4 right-4 text-[10px] font-bold text-neutral-400">参考様式第１-34 号</div>
-                                <h3 className="text-center text-xl font-bold mb-8 underline decoration-double underline-offset-8 uppercase">訓練実施（予定）表 (Form 1-34)</h3>
+                            {/* --- BAGIAN 1: FORM 1-34 (STYLE KERTAS PUTIH) --- */}
+                            <div className="bg-background p-10 border shadow-sm relative mx-auto max-w-[1000px]">
+                                <div className="absolute top-4 right-4 text-[10px] text-muted-foreground font-mono">参考様式第１-34 号</div>
+                                <h3 className="text-center text-lg font-bold mb-8 uppercase underline underline-offset-4">訓練実施（予定）表 (Form 1-34)</h3>
                                 
-                                <table className="w-full border-[2px] border-black text-[11px] border-collapse">
+                                <table className="w-full border-2 border-foreground text-[11px] border-collapse">
                                     <thead>
-                                        <tr className="bg-neutral-50 font-bold">
-                                            <th className="border-2 border-black p-3 w-[25%]">科目（内容）<br/><span className="text-[9px] font-normal">Subject/Content</span></th>
-                                            <th className="border-2 border-black p-3 w-[45%]">実施場所<br/><span className="text-[9px] font-normal">Training Location</span></th>
-                                            <th className="border-2 border-black p-3 w-[20%]">実施期間<br/><span className="text-[9px] font-normal">Period</span></th>
-                                            <th className="border-2 border-black p-3 w-[10%] text-blue-600 font-black uppercase">時間数<br/><span className="text-[9px] font-normal">Hours</span></th>
+                                        <tr className="bg-muted/50 font-bold">
+                                            <th className="border-2 border-foreground p-3 w-[25%] text-left">科目（内容）</th>
+                                            <th className="border-2 border-foreground p-3 w-[40%] text-left">実施場所</th>
+                                            <th className="border-2 border-black p-3 w-[20%] text-left">実施期間</th>
+                                            <th className="border-2 border-black p-3 w-[15%] text-center">実施時間数</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td className="border-2 border-black p-0">
+                                            <td className="border-2 border-foreground p-0 bg-background">
                                                 <textarea 
-                                                    className="w-full h-40 p-3 text-[12px] border-none focus:ring-0 bg-blue-50/10 font-japanese leading-relaxed"
+                                                    className="w-full h-40 p-3 text-[12px] border-none focus:ring-0 bg-transparent font-japanese leading-relaxed resize-none"
                                                     value={scheduleData['1_34_training_item']}
                                                     onChange={e => setScheduleData('1_34_training_item', e.target.value)}
                                                 />
                                             </td>
-                                            <td className="border-2 border-black p-4 bg-neutral-50/30 italic text-neutral-500 text-xs">
-                                                <strong>LPK OOSAKA GAKKOU</strong><br/>
-                                                Jl. Raya Wates-Kediri RT. 08 RW. 00 Desa/Kel. Ngletih Kec. Kandat, Kab. Kediri, Provinsi Jawa Timur Indonesia
+                                            <td className="border-2 border-foreground p-4 bg-muted/10 text-xs leading-relaxed">
+                                                <p className="font-bold">LPK OOSAKA GAKKOU</p>
+                                                <p className="text-muted-foreground mt-1">Jl. Raya Wates-Kediri RT. 08 RW. 00 Desa/Kel. Ngletih Kec. Kandat, Kab. Kediri, Prov. Jawa Timur Indonesia</p>
                                             </td>
-                                            <td className="border-2 border-black p-3 text-center">
+                                            <td className="border-2 border-foreground p-3 bg-background">
                                                 <div className="space-y-3">
-                                                    <Input type="date" value={scheduleData['1_34_training_start_date']} onChange={e => setScheduleData('1_34_training_start_date', e.target.value)} className="h-8 text-[11px] border-black rounded-none shadow-sm" />
-                                                    <div className="text-center font-bold text-neutral-400">～</div>
-                                                    <Input type="date" value={scheduleData['1_34_training_end_date']} onChange={e => setScheduleData('1_34_training_end_date', e.target.value)} className="h-8 text-[11px] border-black rounded-none shadow-sm" />
+                                                    <Input type="date" value={scheduleData['1_34_training_start_date']} onChange={e => setScheduleData('1_34_training_start_date', e.target.value)} className="h-8 text-[11px] border-foreground rounded-none shadow-none" />
+                                                    <div className="text-center font-bold">～</div>
+                                                    <Input type="date" value={scheduleData['1_34_training_end_date']} onChange={e => setScheduleData('1_34_training_end_date', e.target.value)} className="h-8 text-[11px] border-foreground rounded-none shadow-none" />
                                                 </div>
                                             </td>
-                                            <td className="border-2 border-black p-0 bg-blue-50/30">
+                                            <td className="border-2 border-foreground p-0 bg-muted/5">
                                                 <input 
-                                                    className="w-full h-40 text-center text-3xl font-black border-none focus:ring-0 bg-transparent text-blue-700"
+                                                    className="w-full h-40 text-center text-2xl font-bold border-none focus:ring-0 bg-transparent"
                                                     value={scheduleData['1_34_training_duration_hours']}
                                                     onChange={e => setScheduleData('1_34_training_duration_hours', e.target.value)}
                                                 />
+                                                <p className="text-[8px] text-center font-bold -mt-10 uppercase text-muted-foreground">Hours</p>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            {/* --- BAGIAN 2: FORM 1-29 (Full Editable & Data-Driven) --- */}
-                            <div className="bg-white p-12 shadow-[0_0_50px_rgba(0,0,0,0.1)] border border-neutral-300 relative overflow-x-auto">
-                                <div className="flex justify-between items-start mb-6 text-[11px] font-serif">
-                                    <div>
-                                        参考様式第１-29 号（規則第８条第 26 号関係）<br />
-                                        Ａ・Ｄ（規則第 10 条第２項第７号ハに適合することを証する書面）
-                                    </div>
-                                    <div className="text-right">（日本産業規格Ａ列４）</div>
-                                </div>
-
-                                <h3 className="text-center text-xl font-bold mb-8 uppercase tracking-widest">入国前講習実施（予定）表 (Form 1-29)</h3>
+                            {/* --- BAGIAN 2: FORM 1-29 --- */}
+                            <div className="bg-background p-10 border shadow-sm relative mx-auto max-w-[1000px]">
+                                <div className="absolute top-4 right-4 text-[10px] text-muted-foreground font-mono">参考様式第１-29 号</div>
+                                <h3 className="text-center text-lg font-bold mb-8 uppercase underline underline-offset-4 tracking-tight">入国前講習実施（予定）表 (Form 1-29)</h3>
                                 
-                                <table className="w-full border-[2px] border-black text-[10px] leading-tight border-collapse">
+                                <table className="w-full border-2 border-foreground text-[10px] border-collapse">
                                     <thead>
-                                        <tr className="bg-neutral-800 text-white border-b-2 border-black font-bold">
-                                            <th className="border-2 border-black p-2 w-8">#</th>
-                                            <th className="border-2 border-black p-2 w-[25%] text-amber-400">科目（内容）<br/><span className="text-[9px] font-normal text-white">Subject (Editable)</span></th>
-                                            <th className="border-2 border-black p-2 w-[22%] text-[9px]">実施機関 / 所在地</th>
-                                            <th className="border-2 border-black p-2 w-[8%]">外部委託</th>
-                                            <th className="border-2 border-black p-2 w-[18%]">実施機関場所</th>
-                                            <th className="border-2 border-black p-2 w-[18%]">実施期間 (Period)</th>
-                                            <th className="border-2 border-black p-2 w-[9%] text-amber-400">時間数</th>
+                                        <tr className="bg-muted text-foreground border-b-2 border-foreground font-bold">
+                                            <th className="border-2 border-foreground p-2 w-8">#</th>
+                                            <th className="border-2 border-foreground p-2 w-[22%]">科目（内容）</th>
+                                            <th className="border-2 border-foreground p-2 w-[25%] text-[9px]">実施機関 / 所在地</th>
+                                            <th className="border-2 border-foreground p-2 w-[8%] text-center">外部委託</th>
+                                            <th className="border-2 border-foreground p-2 w-[20%]">実施期間</th>
+                                            <th className="border-2 border-foreground p-2 w-[10%] text-center">時間数</th>
+                                            <th className="border-2 border-foreground p-2 w-[15%]">実施場所</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {[
-                                            { key: 'first', num: 1 },
-                                            { key: 'second', num: 2 },
-                                            { key: 'third', num: 3 }
+                                            { key: 'first', num: 1, label: '日本語' },
+                                            { key: 'second', num: 2, label: '日本での生活一般知識' },
+                                            { key: 'third', num: 3, label: '技能等習得知識' }
                                         ].map((stage) => {
-                                            const itemKey = `1_29_${stage.key}_training_item` as keyof typeof scheduleData;
                                             const startKey = `1_29_${stage.key}_training_start_date` as keyof typeof scheduleData;
                                             const endKey = `1_29_${stage.key}_training_end_date` as keyof typeof scheduleData;
                                             const hrsKey = `1_29_${stage.key}_training_duration_hours` as keyof typeof scheduleData;
+                                            const itemKey = `1_29_${stage.key}_training_item` as keyof typeof scheduleData;
 
                                             return (
                                                 <tr key={stage.key}>
-                                                    <td className="border-2 border-black text-center font-black bg-neutral-50">{stage.num}</td>
-                                                    
-                                                    {/* 1. EDITABLE: MATA PELAJARAN (LOAD DARI DB) */}
-                                                    <td className="border-2 border-black p-0 bg-white">
+                                                    <td className="border-2 border-foreground text-center font-bold bg-muted/30">{stage.num}</td>
+                                                    <td className="border-2 border-foreground p-0 bg-background">
                                                         <textarea 
-                                                            className="w-full h-24 p-2 text-[10px] border-none focus:ring-2 focus:ring-amber-500 font-japanese leading-relaxed bg-transparent font-bold italic"
+                                                            className="w-full h-24 p-2 text-[10px] border-none focus:ring-0 font-japanese leading-relaxed bg-transparent resize-none"
                                                             value={String(scheduleData[itemKey] || '')}
                                                             onChange={e => setScheduleData(itemKey as any, e.target.value)}
-                                                            placeholder="Masukkan mata pelajaran..."
                                                         />
                                                     </td>
-                                                    
-                                                    {/* 2. READ ONLY: KUMIAI (DARI BACKEND) */}
-                                                    <td className="border-2 border-black p-2 text-center font-japanese bg-neutral-50/50">
-                                                        <div className="font-bold underline text-[10px] mb-1">
+                                                    <td className="border-2 border-foreground p-3 text-center font-japanese bg-muted/10 text-[9px]">
+                                                        <div className="font-bold underline decoration-1 underline-offset-2 mb-1">
                                                             {interview.accepting_organization?.name_in_japanese || '-'}
                                                         </div>
-                                                        <div className="text-[8px] leading-tight opacity-70">
+                                                        <div className="opacity-70 leading-tight">
                                                             {interview.accepting_organization?.address_in_japanese || '-'}
                                                         </div>
                                                     </td>
-
-                                                    {/* 3. FIXED: OUTSOURCING */}
-                                                    <td className="border-2 border-black p-1 text-[9px] bg-neutral-50/20 text-center font-bold">
-                                                        ■有
-                                                    </td>
-
-                                                    {/* 6. CATATAN LPK (FIXED AS PER IMAGE) */}
-                                                    <td className="border-2 border-black p-2 italic text-[8px] leading-relaxed bg-neutral-50/30">
-                                                        <strong>職業訓練機関</strong><br/>
-                                                        オオサカガッコウ<br/>
-                                                        LPK OOSAKA GAKKOU
-                                                    </td>
-
-                                                    {/* 4. EDITABLE: PERIODE */}
-                                                    <td className="border-2 border-black p-2">
+                                                    <td className="border-2 border-foreground p-1 text-center font-bold bg-muted/5">■有</td>
+                                                    <td className="border-2 border-foreground p-2 bg-background">
                                                         <div className="space-y-2">
-                                                            <Input 
-                                                                type="date" 
-                                                                value={String(scheduleData[startKey] || '')} 
-                                                                onChange={e => setScheduleData(startKey as any, e.target.value)} 
-                                                                className="h-8 text-[10px] p-1 border-black rounded-none shadow-sm font-bold bg-white" 
-                                                            />
-                                                            <Input 
-                                                                type="date" 
-                                                                value={String(scheduleData[endKey] || '')} 
-                                                                onChange={e => setScheduleData(endKey as any, e.target.value)} 
-                                                                className="h-8 text-[10px] p-1 border-black rounded-none shadow-sm font-bold bg-white" 
-                                                            />
+                                                            <Input type="date" value={String(scheduleData[startKey] || '')} onChange={e => setScheduleData(startKey as any, e.target.value)} className="h-7 text-[10px] p-1 border-foreground rounded-none shadow-none" />
+                                                            <div className="text-center text-xs opacity-30">～</div>
+                                                            <Input type="date" value={String(scheduleData[endKey] || '')} onChange={e => setScheduleData(endKey as any, e.target.value)} className="h-7 text-[10px] p-1 border-foreground rounded-none shadow-none" />
                                                         </div>
                                                     </td>
-
-                                                    {/* 5. EDITABLE: DURASI JAM */}
-                                                    <td className="border-2 border-black p-0 bg-amber-50/30">
+                                                    <td className="border-2 border-foreground p-0 bg-muted/5">
                                                         <input 
-                                                            className="w-full h-24 text-center text-xl font-black border-none focus:ring-0 bg-transparent text-amber-700" 
+                                                            className="w-full h-24 text-center text-lg font-bold border-none focus:ring-0 bg-transparent" 
                                                             value={String(scheduleData[hrsKey] || '')} 
                                                             onChange={e => setScheduleData(hrsKey as any, e.target.value)} 
                                                         />
                                                     </td>
-
-
+                                                    <td className="border-2 border-foreground p-2 italic text-[8px] bg-muted/10">
+                                                        <strong>職業訓練機関</strong><br/>LPK OOSAKA GAKKOU
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
 
-                                        {/* BARIS TOTAL */}
-                                        <tr className="bg-neutral-100 font-bold border-t-2 border-black">
-                                            <td colSpan={5} className="border-2 border-black p-3 text-center tracking-[1em] uppercase text-[10px]">合 計 時 間 (TOTAL)</td>
-                                            <td className="border-2 border-black p-3 text-center text-2xl underline decoration-double bg-amber-100/50">
+                                        <tr className="bg-muted font-bold border-t-2 border-foreground text-[11px]">
+                                            <td colSpan={5} className="border-2 border-foreground p-3 text-center uppercase tracking-widest">Total Hours</td>
+                                            <td className="border-2 border-foreground p-3 text-center text-lg underline bg-background">
                                                 {(Number(scheduleData['1_29_first_training_duration_hours']) || 0) + 
                                                 (Number(scheduleData['1_29_second_training_duration_hours']) || 0) + 
-                                                (Number(scheduleData['1_29_third_training_duration_hours']) || 0)} <span className="text-xs font-normal ml-1">時間</span>
+                                                (Number(scheduleData['1_29_third_training_duration_hours']) || 0)}
                                             </td>
-                                            
+                                            <td className="border-2 border-foreground"></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
 
                             {/* ACTION BAR STICKY BOTTOM */}
-                            <div className="flex justify-between items-center bg-neutral-900 text-white p-6 rounded-3xl sticky bottom-4 shadow-2xl border-2 border-white/10 z-[60]">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                                        <CheckCircle size={14}/> Ready to Synchronize
-                                    </p>
-                                    <p className="text-[10px] text-neutral-400 uppercase font-bold italic opacity-70">Pastikan data jam pelatihan sudah benar sebelum dikirim ke server.</p>
-                                </div>
-                                <div className="flex gap-4">
-                                    <Button type="button" variant="outline" className="border-white/20 text-white hover:bg-white/10 rounded-full px-8 h-12" onClick={() => setIsScheduleEditConfirmed(false)}>Review Warnings</Button>
-                                    <Button disabled={processingSchedule} type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-12 h-12 rounded-full shadow-lg shadow-emerald-500/30 transition-all active:scale-95">
-                                        {processingSchedule ? <Loader2 className="animate-spin mr-2"/> : <Save className="mr-2"/>}
-                                        UPDATE DOKUMEN SEKARANG
-                                    </Button>
-                                </div>
+                            <div className="flex justify-end items-center gap-4 bg-background border-t p-6 sticky bottom-0 z-[60] shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                                <p className="text-[10px] text-muted-foreground uppercase font-medium mr-auto italic">*Cek kembali total jam dan periode sebelum menyimpan.</p>
+                                <Button type="button" variant="outline" onClick={() => setIsScheduleEditConfirmed(false)} className="px-8 h-10">Batal</Button>
+                                <Button disabled={processingSchedule} type="submit" className="px-10 h-10 font-bold">
+                                    {processingSchedule ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <Save className="mr-2 h-4 w-4"/>}
+                                    SIMPAN DATA
+                                </Button>
                             </div>
                         </form>
                     )}
