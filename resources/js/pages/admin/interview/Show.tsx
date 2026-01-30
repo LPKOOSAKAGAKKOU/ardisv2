@@ -781,7 +781,21 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                             <div key={idx} className="flex items-center justify-between p-2 bg-white dark:bg-zinc-950 border rounded-lg text-xs">
                                                 <span className="font-medium truncate mr-2">{report.label}</span>
                                                 <div className="flex gap-1 shrink-0">
-                                                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Download Word" onClick={() => window.open(route('admin.interviews.report.generate', { id: interview.id, type: report.typeKey }), '_blank')}><Download size={12}/></Button>
+                                                    {/* Tombol GENERATE Word Kolektif */}
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="secondary" 
+                                                        className="h-9 w-9 p-0" 
+                                                        title="Generate Word"
+                                                        onClick={() => {
+                                                            // Hajar pake string manual biar gak 404
+                                                            // Format: /admin/interviews/{id}/report/{typeKey}
+                                                            const url = `/admin/interviews/${interview.id}/report/${report.typeKey}`;
+                                                            window.open(url, '_blank');
+                                                        }}
+                                                    >
+                                                        <Download size={14} />
+                                                    </Button>
                                                     {currentUuid && <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => handleInterviewReportPreview(currentUuid)}><Eye size={12}/></Button>}
                                                     <label className="cursor-pointer">
                                                         <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
