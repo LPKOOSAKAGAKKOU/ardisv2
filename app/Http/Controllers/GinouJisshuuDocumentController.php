@@ -297,6 +297,8 @@ class GinouJisshuuDocumentController extends Controller
                 (float)($interview->{"1_29_second_training_duration_hours"} ?? 0) + 
                 (float)($interview->{"1_29_third_training_duration_hours"} ?? 0)
             ),
+            'start_global' => Carbon::parse($interview->{"1_29_first_training_start_date"})->format('Y年m月d日'),
+            'end_global'   => Carbon::parse($interview->{"1_29_third_training_end_date"})->format('Y年m月d日'),
         ]);
 
         // --- 1. LOGIC KHUSUS JADWAL HARIAN (4-8) ---
