@@ -287,8 +287,10 @@ class GinouJisshuuDocumentController extends Controller
 
         // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
         if ($interview->details->count() > 0) {
+
+        $nonTableReports = ['ginou_1-10', 'ginou_1-23', 'ginou_1-23_req'];
             
-            if ($type === 'ginou_1-10') {
+            if (in_array($type, $nonTableReports)) {
                 $studentsArray = []; // Buat array penampung
                 
                 foreach ($interview->details as $index => $detail) {
