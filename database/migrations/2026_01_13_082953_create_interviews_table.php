@@ -25,7 +25,7 @@ return new class extends Migration
             $table->date('interview_date');
             $table->date('date_fly_to_japan')->nullable(); // Tanggal keberangkatan ke Jepang
 
-            //detail pelatihan ginou jisshuu
+            //detail pelatihan ginou jisshuu 
             $table->date('1_34_training_start_date')->nullable();
             $table->date('1_34_training_end_date')->nullable();
             $table->string('1_34_training_duration_hours')->nullable();

@@ -253,6 +253,10 @@ class GinouJisshuuDocumentController extends Controller
             abort(404, "File template tidak ditemukan di: templates/{$subFolder}/reports/{$fileName}");
         }
 
+        $dt = $passedInterview?->interview->interview_date 
+            ? Carbon::parse($passedInterview->interview->interview_date)->addDay() 
+            : now();
+
         $template = new TemplateProcessor($templatePath);
 
         // --- DATA HEADER ---
@@ -263,6 +267,16 @@ class GinouJisshuuDocumentController extends Controller
             'org_nama'        => $interview->acceptingOrganization->name ?? '-',
             'tgl_interview'   => Carbon::parse($interview->interview_date)->format('d-m-Y'),
             'total_lulus'     => $interview->details->count(), // Menghitung dari interview_details
+            
+            // Ambil tanggal interview, tambahkan 1 hari, lalu format
+            'doc_y'         => $dt->format('Y'), // Tahun
+            'doc_m'         => $dt->format('m'), // Bulan
+            'doc_d'         => $dt->format('d'), // Hari
+
+            '1_34_training_item'    => $interview->{"1_34_training_item"} ?? '-',
+            '1_34_training_start_date' => $interview->{"1_34_training_start_date"} ? Carbon::parse($interview->{"1_34_training_start_date"})->format('Y年m月d日') : '-',
+            '1_34_training_end_date'   => $interview->{"1_34_training_end_date"} ? Carbon::parse($interview->{"1_34_training_end_date"})->format('Y年m月d日') : '-',
+            '1_34_training_duration_hours' => $interview->{"1_34_training_duration_hours"} ?? '-',
         ]);
 
         // --- DATA TABEL PESERTA LULUS (DARI interview_details) ---
