@@ -212,7 +212,7 @@ class GinouJisshuuDocumentController extends Controller
         }, $outputName);
     }
 
-   public function generateInterviewReport($type, $interviewId)
+    public function generateInterviewReport($interviewId, $type)
     {
         if (Auth::user()->role !== 'admin') {
             abort(403, 'Akses ditolak.');
