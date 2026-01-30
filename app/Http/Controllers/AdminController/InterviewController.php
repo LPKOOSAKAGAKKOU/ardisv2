@@ -259,6 +259,33 @@ class InterviewController extends Controller
     }
 
     /**
+     * Update parameter jadwal pelatihan secara manual dari modal Show
+     */
+    public function updateScheduleParams(Request $request, $id)
+    {
+        $interview = Interview::findOrFail($id);
+
+        // Validasi field yang bisa diedit manual
+        $validated = $request->validate([
+            '1_34_training_start_date'          => 'nullable|date',
+            '1_34_training_end_date'            => 'nullable|date',
+            '1_34_training_duration_hours'      => 'nullable|string|max:255',
+            '1_23_req_letter_number'            => 'nullable|string|max:255',
+            '1_29_first_training_start_date'    => 'nullable|date',
+            '1_29_first_training_end_date'      => 'nullable|date',
+            '1_29_second_training_start_date'   => 'nullable|date',
+            '1_29_second_training_end_date'     => 'nullable|date',
+            '1_29_third_training_start_date'    => 'nullable|date',
+            '1_29_third_training_end_date'      => 'nullable|date',
+        ]);
+
+        // Eksekusi update
+        $interview->update($validated);
+
+        return redirect()->back()->with('success', 'Parameter dokumen berhasil diperbarui secara manual.');
+    }
+
+    /**
      * Hapus Wawancara & File Terkait
      */
     public function destroy($id)

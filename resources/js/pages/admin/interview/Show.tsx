@@ -37,6 +37,10 @@ import {
 import axios from 'axios';
 import { format, isValid } from 'date-fns';
 import { route } from 'ziggy-js';
+// Tambahkan komponen UI yang diperlukan
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 // --- DND-KIT ---
 import {
@@ -201,6 +205,39 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
     const [selectedStudentForDoc, setSelectedStudentForDoc] = useState<any>(null);
     const [isLoadingId, setIsLoadingId] = useState<string | null>(null);
+    // State tambahan untuk Modal Edit Jadwal Pelatihan
+    const [isEditScheduleModalOpen, setIsEditScheduleModalOpen] = useState(false);  
+    const [isScheduleEditConfirmed, setIsScheduleEditConfirmed] = useState(false);
+
+    // State untuk form edit variabel pelatihan
+    const { data: scheduleData, setData: setScheduleData, patch: patchSchedule, processing: processingSchedule } = useForm({
+        '1_34_training_start_date': interview['1_34_training_start_date'] || '',
+        '1_34_training_end_date': interview['1_34_training_end_date'] || '',
+        '1_34_training_duration_hours': interview['1_34_training_duration_hours'] || '',
+        '1_23_req_letter_number': interview['1_23_req_letter_number'] || '',
+        '1_29_first_training_start_date': interview['1_29_first_training_start_date'] || '',
+        '1_29_first_training_end_date': interview['1_29_first_training_end_date'] || '',
+        '1_29_second_training_start_date': interview['1_29_second_training_start_date'] || '',
+        '1_29_second_training_end_date': interview['1_29_second_training_end_date'] || '',
+        '1_29_third_training_start_date': interview['1_29_third_training_start_date'] || '',
+        '1_29_third_training_end_date': interview['1_29_third_training_end_date'] || '',
+    });
+
+    // Filter siswa yang LULUS untuk bagian Berkas Per Siswa
+    const passedStudents = useMemo(() => {
+        return localDetails.filter((d: any) => d.result === 'passed');
+    }, [localDetails]); 
+
+    const handleUpdateSchedule = (e: React.FormEvent) => {
+        e.preventDefault();
+        patchSchedule(route('admin.interviews.update-schedule-params', interview.id), {
+            onSuccess: () => {
+                setIsEditScheduleModalOpen(false);
+                setIsScheduleEditConfirmed(false);
+            },
+            preserveScroll: true
+        });
+    };
 
     useEffect(() => {
         setLocalDetails(interview?.details?.sort((a: any, b: any) => a.order_number - b.order_number) || []);
@@ -695,68 +732,95 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             {interview?.description || "Tidak ada deskripsi."}
                         </div>
                     </TabsContent>
-                    <TabsContent value="documents" className="m-0">
-                    <div className="rounded-xl border bg-white dark:bg-zinc-950 p-6 shadow-sm">
-                        <div className="mb-6 border-b pb-4">
-                            <h3 className="text-lg font-bold">Laporan Kolektif Wawancara</h3>
-                            <p className="text-sm text-muted-foreground">Otomatisasi dokumen berdasarkan data perusahaan dan peserta lulus.</p>
+                    {/* CONTENT: DOKUMEN & BERKAS (VERSI BARU) */}
+                <TabsContent value="documents" className="space-y-6">
+                    {/* BUTTON EDIT PARAMETER JADWAL */}
+                    <div className="flex justify-end">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                            onClick={() => setIsEditScheduleModalOpen(true)}
+                        >
+                            <Calendar className="mr-2 h-4 w-4" /> Edit Parameter Pelatihan (Word)
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* KIRI: LAPORAN KOLEKTIF */}
+                        <div className="lg:col-span-1 space-y-4">
+                            <div className="p-4 bg-neutral-50 dark:bg-zinc-900 rounded-2xl border border-dashed border-neutral-300">
+                                <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                                    <FileText size={16} className="text-blue-600"/> Laporan Kolektif
+                                </h4>
+                                <div className="space-y-2">
+                                    {currentReports.map((report, idx) => {
+                                        const currentUuid = interview[report.field];
+                                        return (
+                                            <div key={idx} className="flex items-center justify-between p-2 bg-white dark:bg-zinc-950 border rounded-lg text-xs">
+                                                <span className="font-medium truncate mr-2">{report.label}</span>
+                                                <div className="flex gap-1 shrink-0">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Download Word" onClick={() => window.open(route('admin.interviews.report.generate', { id: interview.id, type: report.typeKey }), '_blank')}><Download size={12}/></Button>
+                                                    {currentUuid && <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => handleInterviewReportPreview(currentUuid)}><Eye size={12}/></Button>}
+                                                    <label className="cursor-pointer">
+                                                        <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
+                                                        <div className={`flex items-center justify-center h-7 w-7 rounded-md border ${currentUuid ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-600 text-white'}`}>
+                                                            <Upload size={12} />
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {currentReports.map((report, idx) => {
-                                // Ambil UUID langsung dari object interview yang dipassing dari props
-                                const currentUuid = interview[report.field]; 
-                                const isLoading = isLoadingId === report.field;
-
-                                return (
-                                    <div key={idx} className="flex items-center justify-between p-4 border rounded-xl hover:bg-neutral-50 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg ${currentUuid ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                <FileText size={20} />
+                        {/* KANAN: BERKAS PER SISWA (LULUS) */}
+                        <div className="lg:col-span-2 space-y-4">
+                            <div className="bg-white dark:bg-zinc-950 border rounded-2xl overflow-hidden shadow-sm">
+                                <div className="p-4 bg-neutral-50 dark:bg-zinc-900 border-b flex justify-between items-center">
+                                    <h4 className="font-bold text-sm flex items-center gap-2">
+                                        <Users size={16} className="text-emerald-600"/> Berkas Siswa Lulus
+                                    </h4>
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700">{passedStudents.length} Siswa</Badge>
+                                </div>
+                                <div className="divide-y">
+                                    {passedStudents.length > 0 ? passedStudents.map((detail: any) => (
+                                        <div key={detail.id} className="p-4 flex items-center justify-between hover:bg-neutral-50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                                                    {detail.user?.student_profile?.full_name?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold leading-none">{detail.user?.student_profile?.full_name}</p>
+                                                    <p className="text-[10px] text-muted-foreground uppercase mt-1">ID: {detail.user_id}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-semibold leading-none mb-1">{report.label}</p>
-                                                {currentUuid && <p className="text-[10px] text-emerald-600 font-bold uppercase">Sudah Terupload</p>}
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {/* Tombol GENERATE Word */}
-                                            <Button 
-                                                size="sm" variant="secondary" className="h-9 w-9 p-0" title="Generate Word"
-                                                onClick={() => window.open(route('admin.interviews.report.generate', { id: interview.id, type: report.typeKey }), '_blank')}
-                                            >
-                                                <Download size={14} />
-                                            </Button>
-
-                                            {/* Tombol PREVIEW PDF */}
-                                            {currentUuid && (
+                                            
+                                            <div className="flex items-center gap-4">
+                                                {/* Status Checklist (Indikator Dokumen Lengkap) */}
+                                                <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-neutral-400 uppercase">
+                                                    <CheckCircle size={12} className={detail.user?.student_profile?.ginou_jisshuu_1_3_document_yunerva_uuid ? "text-emerald-500" : "text-neutral-200"} />
+                                                    Resume
+                                                </div>
+                                                
                                                 <Button 
                                                     size="sm" 
-                                                    variant="outline" 
-                                                    className="h-9 w-9 p-0" 
-                                                    title="Lihat Dokumen"
-                                                    onClick={() => handleInterviewReportPreview(currentUuid)} // Panggil fungsi baru
-                                                    disabled={isLoadingId === currentUuid}
+                                                    variant="secondary" 
+                                                    className="h-8 text-xs font-bold"
+                                                    onClick={() => handleManageDocs(detail)}
                                                 >
-                                                    {isLoadingId === currentUuid ? (
-                                                        <Loader2 className="size-4 animate-spin" />
-                                                    ) : (
-                                                        <Eye size={14} />
-                                                    )}
+                                                    Kelola Berkas
                                                 </Button>
-                                            )}
-
-                                            {/* Tombol UPLOAD */}
-                                            <label className="cursor-pointer">
-                                                <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
-                                                <div className={`flex items-center justify-center h-9 w-9 rounded-md border transition-all ${currentUuid ? 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-                                                    {isLoading ? <Loader2 className="animate-spin size-4" /> : <UploadCloud size={16} />}
-                                                </div>
-                                            </label>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    )) : (
+                                        <div className="p-10 text-center text-neutral-400 text-sm italic">Belum ada siswa yang dinyatakan Lulus.</div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
@@ -898,6 +962,80 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                             );
                         })}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* MODAL EDIT PARAMETER JADWAL PELATIHAN */}
+            <Dialog open={isEditScheduleModalOpen} onOpenChange={setIsEditScheduleModalOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Calendar className="text-amber-500" /> Parameter Jadwal & Dokumen
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    {!isScheduleEditConfirmed ? (
+                        <div className="space-y-6 py-4">
+                            <Alert variant="destructive" className="bg-rose-50 border-rose-200">
+                                <Info className="h-4 w-4" />
+                                <AlertTitle className="font-black uppercase tracking-tight">Peringatan Keras</AlertTitle>
+                                <AlertDescription className="text-xs leading-relaxed">
+                                    Pastikan anda paham benar dokumen yang dirubah ini karena kesalahan yang diinput 
+                                    akan membuat dokumen **DITOLAK OTIT (Organization for Technical Intern Training)**. 
+                                    Perubahan ini akan langsung berdampak pada seluruh dokumen Word yang di-generate.
+                                </AlertDescription>
+                            </Alert>
+                            <div className="flex flex-col items-center justify-center p-8 bg-neutral-50 rounded-xl border border-dashed">
+                                <p className="text-sm font-bold text-neutral-600 mb-4">Apakah Anda yakin ingin melanjutkan?</p>
+                                <Button onClick={() => setIsScheduleEditConfirmed(true)} className="bg-amber-600 hover:bg-amber-700 shadow-lg">
+                                    Saya Paham & Tetap Lanjutkan
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleUpdateSchedule} className="space-y-6 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">1-34 Mulai Pelatihan</label>
+                                    <Input type="date" value={scheduleData['1_34_training_start_date']} onChange={e => setScheduleData('1_34_training_start_date', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">1-34 Selesai Pelatihan</label>
+                                    <Input type="date" value={scheduleData['1_34_training_end_date']} onChange={e => setScheduleData('1_34_training_end_date', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">1-34 Total Jam</label>
+                                    <Input value={scheduleData['1_34_training_duration_hours']} onChange={e => setScheduleData('1_34_training_duration_hours', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">No. Surat Rekom (1-23)</label>
+                                    <Input value={scheduleData['1_23_req_letter_number']} onChange={e => setScheduleData('1_23_req_letter_number', e.target.value)} />
+                                </div>
+                            </div>
+
+                            <Separator />
+                            <h5 className="text-xs font-black uppercase text-blue-600">Pelatihan 1-29 (3 Tahap)</h5>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-neutral-500">Tahap 1 Mulai</label>
+                                    <Input type="date" value={scheduleData['1_29_first_training_start_date']} onChange={e => setScheduleData('1_29_first_training_start_date', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-neutral-500">Tahap 1 Selesai</label>
+                                    <Input type="date" value={scheduleData['1_29_first_training_end_date']} onChange={e => setScheduleData('1_29_first_training_end_date', e.target.value)} />
+                                </div>
+                                {/* ... Lanjutkan untuk Tahap 2 dan 3 dengan pola yang sama ... */}
+                            </div>
+
+                            <DialogFooter className="sticky bottom-0 bg-white pt-4">
+                                <Button type="button" variant="ghost" onClick={() => { setIsScheduleEditConfirmed(false); setIsEditScheduleModalOpen(false); }}>Batal</Button>
+                                <Button type="submit" disabled={processingSchedule} className="bg-emerald-600 hover:bg-emerald-700">
+                                    {processingSchedule ? "Menyimpan..." : "Simpan Perubahan Parameter"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
                 </DialogContent>
             </Dialog>
         </AppLayout>
