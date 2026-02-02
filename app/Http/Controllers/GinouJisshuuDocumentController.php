@@ -351,14 +351,13 @@ class GinouJisshuuDocumentController extends Controller
      */
     private function generateDailySchedule48(&$template, $interview)
     {
-        //dd($this->askGeminiToSplitCurriculum("Tes Materi", 3, 5));
         $stages = [
             ['key' => 'first', 'label' => $interview->{"1_29_first_training_item"}],
             ['key' => 'second', 'label' => $interview->{"1_29_second_training_item"}],
             ['key' => 'third', 'label' => $interview->{"1_29_third_training_item"}],
         ];
 
-        $dailyRows = [];
+        $allDailyRows = []; // Penampung untuk SEMUA baris dari semua tahap
 
         foreach ($stages as $stage) {
             $start = $interview->{"1_29_{$stage['key']}_training_start_date"};
@@ -378,22 +377,18 @@ class GinouJisshuuDocumentController extends Controller
 
                 $dayCount = count($workDates);
                 if ($dayCount > 0) {
-                    // 2. Hitung Jam Belajar Murni per Hari
                     $hoursPerDay = $totalHours / $dayCount;
-                    
-                    // 3. Tentukan Rentang Waktu (08:30 + Jam Belajar + 1 Jam Istirahat)
                     $startTime = \Carbon\Carbon::createFromTime(8, 30);
-                    // Jam selesai = Jam mulai + (Jam belajar + 1 jam istirahat)
                     $totalDurationInMinutes = ($hoursPerDay + 1) * 60;
                     $endTime = (clone $startTime)->addMinutes($totalDurationInMinutes);
-                    
                     $timeString = $startTime->format('H:i') . " ～ " . $endTime->format('H:i');
 
-                    // 4. Panggil Gemini AI untuk memecah silabus sesuai jumlah hari dan jam
+                    // 2. Panggil Gemini AI untuk tahap ini
                     $curriculum = $this->askGeminiToSplitCurriculum($stage['label'], $dayCount, $hoursPerDay);
 
+                    // 3. Masukkan ke penampung utama
                     foreach ($workDates as $idx => $date) {
-                        $dailyRows[] = [
+                        $allDailyRows[] = [
                             'tgl' => $date->format('Y/m/d'),
                             'jam' => $timeString,
                             'item' => $curriculum[$idx] ?? $stage['label'],
@@ -403,10 +398,11 @@ class GinouJisshuuDocumentController extends Controller
             }
         }
 
-        // 5. Clone Baris ke Template Word
-        if (count($dailyRows) > 0) {
-            $template->cloneRow('tgl', count($dailyRows));
-            foreach ($dailyRows as $idx => $row) {
+        // 4. CLONE SEKALIGUS DI SINI
+        // PHPWord akan membuat baris sebanyak TOTAL hari dari Tahap 1 + Tahap 2 + Tahap 3
+        if (count($allDailyRows) > 0) {
+            $template->cloneRow('tgl', count($allDailyRows));
+            foreach ($allDailyRows as $idx => $row) {
                 $i = $idx + 1;
                 $template->setValue("tgl#$i", $row['tgl']);
                 $template->setValue("jam#$i", $row['jam']);
