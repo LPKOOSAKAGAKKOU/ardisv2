@@ -357,7 +357,10 @@ class GinouJisshuuDocumentController extends Controller
             ['key' => 'third', 'label' => $interview->{"1_29_third_training_item"}],
         ];
 
-        $allDailyRows = []; // Penampung untuk SEMUA baris dari semua tahap
+        // 1. Kumpulkan semua info tahap untuk dikirim ke AI sekaligus
+        $payloadStages = [];
+        $allWorkDates = [];
+        $allTimeStrings = [];
 
         foreach ($stages as $stage) {
             $start = $interview->{"1_29_{$stage['key']}_training_start_date"};
@@ -366,40 +369,48 @@ class GinouJisshuuDocumentController extends Controller
 
             if ($start && $end && $totalHours > 0) {
                 $period = \Carbon\CarbonPeriod::create($start, $end);
-                
-                // 1. Filter Hari Kerja (Senin - Jumat)
                 $workDates = [];
                 foreach ($period as $date) {
-                    if ($date->isWeekday()) { 
-                        $workDates[] = $date;
-                    }
+                    if ($date->isWeekday()) $workDates[] = $date;
                 }
 
                 $dayCount = count($workDates);
                 if ($dayCount > 0) {
                     $hoursPerDay = $totalHours / $dayCount;
                     $startTime = \Carbon\Carbon::createFromTime(8, 30);
-                    $totalDurationInMinutes = ($hoursPerDay + 1) * 60;
-                    $endTime = (clone $startTime)->addMinutes($totalDurationInMinutes);
-                    $timeString = $startTime->format('H:i') . " ～ " . $endTime->format('H:i');
-
-                    // 2. Panggil Gemini AI untuk tahap ini
-                    $curriculum = $this->askGeminiToSplitCurriculum($stage['label'], $dayCount, $hoursPerDay);
-
-                    // 3. Masukkan ke penampung utama
-                    foreach ($workDates as $idx => $date) {
-                        $allDailyRows[] = [
-                            'tgl' => $date->format('Y/m/d'),
-                            'jam' => $timeString,
-                            'item' => $curriculum[$idx] ?? $stage['label'],
-                        ];
-                    }
+                    $endTime = (clone $startTime)->addMinutes(($hoursPerDay + 1) * 60);
+                    
+                    $payloadStages[$stage['key']] = [
+                        'label' => $stage['label'],
+                        'days' => $dayCount,
+                        'hours' => round($hoursPerDay, 1)
+                    ];
+                    
+                    $allWorkDates[$stage['key']] = $workDates;
+                    $allTimeStrings[$stage['key']] = $startTime->format('H:i') . " ～ " . $endTime->format('H:i');
                 }
             }
         }
 
-        // 4. CLONE SEKALIGUS DI SINI
-        // PHPWord akan membuat baris sebanyak TOTAL hari dari Tahap 1 + Tahap 2 + Tahap 3
+        // 2. TEMBAK API CUMA SEKALI (Hemat Limit RPM)
+        $fullCurriculum = $this->askGeminiToSplitAllAtOnce($payloadStages);
+
+        // 3. Gabungkan hasil ke baris harian
+        $allDailyRows = [];
+        foreach ($stages as $stage) {
+            $key = $stage['key'];
+            if (isset($allWorkDates[$key])) {
+                foreach ($allWorkDates[$key] as $idx => $date) {
+                    $allDailyRows[] = [
+                        'tgl' => $date->format('Y/m/d'),
+                        'jam' => $allTimeStrings[$key],
+                        'item' => $fullCurriculum[$key][$idx] ?? $stage['label'],
+                    ];
+                }
+            }
+        }
+
+        // 4. Clone ke Word
         if (count($allDailyRows) > 0) {
             $template->cloneRow('tgl', count($allDailyRows));
             foreach ($allDailyRows as $idx => $row) {
@@ -412,44 +423,41 @@ class GinouJisshuuDocumentController extends Controller
             }
         }
     }
-
     /**
      * Meminta Gemini AI memecah silabus umum menjadi detail harian
      */
-    private function askGeminiToSplitCurriculum($generalTopic, $days, $hoursPerDay)
+    private function askGeminiToSplitAllAtOnce($payloadStages)
     {
         $apiKey = config('services.gemini.key');
-        
-        // Prompt lebih spesifik mencantumkan jumlah jam per hari
-        $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah silabus umum: '{$generalTopic}' menjadi materi spesifik selama {$days} hari kerja. 
-                Setiap harinya berdurasi " . round($hoursPerDay, 1) . " jam pelajaran.
-                Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya.
-                Gunakan Bahasa Jepang.
-                HANYA kembalikan hasilnya dalam format JSON array string tanpa markdown atau penjelasan lain.
-                Contoh: [\"Materi 1\", \"Materi 2\"]";
+        $stageInfo = json_encode($payloadStages);
+
+        $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah 3 tahap silabus berikut menjadi materi harian spesifik.
+                Data input (JSON): {$stageInfo}
+                
+                KETENTUAN:
+                1. Gunakan Bahasa Jepang.
+                2. Hasil WAJIB dalam format JSON object dengan key: 'first', 'second', 'third'.
+                3. Setiap key berisi array string dengan jumlah elemen SESUAI jumlah 'days' masing-masing.
+                4. Materi harus progresif dan singkat.
+                5. HANYA JSON murni, tanpa markdown.
+                
+                CONTOH OUTPUT:
+                {\"first\": [\"materi 1\", \"materi 2\"], \"second\": [...], \"third\": [...]}";
 
         try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
-                'contents' => [
-                    ['parts' => [['text' => $prompt]]]
-                ]
+            $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                'contents' => [['parts' => [['text' => $prompt]]]]
             ]);
 
             if ($response->successful()) {
-                $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-                // Bersihkan format markdown jika AI bandel memberikan ```json
+                $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
                 $cleanJson = trim(str_replace(['```json', '```'], '', $textResult));
-                $data = json_decode($cleanJson, true);
-
-                return is_array($data) ? $data : array_fill(0, $days, $generalTopic);
+                return json_decode($cleanJson, true) ?: [];
             }
-            
-            return array_fill(0, $days, $generalTopic);
         } catch (\Exception $e) {
-            // Jika API error atau limit tercapai, fallback ke topik umum
-            return array_fill(0, $days, $generalTopic);
+            \Illuminate\Support\Facades\Log::error("Gemini Multi-Split Error: " . $e->getMessage());
         }
+
+        return [];
     }
 }
