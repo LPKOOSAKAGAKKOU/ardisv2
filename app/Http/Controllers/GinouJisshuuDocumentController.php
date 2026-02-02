@@ -431,18 +431,18 @@ class GinouJisshuuDocumentController extends Controller
         $finalResult = [];
         $stagesToAskAI = [];
 
-        // --- STEP 1: CEK CACHE DI DATABASE ---
+        // --- STEP 1: CEK CACHE PAKAI MODEL ---
         foreach ($payloadStages as $key => $data) {
             $labelHash = md5($data['label']);
             
-            $cache = \DB::table('training_curriculum_caches')
-                ->where('label_hash', $labelHash)
+            $cache = \App\Models\TrainingCurriculumCache::where('label_hash', $labelHash)
                 ->where('days', $data['days'])
                 ->where('hours', $data['hours'])
                 ->first();
 
             if ($cache) {
-                $finalResult[$key] = json_decode($cache->content, true);
+                // Karena pakai $casts, $cache->content otomatis sudah jadi array PHP
+                $finalResult[$key] = $cache->content;
             } else {
                 $stagesToAskAI[$key] = $data;
             }
@@ -452,20 +452,18 @@ class GinouJisshuuDocumentController extends Controller
         if (!empty($stagesToAskAI)) {
             $apiKey = config('services.gemini.key');
             
-            // Kita buat instruksi agar AI memproses daftar tahap yang belum ada di cache
             $stageInfo = "";
             foreach($stagesToAskAI as $k => $v) {
                 $stageInfo .= "- Tahap {$k}: '{$v['label']}' selama {$v['days']} hari, {$v['hours']} jam/hari\n";
             }
 
-            // PROMPT ORIGINAL LO (Hanya gue kasih konteks list tahapnya)
             $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah silabus berikut menjadi materi harian spesifik:
                     {$stageInfo}
                     
                     Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya dan sampai level N4.
                     Gunakan Bahasa Jepang.
                     HANYA kembalikan hasilnya dalam format JSON object dengan key sesuai nama tahap (contoh: 'first', 'second', dll) yang berisi array string tanpa markdown atau penjelasan lain.
-                    {\"first\": [\"materi 1\", \"materi 2\"], \"second\": [...], \"third\": [...]}";
+                    Contoh: {\"first\": [\"materi 1\", \"materi 2\"], \"second\": [...], \"third\": [...]}";
 
             try {
                 $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
@@ -480,19 +478,18 @@ class GinouJisshuuDocumentController extends Controller
                     if (is_array($aiData)) {
                         foreach ($aiData as $key => $curriculumArray) {
                             if (isset($stagesToAskAI[$key])) {
-                                // SIMPAN KE CACHE
-                                \DB::table('training_curriculum_caches')->updateOrInsert(
+                                // UPDATE ATAU BUAT CACHE BARU PAKAI MODEL
+                                \App\Models\TrainingCurriculumCache::updateOrCreate(
                                     [
                                         'label_hash' => md5($stagesToAskAI[$key]['label']),
                                         'days'       => $stagesToAskAI[$key]['days'],
                                         'hours'      => $stagesToAskAI[$key]['hours'],
                                     ],
                                     [
-                                        'content'    => json_encode($curriculumArray),
-                                        'created_at' => now(),
-                                        'updated_at' => now(),
+                                        'content' => $curriculumArray, // Laravel otomatis simpan jadi JSON
                                     ]
                                 );
+
                                 $finalResult[$key] = $curriculumArray;
                             }
                         }
