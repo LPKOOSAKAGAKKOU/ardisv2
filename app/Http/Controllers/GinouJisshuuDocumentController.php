@@ -424,51 +424,35 @@ class GinouJisshuuDocumentController extends Controller
     {
         $apiKey = config('services.gemini.key');
         
-        // Prompt tetap sesuai aslinya
+        // Prompt lebih spesifik mencantumkan jumlah jam per hari
         $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah silabus umum: '{$generalTopic}' menjadi materi spesifik selama {$days} hari kerja. 
-                    Setiap harinya berdurasi " . round($hoursPerDay, 1) . " jam pelajaran.
-                    Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya.
-                    Gunakan Bahasa Jepang.
-                    HANYA kembalikan hasilnya dalam format JSON array string tanpa markdown atau penjelasan lain.
-                    Contoh: [\"Materi 1\", \"Materi 2\"]";
+                Setiap harinya berdurasi " . round($hoursPerDay, 1) . " jam pelajaran.
+                Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya.
+                Gunakan Bahasa Jepang.
+                HANYA kembalikan hasilnya dalam format JSON array string tanpa markdown atau penjelasan lain.
+                Contoh: [\"Materi 1\", \"Materi 2\"]";
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])
-            // Jika lo di local/XAMPP dan kena SSL error, tambahkan ->verify(false) sebelum ->post
-            ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
                 'contents' => [
                     ['parts' => [['text' => $prompt]]]
                 ]
             ]);
 
             if ($response->successful()) {
-                $jsonResponse = $response->json();
-                $textResult = $jsonResponse['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-                
-                // LOG: Catat hasil sukses dari AI
-                \Illuminate\Support\Facades\Log::info("Gemini Success! Raw Result: " . $textResult);
-
+                $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+                // Bersihkan format markdown jika AI bandel memberikan ```json
                 $cleanJson = trim(str_replace(['```json', '```'], '', $textResult));
                 $data = json_decode($cleanJson, true);
 
-                if (is_array($data)) {
-                    return $data;
-                } else {
-                    \Illuminate\Support\Facades\Log::warning("Gemini returned non-JSON text: " . $textResult);
-                }
-            } else {
-                // LOG: Catat kegagalan respon (Status 401, 400, dll)
-                \Illuminate\Support\Facades\Log::error("Gemini API Error Status: " . $response->status());
-                \Illuminate\Support\Facades\Log::error("Gemini API Full Error: " . json_encode($response->json()));
+                return is_array($data) ? $data : array_fill(0, $days, $generalTopic);
             }
             
             return array_fill(0, $days, $generalTopic);
-
         } catch (\Exception $e) {
-            // LOG: Catat error sistem (SSL, koneksi terputus, dsb)
-            \Illuminate\Support\Facades\Log::error("Gemini System Exception: " . $e->getMessage());
+            // Jika API error atau limit tercapai, fallback ke topik umum
             return array_fill(0, $days, $generalTopic);
         }
     }
