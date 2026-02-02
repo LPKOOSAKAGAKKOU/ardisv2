@@ -428,36 +428,81 @@ class GinouJisshuuDocumentController extends Controller
      */
     private function askGeminiToSplitAllAtOnce($payloadStages)
     {
-        $apiKey = config('services.gemini.key');
-        $stageInfo = json_encode($payloadStages);
+        $finalResult = [];
+        $stagesToAskAI = [];
 
-        $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah 3 tahap silabus berikut menjadi materi harian spesifik.
-                Data input (JSON): {$stageInfo}
-                
-                KETENTUAN:
-                1. Gunakan Bahasa Jepang.
-                2. Hasil WAJIB dalam format JSON object dengan key: 'first', 'second', 'third'.
-                3. Setiap key berisi array string dengan jumlah elemen SESUAI jumlah 'days' masing-masing.
-                4. Materi harus progresif dan singkat.
-                5. HANYA JSON murni, tanpa markdown.
-                
-                CONTOH OUTPUT:
-                {\"first\": [\"materi 1\", \"materi 2\"], \"second\": [...], \"third\": [...]}";
+        // --- STEP 1: CEK CACHE DI DATABASE ---
+        foreach ($payloadStages as $key => $data) {
+            $labelHash = md5($data['label']);
+            
+            $cache = \DB::table('training_curriculum_caches')
+                ->where('label_hash', $labelHash)
+                ->where('days', $data['days'])
+                ->where('hours', $data['hours'])
+                ->first();
 
-        try {
-            $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
-                'contents' => [['parts' => [['text' => $prompt]]]]
-            ]);
-
-            if ($response->successful()) {
-                $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
-                $cleanJson = trim(str_replace(['```json', '```'], '', $textResult));
-                return json_decode($cleanJson, true) ?: [];
+            if ($cache) {
+                $finalResult[$key] = json_decode($cache->content, true);
+            } else {
+                $stagesToAskAI[$key] = $data;
             }
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Gemini Multi-Split Error: " . $e->getMessage());
         }
 
-        return [];
+        // --- STEP 2: TEMBAK AI HANYA JIKA ADA DATA BARU ---
+        if (!empty($stagesToAskAI)) {
+            $apiKey = config('services.gemini.key');
+            
+            // Kita buat instruksi agar AI memproses daftar tahap yang belum ada di cache
+            $stageInfo = "";
+            foreach($stagesToAskAI as $k => $v) {
+                $stageInfo .= "- Tahap {$k}: '{$v['label']}' selama {$v['days']} hari, {$v['hours']} jam/hari\n";
+            }
+
+            // PROMPT ORIGINAL LO (Hanya gue kasih konteks list tahapnya)
+            $prompt = "Sebagai instruktur Ginou Jisshuu, pecahlah silabus berikut menjadi materi harian spesifik:
+                    {$stageInfo}
+                    
+                    Tolong berikan materi yang logis, progresif (mudah ke sulit), dan berbeda setiap harinya dan sampai level N4.
+                    Gunakan Bahasa Jepang.
+                    HANYA kembalikan hasilnya dalam format JSON object dengan key sesuai nama tahap (contoh: 'first', 'second', dll) yang berisi array string tanpa markdown atau penjelasan lain.
+                    {\"first\": [\"materi 1\", \"materi 2\"], \"second\": [...], \"third\": [...]}";
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                    'contents' => [['parts' => [['text' => $prompt]]]]
+                ]);
+
+                if ($response->successful()) {
+                    $textResult = $response->json()['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+                    $cleanJson = trim(str_replace(['```json', '```'], '', $textResult));
+                    $aiData = json_decode($cleanJson, true);
+
+                    if (is_array($aiData)) {
+                        foreach ($aiData as $key => $curriculumArray) {
+                            if (isset($stagesToAskAI[$key])) {
+                                // SIMPAN KE CACHE
+                                \DB::table('training_curriculum_caches')->updateOrInsert(
+                                    [
+                                        'label_hash' => md5($stagesToAskAI[$key]['label']),
+                                        'days'       => $stagesToAskAI[$key]['days'],
+                                        'hours'      => $stagesToAskAI[$key]['hours'],
+                                    ],
+                                    [
+                                        'content'    => json_encode($curriculumArray),
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
+                                    ]
+                                );
+                                $finalResult[$key] = $curriculumArray;
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Gemini Cache Error: " . $e->getMessage());
+            }
+        }
+
+        return $finalResult;
     }
 }
