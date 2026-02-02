@@ -90,29 +90,33 @@ class InterviewController extends Controller
                 return !$date->isWeekend();
             }, $training1_34EndDate->copy()->addDay());
 
-            // --- FUNGSI HELPER UNTUK MENAMBAH HARI KERJA (SKIP WEEKEND) ---
-            $addWorkDays = function($start, $days) {
+            // --- FUNGSI HELPER YANG LEBIH AKURAT ---
+            $addWorkDays = function($start, $targetDays) {
                 $date = $start->copy();
-                $count = 1;
-                while ($count < $days) {
+                $actualCount = 1; // Hari pertama sudah dihitung sebagai 1 hari kerja
+                
+                while ($actualCount < $targetDays) {
                     $date->addDay();
                     if (!$date->isWeekend()) {
-                        $count++;
+                        $actualCount++;
                     }
                 }
                 return $date;
             };
 
-            // 3. Detail pelatihan 1-29 Tahap 1 (PASTI 23 HARI KERJA)
+            // 1. TAHAP PERTAMA (PASTI 23 HARI KERJA)
+            // Mulai Senin setelah 1-34 selesai
             $stage1Start = $training1_34EndDate->copy()->next(Carbon::MONDAY);
-            $stage1End = $addWorkDays($stage1Start, 23); // Tambah sampai dapat 23 hari kerja
+            $stage1End = $addWorkDays($stage1Start, 23); 
 
-            // 4. Tahap 2 (PASTI 5 HARI KERJA)
+            // 2. TAHAP KEDUA (PASTI 5 HARI KERJA)
+            // Mulai hari kerja berikutnya setelah Tahap 1 selesai
             $stage2Start = $stage1End->copy()->addDay();
             if ($stage2Start->isWeekend()) $stage2Start->next(Carbon::MONDAY);
             $stage2End = $addWorkDays($stage2Start, 5);
 
-            // 5. Tahap 3 (PASTI 7 HARI KERJA)
+            // 3. TAHAP KETIGA (PASTI 7 HARI KERJA)
+            // Mulai hari kerja berikutnya setelah Tahap 2 selesai
             $stage3Start = $stage2End->copy()->addDay();
             if ($stage3Start->isWeekend()) $stage3Start->next(Carbon::MONDAY);
             $stage3End = $addWorkDays($stage3Start, 7);
@@ -186,7 +190,7 @@ class InterviewController extends Controller
         $isDateChanged = $request->interview_date !== $interview->interview_date;
 
         if ($isDateChanged && $request->type === 'ginoujisshuu') {
-            $baseDate = Carbon::parse($request->interview_date)->addMonth();
+            $baseDate = \Carbon\Carbon::parse($request->interview_date)->addMonth();
 
             // --- FUNGSI HELPER UNTUK MENAMBAH HARI KERJA (SKIP WEEKEND) ---
             $addWorkDays = function($start, $days) {
@@ -202,32 +206,30 @@ class InterviewController extends Controller
             };
 
             // 1. Hitung Ulang detail pelatihan 1-34
-            $training1_34StartDate = ($baseDate->isWeekend()) ? $baseDate->next(Carbon::MONDAY) : $baseDate;
-            $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(8)->next(Carbon::FRIDAY);
+            $training1_34StartDate = ($baseDate->isWeekend()) ? $baseDate->next(\Carbon\Carbon::MONDAY) : $baseDate;
+            $training1_34EndDate = $training1_34StartDate->copy()->addWeeks(8)->next(\Carbon\Carbon::FRIDAY);
             
-            $training1_43TotalDays = $training1_34StartDate->diffInDaysFiltered(function (Carbon $date) {
+            $training1_43TotalDays = $training1_34StartDate->diffInDaysFiltered(function (\Carbon\Carbon $date) {
                 return !$date->isWeekend();
             }, $training1_34EndDate->copy()->addDay());
 
-            // 2. Hitung Ulang detail pelatihan 1-29 (PASTI 23, 5, 7 HARI)
+            // 2. Hitung Ulang detail pelatihan 1-29 (PASTI 23, 5, 7 HARI KERJA)
+            
             // Tahap 1 (23 Hari)
-            $stage1Start = $training1_34EndDate->copy()->next(Carbon::MONDAY);
+            $stage1Start = $training1_34EndDate->copy()->next(\Carbon\Carbon::MONDAY);
             $stage1End   = $addWorkDays($stage1Start, 23);
             
             // Tahap 2 (5 Hari)
             $stage2Start = $stage1End->copy()->addDay();
-            if ($stage2Start->isWeekend()) $stage2Start->next(Carbon::MONDAY);
+            if ($stage2Start->isWeekend()) $stage2Start->next(\Carbon\Carbon::MONDAY);
             $stage2End   = $addWorkDays($stage2Start, 5);
 
             // Tahap 3 (7 Hari)
             $stage3Start = $stage2End->copy()->addDay();
-            if ($stage3Start->isWeekend()) $stage3Start->next(Carbon::MONDAY);
-            $stage3End   = $stage3Start->copy()->next(Carbon::FRIDAY); // Tetap Jumat agar sinkron dengan 1-34
+            if ($stage3Start->isWeekend()) $stage3Start->next(\Carbon\Carbon::MONDAY);
             
-            // Hitung ulang hari tahap 3 jika ternyata skip weekend bikin geser
-            $stage3Days = $stage3Start->diffInDaysFiltered(function (Carbon $date) {
-                return !$date->isWeekend();
-            }, $stage3End->copy()->addDay());
+            // DISINI FIX-NYA: PAKAI HELPER BIAR GAK CUMA 2 HARI KERJA
+            $stage3End = $addWorkDays($stage3Start, 7); 
 
             $data = array_merge($data, [
                 '1_34_training_start_date'           => $training1_34StartDate->format('Y-m-d'),
@@ -236,15 +238,15 @@ class InterviewController extends Controller
                 
                 '1_29_first_training_start_date'     => $stage1Start->format('Y-m-d'),
                 '1_29_first_training_end_date'       => $stage1End->format('Y-m-d'),
-                '1_29_first_training_duration_hours' => '184', // Tetap Hardcoded
+                '1_29_first_training_duration_hours' => '184', 
                 
                 '1_29_second_training_start_date'    => $stage2Start->format('Y-m-d'),
                 '1_29_second_training_end_date'      => $stage2End->format('Y-m-d'),
-                '1_29_second_training_duration_hours'=> '40', // Tetap Hardcoded
+                '1_29_second_training_duration_hours'=> '40', 
                 
                 '1_29_third_training_start_date'     => $stage3Start->format('Y-m-d'),
                 '1_29_third_training_end_date'       => $stage3End->format('Y-m-d'),
-                '1_29_third_training_duration_hours' => '56', // Tetap Hardcoded
+                '1_29_third_training_duration_hours' => '56', 
             ]);
         }
 
