@@ -351,6 +351,7 @@ class GinouJisshuuDocumentController extends Controller
      */
     private function generateDailySchedule48(&$template, $interview)
     {
+        dd($this->askGeminiToSplitCurriculum("Tes Materi", 3, 5));
         $stages = [
             ['key' => 'first', 'label' => $interview->{"1_29_first_training_item"}],
             ['key' => 'second', 'label' => $interview->{"1_29_second_training_item"}],
