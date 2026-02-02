@@ -357,11 +357,10 @@ class GinouJisshuuDocumentController extends Controller
             ['key' => 'third', 'label' => $interview->{"1_29_third_training_item"}],
         ];
 
-        // 1. Kumpulkan semua info tahap untuk dikirim ke AI sekaligus
         $payloadStages = [];
-        $allWorkDates = [];
-        $allTimeStrings = [];
+        $allStageData = []; // Untuk simpan info per tahap
 
+        // --- STEP 1: Kumpulkan Hari Kerja Murni ---
         foreach ($stages as $stage) {
             $start = $interview->{"1_29_{$stage['key']}_training_start_date"};
             $end = $interview->{"1_29_{$stage['key']}_training_end_date"};
@@ -369,48 +368,63 @@ class GinouJisshuuDocumentController extends Controller
 
             if ($start && $end && $totalHours > 0) {
                 $period = \Carbon\CarbonPeriod::create($start, $end);
-                $workDates = [];
+                $workDatesOnly = [];
                 foreach ($period as $date) {
-                    if ($date->isWeekday()) $workDates[] = $date;
+                    if (!$date->isWeekend()) $workDatesOnly[] = $date;
                 }
 
-                $dayCount = count($workDates);
+                $dayCount = count($workDatesOnly);
                 if ($dayCount > 0) {
                     $hoursPerDay = $totalHours / $dayCount;
                     $startTime = \Carbon\Carbon::createFromTime(8, 30);
                     $endTime = (clone $startTime)->addMinutes(($hoursPerDay + 1) * 60);
-                    
+
+                    // Payload buat AI
                     $payloadStages[$stage['key']] = [
                         'label' => $stage['label'],
                         'days' => $dayCount,
                         'hours' => round($hoursPerDay, 1)
                     ];
-                    
-                    $allWorkDates[$stage['key']] = $workDates;
-                    $allTimeStrings[$stage['key']] = $startTime->format('H:i') . " ～ " . $endTime->format('H:i');
-                }
-            }
-        }
 
-        // 2. TEMBAK API CUMA SEKALI (Hemat Limit RPM)
-        $fullCurriculum = $this->askGeminiToSplitAllAtOnce($payloadStages);
-
-        // 3. Gabungkan hasil ke baris harian
-        $allDailyRows = [];
-        foreach ($stages as $stage) {
-            $key = $stage['key'];
-            if (isset($allWorkDates[$key])) {
-                foreach ($allWorkDates[$key] as $idx => $date) {
-                    $allDailyRows[] = [
-                        'tgl' => $date->format('Y/m/d'),
-                        'jam' => $allTimeStrings[$key],
-                        'item' => $fullCurriculum[$key][$idx] ?? $stage['label'],
+                    // Simpan metadata tahap untuk diproses di Step 3
+                    $allStageData[$stage['key']] = [
+                        'period' => $period,
+                        'time_string' => $startTime->format('H:i') . " ～ " . $endTime->format('H:i')
                     ];
                 }
             }
         }
 
-        // 4. Clone ke Word
+        // --- STEP 2: Tembak AI (Hanya 1x Request) ---
+        $fullCurriculum = $this->askGeminiToSplitAllAtOnce($payloadStages);
+
+        // --- STEP 3: Gabungkan ke Baris Harian (Logika 休み di sini) ---
+        $allDailyRows = [];
+        foreach ($stages as $stage) {
+            $key = $stage['key'];
+            if (isset($allStageData[$key])) {
+                $idxWorkDay = 0; // Counter materi harian dari AI
+                
+                foreach ($allStageData[$key]['period'] as $date) {
+                    if ($date->isWeekend()) {
+                        $allDailyRows[] = [
+                            'tgl' => $date->format('Y/m/d'),
+                            'jam' => ' - ',
+                            'item' => '休み (休日)', // Otomatis Libur
+                        ];
+                    } else {
+                        $allDailyRows[] = [
+                            'tgl' => $date->format('Y/m/d'),
+                            'jam' => $allStageData[$key]['time_string'],
+                            'item' => $fullCurriculum[$key][$idxWorkDay] ?? $stage['label'],
+                        ];
+                        $idxWorkDay++;
+                    }
+                }
+            }
+        }
+
+        // --- STEP 4: Clone ke Word ---
         if (count($allDailyRows) > 0) {
             $template->cloneRow('tgl', count($allDailyRows));
             foreach ($allDailyRows as $idx => $row) {
