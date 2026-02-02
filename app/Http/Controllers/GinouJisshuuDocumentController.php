@@ -424,16 +424,35 @@ class GinouJisshuuDocumentController extends Controller
             }
         }
 
-        // --- STEP 4: Clone ke Word ---
+        // --- STEP 4: Clone ke Word dengan Logika 2 Guru & Hari Libur ---
         if (count($allDailyRows) > 0) {
             $template->cloneRow('tgl', count($allDailyRows));
+            
+            // Daftar guru lo
+            $daftarGuru = ["Muhammad Ali Wafa", "Kristina Anggraini"]; 
+            $workDayCounter = 0; // Buat nentuin giliran guru
+
             foreach ($allDailyRows as $idx => $row) {
                 $i = $idx + 1;
+                $isWeekend = ($row['jam'] === ' - '); // Cek tanda libur yang kita buat di Step 3
+
                 $template->setValue("tgl#$i", $row['tgl']);
                 $template->setValue("jam#$i", $row['jam']);
                 $template->setValue("item#$i", $row['item']);
-                $template->setValue("guru#$i", "Indra-sensei");
-                $template->setValue("lokasi#$i", "LPK OOSAKA GAKKOU");
+
+                if ($isWeekend) {
+                    // Kalau libur, guru dan lokasi kosongin aja cok
+                    $template->setValue("guru#$i", "");
+                    $template->setValue("lokasi#$i", "");
+                } else {
+                    // Kalau hari kerja, ganti-gantian gurunya
+                    $namaGuru = $daftarGuru[$workDayCounter % 2]; 
+                    
+                    $template->setValue("guru#$i", $namaGuru);
+                    $template->setValue("lokasi#$i", "LPK OOSAKA GAKKOU");
+                    
+                    $workDayCounter++; // Increment cuma di hari kerja
+                }
             }
         }
     }
