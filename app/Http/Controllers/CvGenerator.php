@@ -145,24 +145,80 @@ class CvGenerator extends Controller
 
         // --- 4. PEKERJAAN (37-39) ---
         $row = 37;
-        foreach ($profile->experiences->sortByDesc('start_date')->take(3) as $exp) {
-            $sheet->setCellValue('E'.$row, Carbon::parse($exp->start_date)->format('Y年 m月'));
-            $sheet->setCellValue('I'.$row, $exp->end_date ? Carbon::parse($exp->end_date)->format('Y年 m月') : '現在に至る');
+
+        // Gunakan sortBy (bukan sortByDesc) untuk urutan kronologis (tua ke baru)
+        // Sertakan start_date sebagai primary sort dan end_date sebagai secondary sort untuk menangani double job
+        $sortedExperiences = $profile->experiences
+            ->sort(function ($a, $b) {
+                // Bandingkan start_date
+                $startCompare = Carbon::parse($a->start_date)->timestamp <=> Carbon::parse($b->start_date)->timestamp;
+                
+                if ($startCompare !== 0) {
+                    return $startCompare;
+                }
+
+                // Jika start_date sama (misal kerja double di hari yang sama), bandingkan end_date
+                // Pekerjaan yang masih berlangsung (null) ditaruh di paling bawah
+                $endA = $a->end_date ? Carbon::parse($a->end_date)->timestamp : PHP_INT_MAX;
+                $endB = $b->end_date ? Carbon::parse($b->end_date)->timestamp : PHP_INT_MAX;
+
+                return $endA <=> $endB;
+            })
+            ->take(3);
+
+        foreach ($sortedExperiences as $exp) {
+            // Pastikan start_date valid untuk dicarbonize
+            $startDate = $exp->start_date ? Carbon::parse($exp->start_date)->format('Y年 m月') : '';
+            
+            // Logika Akhir Kerja: Jika null berarti masih bekerja (現在に至る)
+            $endDate = $exp->end_date ? Carbon::parse($exp->end_date)->format('Y年 m月') : '現在に至る';
+
+            $sheet->setCellValue('E'.$row, $startDate);
+            $sheet->setCellValue('I'.$row, $endDate);
             $sheet->setCellValue('M'.$row, $exp->company_name);
             $sheet->setCellValue('AD'.$row, $masterSectors[strtolower(trim($exp->job_type))] ?? $exp->job_type);
+            
             $sheet->getStyle("E$row:AD$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $row++;
         }
 
-        // --- 5. KELUARGA (43-51) ---
-        $row = 43;
-        foreach ($profile->families->take(9) as $fam) {
-            $sheet->setCellValue('G'.$row, $fam->relationship);
-            $sheet->setCellValue('M'.$row, $fam->name);
-            $sheet->setCellValue('AD'.$row, $fam->age . ' 歳');
-            $sheet->setCellValue('AI'.$row, $masterSectors[strtolower(trim($fam->occupation))] ?? $fam->occupation);
-            $sheet->getStyle("G$row:AI$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-            $sheet->getStyle('AD'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        // --- 5. KELUARGA (Baris menyesuaikan template Anda) ---
+        $row = 42; // Contoh mulai baris 42
+
+        // 1. Definisikan bobot prioritas untuk relasi
+        $familyPriority = [
+            '父' => 1,    // Ayah (Paling atas)
+            '母' => 2,    // Ibu (Kedua)
+            '夫' => 3,    // Suami
+            '妻' => 3,    // Istri
+            '祖父' => 8,  // Kakek
+            '祖母' => 9,  // Nenek
+        ];
+
+        // 2. Urutkan koleksi
+        $sortedFamilies = $profile->families->sort(function ($a, $b) use ($familyPriority) {
+            // Ambil prioritas (jika tidak ada di list, beri angka besar/10)
+            $prioA = $familyPriority[$a->relation] ?? 10;
+            $prioB = $familyPriority[$b->relation] ?? 10;
+
+            // Jika prioritas berbeda, urutkan berdasarkan prioritas (1, 2, 3...)
+            if ($prioA !== $prioB) {
+                return $prioA <=> $prioB;
+            }
+
+            // Jika prioritas sama (misal sama-sama kakak/adik/anak), urutkan berdasarkan usia tertua
+            // Kita asumsikan ada kolom 'age' atau 'birth_date'
+            // Menggunakan desc karena yang tertua (umur besar) harus di atas
+            return ($b->age ?? 0) <=> ($a->age ?? 0);
+        })->take(6); // Sesuaikan jumlah baris maksimal keluarga di Excel
+
+        foreach ($sortedFamilies as $fam) {
+            $sheet->setCellValue('E'.$row, $fam->relation); // Hubungan (Jepang)
+            $sheet->setCellValue('M'.$row, $fam->name);     // Nama
+            $sheet->setCellValue('AI'.$row, $fam->age . ' 歳'); // Usia
+            $sheet->setCellValue('AO'.$row, $fam->job);     // Pekerjaan
+            
+            $sheet->getStyle("E$row:AO$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             $row++;
         }
 
