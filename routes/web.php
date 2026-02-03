@@ -12,12 +12,13 @@ use App\Http\Controllers\AdminController\StudentDocumentController;
 use App\Http\Controllers\AdminController\InterviewController;
 use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
+use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
 use App\Http\Controllers\GinouJisshuuDocumentController;
 use App\Http\Controllers\TokuteiGinouDocumentController;
-use App\Http\Controllers\Admin\TeacherController;
+
 
 
 
