@@ -120,7 +120,21 @@ class CvGenerator extends Controller
 
         // --- 3. PENDIDIKAN (31-34) ---
         $row = 31;
-        foreach ($profile->educations->take(4) as $edu) {
+
+        // Definisikan urutan berdasarkan value enum
+        $educationOrder = [
+            '小学校' => 1, // SD
+            '中学校' => 2, // SMP
+            '高校'   => 3, // SMA
+            '大学'   => 4, // Universitas
+        ];
+
+        // Urutkan koleksi berdasarkan map di atas, lalu ambil 4 data teratas
+        $sortedEducations = $profile->educations->sortBy(function ($edu) use ($educationOrder) {
+            return $educationOrder[$edu->level] ?? 99; // 99 untuk jaga-jaga jika ada level lain
+        })->take(4);
+
+        foreach ($sortedEducations as $edu) {
             $sheet->setCellValue('E'.$row, Carbon::parse($edu->entry_date)->format('Y年 m月'));
             $sheet->setCellValue('I'.$row, Carbon::parse($edu->graduation_date)->format('Y年 m月'));
             $sheet->setCellValue('M'.$row, $edu->school_type . $edu->level . ' ' . $edu->school_name);

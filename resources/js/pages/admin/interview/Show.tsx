@@ -6,7 +6,7 @@ import {
     ExternalLink, Download, ArrowLeft, Info, Eye,
     UserPlus, Trash2, Hash, GripVertical, Save,
     FileSpreadsheet, MoreVertical, ChevronRight,
-    Loader2, UploadCloud, AlertTriangle
+    Loader2, UploadCloud, AlertTriangle, CheckCircle2, BadgeCheck
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -138,8 +138,19 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
             </td>
 
             <td className="px-4 py-4 min-w-[200px]">
-                <div className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
-                    {detail.user?.student_profile?.full_name || 'No Name'}
+                <div className="flex items-center gap-2"> {/* Tambahkan wrapper flex */}
+                    <div className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
+                        {detail.user?.student_profile?.full_name || 'No Name'}
+                    </div>
+                    
+                    {/* LOGIKA CENTANG SERTIFIKAT */}
+                    {detail.user?.student_profile?.japanese_language_certificate_yunerva_uuid && (
+                        <BadgeCheck 
+                            size={16} 
+                            className="text-blue-500 flex-shrink-0" 
+                            strokeWidth={2.5}
+                        />
+                    )}
                 </div>
             </td>
 
@@ -159,16 +170,6 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
 
             <td className="px-4 py-4 w-64 text-right">
                 <div className="flex items-center justify-end gap-1">
-                    {detail.result === 'passed' && (
-                        <Button 
-                            onClick={() => onManageDocs(detail)} 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 bg-blue-50 text-blue-700 border-blue-200"
-                        >
-                            <Upload size={14} className="mr-1.5" /> Berkas
-                        </Button>
-                    )}
                     <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
                         <Button variant="outline" size="sm" className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5">
                             <FileSpreadsheet size={14} /> CV
