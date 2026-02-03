@@ -17,6 +17,7 @@ use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
 use App\Http\Controllers\GinouJisshuuDocumentController;
 use App\Http\Controllers\TokuteiGinouDocumentController;
+use App\Http\Controllers\Admin\TeacherController;
 
 
 
@@ -78,6 +79,9 @@ Route::middleware([
     // --- MANAJEMEN WAWANCARA (INTERVIEW) ---
     // Pastikan Route Resource diletakkan di bawah rute custom jika ada tumpang tindih URL
     Route::resource('interviews', InterviewController::class);
+
+    // route crud sensei
+    Route::resource('teachers', TeacherController::class);
     
     // Rute Custom Wawancara
     Route::post('/interviews/{id}/apply', [InterviewController::class, 'apply'])->name('interviews.apply');
