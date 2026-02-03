@@ -41,4 +41,13 @@ class Teacher extends Model
     {
         return $this->hasMany(Classroom::class);
     }
+
+    /**
+     * INI YANG HILANG: Relasi ke tabel users
+     * Tanpa ini, Teacher::with('user') akan error.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
