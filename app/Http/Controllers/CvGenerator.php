@@ -182,43 +182,35 @@ class CvGenerator extends Controller
             $row++;
         }
 
-        // --- 5. KELUARGA (Baris menyesuaikan template Anda) ---
-        $row = 42; // Contoh mulai baris 42
+        // --- 5. KELUARGA (43-51) ---
+        $row = 43;
 
-        // 1. Definisikan bobot prioritas untuk relasi
-        $familyPriority = [
-            '父' => 1,    // Ayah (Paling atas)
-            '母' => 2,    // Ibu (Kedua)
-            '夫' => 3,    // Suami
-            '妻' => 3,    // Istri
-            '祖父' => 8,  // Kakek
-            '祖母' => 9,  // Nenek
+        // Map prioritas untuk memastikan Ayah & Ibu selalu paling atas
+        $priorityMap = [
+            '父' => 1, // Ayah
+            '母' => 2, // Ibu
         ];
 
-        // 2. Urutkan koleksi
-        $sortedFamilies = $profile->families->sort(function ($a, $b) use ($familyPriority) {
-            // Ambil prioritas (jika tidak ada di list, beri angka besar/10)
-            $prioA = $familyPriority[$a->relation] ?? 10;
-            $prioB = $familyPriority[$b->relation] ?? 10;
+        // Urutkan: Prioritas dulu, baru usia tertua
+        $sortedFamilies = $profile->families->sort(function ($a, $b) use ($priorityMap) {
+            $prioA = $priorityMap[$a->relationship] ?? 3;
+            $prioB = $priorityMap[$b->relationship] ?? 3;
 
-            // Jika prioritas berbeda, urutkan berdasarkan prioritas (1, 2, 3...)
             if ($prioA !== $prioB) {
                 return $prioA <=> $prioB;
             }
 
-            // Jika prioritas sama (misal sama-sama kakak/adik/anak), urutkan berdasarkan usia tertua
-            // Kita asumsikan ada kolom 'age' atau 'birth_date'
-            // Menggunakan desc karena yang tertua (umur besar) harus di atas
-            return ($b->age ?? 0) <=> ($a->age ?? 0);
-        })->take(6); // Sesuaikan jumlah baris maksimal keluarga di Excel
+            // Jika sama-sama anggota keluarga lain, urutkan usia tertua ke termuda
+            return (int)$b->age <=> (int)$a->age;
+        })->take(9);
 
         foreach ($sortedFamilies as $fam) {
-            $sheet->setCellValue('E'.$row, $fam->relation); // Hubungan (Jepang)
-            $sheet->setCellValue('M'.$row, $fam->name);     // Nama
-            $sheet->setCellValue('AI'.$row, $fam->age . ' 歳'); // Usia
-            $sheet->setCellValue('AO'.$row, $fam->job);     // Pekerjaan
-            
-            $sheet->getStyle("E$row:AO$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->setCellValue('G'.$row, $fam->relationship);
+            $sheet->setCellValue('M'.$row, $fam->name);
+            $sheet->setCellValue('AD'.$row, $fam->age . ' 歳');
+            $sheet->setCellValue('AI'.$row, $masterSectors[strtolower(trim($fam->occupation))] ?? $fam->occupation);
+            $sheet->getStyle("G$row:AI$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle('AD'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $row++;
         }
 
