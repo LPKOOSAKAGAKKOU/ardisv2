@@ -59,7 +59,7 @@ class ClassroomController extends Controller
             ]
         ]);
     }
-    
+
     /**
      * 1. CREATE CLASS
      * Aturan: Jika Sensei buat kelas baru, kelas lama otomatis Nonaktif.
@@ -68,7 +68,7 @@ class ClassroomController extends Controller
     {
         $request->validate([
             'name' => 'required|string',
-            'level' => 'required|in:N5,N4,N3,N2,N1,Kaigo,Basic',
+            'level' => 'required|in:ATARASHII,N5,N4,N3,N2,N1,Pra-Pemberangakatan,Pra-Pemberangkatan Kaigo',
         ]);
 
         $user = Auth::user();
