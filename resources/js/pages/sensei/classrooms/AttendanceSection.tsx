@@ -22,7 +22,7 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import { route } from 'ziggy-js'
 import axios from 'axios'
-import { Html5QrcodeScanner } from 'html5-qrcode'
+import { Html5Qrcode } from 'html5-qrcode' // Ganti Scanner widget dengan Core Library
 
 interface Student {
     id: number
@@ -84,69 +84,83 @@ export default function AttendanceSection({ classroom }: Props) {
         })
     }
 
-    // --- LOGIC QR CAMERA SCANNER ---
+    // --- LOGIC QR CAMERA SCANNER (FIXED) ---
     const [isCameraOpen, setIsCameraOpen] = useState(false)
     const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-    const [qrInput, setQrInput] = useState('') // Tetap simpan ini untuk fallback manual input
-    const [isScanningApi, setIsScanningApi] = useState(false) // Loading state saat kirim ke API
+    const [qrInput, setQrInput] = useState('') 
+    const [isScanningApi, setIsScanningApi] = useState(false)
     
-    // Ref untuk mencegah double scan (Cooldown system)
     const lastScannedRef = useRef<string | null>(null)
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+    const scannerRef = useRef<Html5Qrcode | null>(null) // Pakai Html5Qrcode (bukan Scanner)
 
     // Effect untuk Handle Kamera
     useEffect(() => {
-        if (isCameraOpen) {
-            // Hapus instance lama jika ada (cleanup)
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(console.error)
-            }
+        let scanner: Html5Qrcode | null = null;
 
-            // Inisialisasi Scanner Baru
-            const scanner = new Html5QrcodeScanner(
-                "reader", 
-                { 
-                    fps: 10, 
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0,
-                    showTorchButtonIfSupported: true
-                },
-                /* verbose= */ false
-            )
-            
-            scannerRef.current = scanner
+        const startCamera = async () => {
+            if (isCameraOpen) {
+                try {
+                    const cameraId = "reader"; // ID element div
+                    scanner = new Html5Qrcode(cameraId);
+                    scannerRef.current = scanner;
 
-            scanner.render(
-                (decodedText) => {
-                    // Success Callback
-                    handleCameraScan(decodedText)
-                }, 
-                (errorMessage) => {
-                    // Error/Waiting Callback (Biasanya diabaikan agar console tidak penuh)
+                    // Config kamera: Pakai kamera belakang (environment)
+                    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                    
+                    await scanner.start(
+                        { facingMode: "environment" }, 
+                        config, 
+                        (decodedText) => {
+                            handleCameraScan(decodedText);
+                        },
+                        (errorMessage) => {
+                            // ignore error per frame
+                        }
+                    );
+                } catch (err) {
+                    console.error("Error starting camera:", err);
+                    setIsCameraOpen(false); // Matikan state jika gagal start
+                    alert("Gagal membuka kamera. Pastikan izin kamera diberikan.");
                 }
-            )
-        } else {
-            // Jika kamera ditutup, bersihkan scanner
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(console.error)
-                scannerRef.current = null
             }
+        };
+
+        const stopCamera = async () => {
+            if (scannerRef.current) {
+                try {
+                    await scannerRef.current.stop();
+                    scannerRef.current.clear();
+                } catch (err) {
+                    console.error("Error stopping camera:", err);
+                }
+                scannerRef.current = null;
+            }
+        };
+
+        if (isCameraOpen) {
+            startCamera();
+        } else {
+            stopCamera();
         }
 
-        // Cleanup saat unmount
+        // Cleanup function
         return () => {
             if (scannerRef.current) {
-                scannerRef.current.clear().catch(console.error)
+                // Kita tidak await di cleanup karena harus sinkronus, 
+                // tapi kita coba stop best-effort
+                scannerRef.current.stop().catch(() => {}).then(() => {
+                    scannerRef.current?.clear();
+                });
             }
-        }
-    }, [isCameraOpen])
+        };
+    }, [isCameraOpen]);
 
-    // Fungsi Utama Proses Scan (Dipakai Kamera & Input Manual)
+    // Fungsi Utama Proses Scan 
     const processScan = async (code: string) => {
-        if (isScanningApi) return // Cegah spam request
+        if (isScanningApi) return 
 
         setIsScanningApi(true)
-        setScanResult(null) // Reset pesan
+        setScanResult(null) 
 
         try {
             const response = await axios.post(route('sensei.classrooms.attendance.qr', classroom.id), {
@@ -160,40 +174,30 @@ export default function AttendanceSection({ classroom }: Props) {
                 message: `✅ ${response.data.message}`
             })
             
-            // Audio Feedback (Opsional)
-            // const audio = new Audio('/sounds/success.mp3'); audio.play();
-
         } catch (error: any) {
             setScanResult({
                 type: 'error',
                 message: `❌ ${error.response?.data?.message || 'QR Code tidak valid/Siswa tidak ditemukan.'}`
             })
-            // const audio = new Audio('/sounds/error.mp3'); audio.play();
         } finally {
             setIsScanningApi(false)
-            setQrInput('') // Clear input manual jika pakai itu
+            setQrInput('') 
             
-            // Fokus balik ke input manual jika kamera mati, biar flow enak
             if (!isCameraOpen) {
                 document.getElementById('qr-input-field')?.focus()
             }
         }
     }
 
-    // Wrapper Khusus Kamera dengan Cooldown
     const handleCameraScan = (decodedText: string) => {
-        // Jika kode sama dengan yang barusan discan dalam 3 detik terakhir, abaikan
         if (lastScannedRef.current === decodedText) return
 
-        // Set cooldown
         lastScannedRef.current = decodedText
-        setTimeout(() => { lastScannedRef.current = null }, 3000) // Reset cooldown setelah 3 detik
+        setTimeout(() => { lastScannedRef.current = null }, 3000) 
 
-        // Proses
         processScan(decodedText)
     }
 
-    // Wrapper Khusus Input Manual (Enter)
     const handleManualSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!qrInput) return
@@ -251,18 +255,18 @@ export default function AttendanceSection({ classroom }: Props) {
                                             <p className="text-xs text-muted-foreground font-mono">{student.nik}</p>
                                         </div>
 
-                                        {/* Radio Group */}
+                                        {/* Radio Group (FIXED ID) */}
                                         <div className="col-span-12 md:col-span-6 flex justify-center">
                                             <RadioGroup 
                                                 value={manualData[student.id]?.status} 
                                                 onValueChange={(val) => handleManualChange(student.id, 'status', val)}
                                                 className="flex flex-wrap items-center gap-2 sm:gap-4"
                                             >
-                                                <AttendanceRadio value="hadir" label="Hadir" color="bg-green-100 text-green-700 border-green-200" />
-                                                <AttendanceRadio value="sakit" label="Sakit" color="bg-yellow-100 text-yellow-700 border-yellow-200" />
-                                                <AttendanceRadio value="izin" label="Izin" color="bg-blue-100 text-blue-700 border-blue-200" />
-                                                <AttendanceRadio value="alpha" label="Alpha" color="bg-red-100 text-red-700 border-red-200" />
-                                                <AttendanceRadio value="terlambat" label="Telat" color="bg-orange-100 text-orange-700 border-orange-200" />
+                                                <AttendanceRadio idPrefix={student.id} value="hadir" label="Hadir" color="bg-green-100 text-green-700 border-green-200" />
+                                                <AttendanceRadio idPrefix={student.id} value="sakit" label="Sakit" color="bg-yellow-100 text-yellow-700 border-yellow-200" />
+                                                <AttendanceRadio idPrefix={student.id} value="izin" label="Izin" color="bg-blue-100 text-blue-700 border-blue-200" />
+                                                <AttendanceRadio idPrefix={student.id} value="alpha" label="Alpha" color="bg-red-100 text-red-700 border-red-200" />
+                                                <AttendanceRadio idPrefix={student.id} value="terlambat" label="Telat" color="bg-orange-100 text-orange-700 border-orange-200" />
                                             </RadioGroup>
                                         </div>
 
@@ -402,12 +406,16 @@ export default function AttendanceSection({ classroom }: Props) {
     )
 }
 
-function AttendanceRadio({ value, label, color }: { value: string, label: string, color: string }) {
+// FIXED: Tambah prop idPrefix agar ID unik per siswa
+function AttendanceRadio({ idPrefix, value, label, color }: { idPrefix: number, value: string, label: string, color: string }) {
+    // Generate unique ID: r-{studentId}-{value} (contoh: r-101-hadir)
+    const uniqueId = `r-${idPrefix}-${value}`
+    
     return (
         <div>
-            <RadioGroupItem value={value} id={`r-${value}`} className="peer sr-only" />
+            <RadioGroupItem value={value} id={uniqueId} className="peer sr-only" />
             <Label
-                htmlFor={`r-${value}`}
+                htmlFor={uniqueId}
                 className={`flex cursor-pointer items-center justify-center rounded-md border px-3 py-1.5 text-xs font-bold uppercase transition-all hover:opacity-80 peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-offset-2 ${color} peer-data-[state=checked]:brightness-90 peer-data-[state=checked]:ring-black dark:peer-data-[state=checked]:ring-white`}
             >
                 {label}
