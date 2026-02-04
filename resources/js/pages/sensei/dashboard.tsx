@@ -47,7 +47,7 @@ export default function SenseiDashboard({ activeClass, stats }: Props) {
                 
                 {/* --- WELCOME SECTION --- */}
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Oha You Gozaimasu, Sensei! 👋</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">OhaYou Gozaimasu, Sensei! 👋</h1>
                     <p className="text-muted-foreground">Berikut adalah ringkasan aktivitas pembelajaran Anda hari ini.</p>
                 </div>
 
