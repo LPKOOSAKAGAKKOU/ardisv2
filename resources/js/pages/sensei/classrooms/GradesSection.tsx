@@ -589,8 +589,8 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
                         />
                     </div>
                     
-                    {/* Checkbox Remedial hanya muncul jika EDIT MODE dan nilai sebelumnya bukan 0 */}
-                    {!isNewEntry && cellData.grade.score > 0 && (
+                    {/* PERBAIKAN: Hapus kondisi `cellData.grade.score > 0` agar nilai 0 pun bisa diremedial */}
+                    {!isNewEntry && (
                         <div className="flex items-center space-x-2 bg-neutral-50 p-2 rounded border">
                             <Checkbox 
                                 id="remedial" 
