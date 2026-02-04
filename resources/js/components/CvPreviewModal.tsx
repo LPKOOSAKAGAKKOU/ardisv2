@@ -70,7 +70,7 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             {/* GUNAKAN max-w-7xl untuk lebar ekstra luas, dan w-[95vw] agar hampir memenuhi layar di desktop/mobile */}
-            <DialogContent className="max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-muted/30 p-0 border shadow-2xl">
+            <DialogContent className="max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-muted/30 p-0 border shadow-2xl flex flex-col">
                 
                 {/* HEADER MODAL */}
                 <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-zinc-950 z-10">
