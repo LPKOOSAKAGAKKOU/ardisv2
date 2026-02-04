@@ -9,6 +9,7 @@ import {
     Eye, UploadCloud, Loader2, X, ShieldCheck, AlertTriangle, Download, Clock,
     MapPin, Phone, Activity, Heart, Plane, Droplet, Cigarette, Wine, Globe,
     Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff,
+    FileSpreadsheet,
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -213,15 +214,29 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                         </p>
                     </div>
 
-                    {/* Right Side: Edit Profile Button (Only if student exists) */}
-                    {student && (
-                        <Link 
-                            href={route('student.profile.edit')} 
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-background shadow-lg hover:opacity-90 transition-all active:scale-95 whitespace-nowrap"
-                        >
-                            <Edit3 className="size-3.5 sm:size-4" /> Edit Profil Lengkap
-                        </Link>
-                    )}
+                    {/* Right Side: Action Buttons (Edit Profile & Download CV) */}
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                        {student && (
+                            <>
+                                {/* Tombol Download CV Langsung ke URL String */}
+                                <Button 
+                                    onClick={() => window.open(`/generate-cv/${student.user_id}`, '_blank')}
+                                    variant="outline"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-600 px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-emerald-600 hover:bg-emerald-50 transition-all active:scale-95 whitespace-nowrap w-full sm:w-auto"
+                                >
+                                    <FileSpreadsheet className="size-3.5 sm:size-4" /> Download CV (Excel)
+                                </Button>
+
+                                {/* Tombol Edit Profil */}
+                                <Link 
+                                    href={route('student.profile.edit')} 
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-background shadow-lg hover:opacity-90 transition-all active:scale-95 whitespace-nowrap w-full sm:w-auto"
+                                >
+                                    <Edit3 className="size-3.5 sm:size-4" /> Edit Profil Lengkap
+                                </Link>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* --- CARD SECTION: Company Placement OR Interview Schedule --- */}

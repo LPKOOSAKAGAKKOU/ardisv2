@@ -14,9 +14,17 @@ use Illuminate\Support\Facades\{File, Log, DB};
 
 class CvGenerator extends Controller
 {
-    // HAPUS 'static', TAMBAHKAN Request $request
+
     public function generate(Request $request, $userId, $interviewId = null)
     {
+        // PROTEKSI: Cek apakah user yang login adalah siswa
+        $userLogon = auth()->user();
+        
+        // Jika role siswa, pastikan userId yang diminta adalah id miliknya sendiri
+        if ($userLogon->role === 'student' && $userLogon->id != $userId) {
+            abort(403, 'Anda tidak memiliki akses untuk melihat CV ini.');
+        }
+        
         try {
             // 1. Ambil data
             $student = User::with([
