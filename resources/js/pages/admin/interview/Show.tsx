@@ -752,6 +752,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     onUpdateModal={openUpdateModal}
                                                     interviewId={interview.id}
                                                     onManageDocs={handleManageDocs}
+                                                    onPreviewCV={onPreviewCV} // <--- TAMBAHKAN BARIS INI
                                                 />
                                             )) : (
                                                 <tr>
