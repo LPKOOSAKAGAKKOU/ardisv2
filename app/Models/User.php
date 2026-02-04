@@ -54,4 +54,12 @@ class User extends Authenticatable
     public function student_profile() { // Menggunakan underscore
         return $this->hasOne(StudentProfile::class);
     }
+
+    /**
+     * Relasi: Satu User (Role Sensei) memiliki Satu Data Teacher
+     */
+    public function teacher(): HasOne
+    {
+        return $this->hasOne(Teacher::class);
+    }
 }
