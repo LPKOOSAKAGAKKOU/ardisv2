@@ -309,7 +309,7 @@ class StudentController extends Controller
         });
 
         // 3. Return ke Inertia
-        return Inertia::render('admin/students/Show', [
+        return Inertia::render('admin/student/Show', [
             'student' => $student,
             'classHistory' => $classHistory
         ]);
