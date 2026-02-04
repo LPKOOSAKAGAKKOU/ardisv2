@@ -38,18 +38,16 @@ class SenseiStudentController extends Controller
     {
         $user = Auth::user();
 
-        // Fail-safe: Jika bukan sensei atau data teacher error
         if (!$user || $user->role !== 'sensei' || !$user->teacher) {
-            return StudentProfile::where('id', 0); // Return kosong
+            return StudentProfile::where('id', 0);
         }
 
         $teacherId = $user->teacher->id;
 
-        // Query Utama: Cari siswa yang punya relasi ke classrooms dengan syarat tertentu
         return StudentProfile::whereHas('classrooms', function ($q) use ($teacherId) {
-            $q->where('teacher_id', $teacherId)           // Kelas milik Sensei ini
-              ->where('status', 'active')                 // Kelasnya sedang Aktif
-              ->where('classroom_students.status', 'active'); // Siswanya status Aktif
+            $q->where('teacher_id', $teacherId)
+              ->where('classrooms.status', 'active') // <--- PERBAIKAN DI SINI (tambah 'classrooms.')
+              ->where('classroom_students.status', 'active');
         });
     }
 
