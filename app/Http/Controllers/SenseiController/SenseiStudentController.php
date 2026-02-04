@@ -184,51 +184,33 @@ class SenseiStudentController extends Controller
 
     /**
      * SHOW: Detail siswa (Read Only)
-     */
-    /**
-     * SHOW: Detail siswa (Read Only)
-     * UPDATE: Diperlonggar agar bisa melihat Alumni / Siswa kelas selesai
+     * UPDATE: BISA MELIHAT SEMUA SISWA (TANPA TERKECUALI)
      */
     public function show($id)
     {
-        $user = Auth::user();
-        $teacherId = $user->teacher ? $user->teacher->id : null;
-
-        // Query Dasar
-        $query = StudentProfile::with([
+        // Query tanpa filter 'whereHas'. Langsung cari berdasarkan ID.
+        $student = StudentProfile::with([
             'user',         
             'educations',   
             'experiences',  
             'families',     
             
-            // Relasi Kelas (History)
+            // Kita tetap load history kelasnya agar Sensei tau siswa ini pernah di kelas mana saja
             'classrooms' => function($query) use ($id) {
-                $query->with('teacher') 
+                $query->with('teacher') // Load data guru kelas tersebut
+                      // Load Absen siswa ini di kelas tersebut
                       ->with(['attendances' => function($q) use ($id) {
                           $q->where('student_profile_id', $id)->orderBy('date', 'desc');
                       }])
+                      // Load Nilai siswa ini di kelas tersebut
                       ->with(['grades' => function($q) use ($id) {
                           $q->where('student_profile_id', $id)->orderBy('created_at', 'desc');
                       }])
                       ->orderByPivot('joined_at', 'desc');
             }
-        ]);
+        ])->findOrFail($id); // Jika ID tidak ada di database, baru 404. Selain itu LOLOS.
 
-        // --- FILTER KEAMANAN (Pilih salah satu OPSI di bawah) ---
-
-        // OPSI 1 (Direkomendasikan): Sensei BISA melihat siswa Active MAUPUN Finished (Alumni) miliknya.
-        // Kita hapus syarat 'status=active', cukup cek 'teacher_id' saja.
-        $query->whereHas('classrooms', function ($q) use ($teacherId) {
-            $q->where('teacher_id', $teacherId); 
-        });
-
-        // OPSI 2 (Lebih Bebas): Sensei BISA melihat profil SIAPAPUN (misal kandidat interview dari kelas lain).
-        // Hapus blok $query->whereHas(...) sama sekali jika Anda ingin Sensei bisa lihat semua profil.
-
-        // Eksekusi
-        $student = $query->findOrFail($id); 
-
-        // 2. Formatting Data (Logic asli Anda tetap sama)
+        // --- FORMAT DATA UNTUK FRONTEND ---
         $classHistory = $student->classrooms->map(function ($class) {
             $totalAbsen = $class->attendances->count();
             $hadir = $class->attendances->where('status', 'hadir')->count();
@@ -251,7 +233,7 @@ class SenseiStudentController extends Controller
             ];
         });
 
-        return Inertia::render('sensei/students/Show', [
+        return Inertia::render('sensei/student/Show', [
             'student' => $student,
             'classHistory' => $classHistory
         ]);
