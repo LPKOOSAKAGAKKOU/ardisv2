@@ -14,7 +14,52 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class ClassroomController extends Controller
-{
+{   
+
+    /**
+     * MENAMPILKAN DAFTAR KELAS (INDEX)
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $teacher = $user->teacher; // Pastikan relasi teacher ada di Model User
+
+        // Query Classroom milik Sensei yang sedang login
+        $query = Classroom::query();
+
+        if ($teacher) {
+            $query->where('teacher_id', $teacher->id);
+        } else {
+            // Fallback jika data teacher belum linked (opsional, biar gak error)
+            $query->where('id', 0); 
+        }
+
+        // Fitur Pencarian (Search)
+        if ($request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Ambil data dengan Pagination + Hitung Jumlah Siswa Aktif
+        $classrooms = $query->withCount(['students' => function ($q) {
+                // Kita hitung hanya siswa yang statusnya 'active' di kelas itu
+                $q->where('classroom_students.status', 'active');
+            }])
+            // Urutkan: Kelas Aktif paling atas, lalu berdasarkan tanggal mulai terbaru
+            ->orderByRaw("CASE WHEN status = 'active' THEN 1 ELSE 2 END")
+            ->orderBy('start_date', 'desc')
+            ->paginate(10) // Sesuaikan jumlah per halaman
+            ->withQueryString();
+
+        // Render ke File: resources/js/pages/sensei/classrooms/Index.tsx
+        // Perhatikan besar kecil huruf 'Index' harus sama dengan nama file .tsx
+        return Inertia::render('sensei/classrooms/Index', [
+            'classrooms' => $classrooms,
+            'filters' => [
+                'search' => $request->search
+            ]
+        ]);
+    }
+    
     /**
      * 1. CREATE CLASS
      * Aturan: Jika Sensei buat kelas baru, kelas lama otomatis Nonaktif.
