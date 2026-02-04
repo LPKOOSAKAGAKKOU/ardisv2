@@ -66,7 +66,7 @@ class SenseiInterviewController extends Controller
             ->whereNotIn('id', $alreadyAssignedIds)
             ->get();
 
-        return Inertia::render('admin/interview/Show', [
+        return Inertia::render('sensei/interview/Show', [
             'interview' => $interview,
             'availableStudents' => $availableStudents // Kirim ke Frontend
         ]);
