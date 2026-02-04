@@ -37,7 +37,8 @@ import {
     Filter,
     ChevronLeft,
     ChevronRight,
-    Calendar
+    Calendar,
+    AlertCircle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { route } from 'ziggy-js'
@@ -59,7 +60,7 @@ import {
 } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
 
-// --- TYPES ---
+// --- TIPE DATA ---
 interface Student {
     id: number
     nik: string
@@ -75,14 +76,14 @@ interface GradeRecord {
     original_score?: number
     is_remedial?: boolean
     feedback: string | null
-    created_at: string
+    created_at: string // Wajib ada untuk filter tanggal
 }
 
 interface Assignment {
     type: string
     title: string
     avg: number
-    date?: string // Tanggal tugas dibuat
+    date?: string 
 }
 
 interface Props {
@@ -92,18 +93,21 @@ interface Props {
     }
 }
 
+// --- KOMPONEN UTAMA ---
 export default function GradesSection({ classroom }: Props) {
     const [activeTab, setActiveTab] = useState('summary')
     const [isLoading, setIsLoading] = useState(false)
     const [grades, setGrades] = useState<GradeRecord[]>([])
     const [assignments, setAssignments] = useState<Assignment[]>([])
     
-    // --- STATE NAVIGASI & FILTER ---
-    const [timeFilter, setTimeFilter] = useState<'all' | 'month' | 'week' | 'day'>('all')
-    const [currentDate, setCurrentDate] = useState(new Date()) // Tanggal yang sedang dilihat
+    // --- STATE FILTER & NAVIGASI ---
+    // Default filter: 'month' (Bulanan) agar terlihat banyak data dulu
+    const [timeFilter, setTimeFilter] = useState<'month' | 'week' | 'day'>('month')
+    const [currentDate, setCurrentDate] = useState(new Date()) 
     const [filteredAssignments, setFilteredAssignments] = useState<Assignment[]>([])
 
-    // State Modal Edit
+    // --- STATE MODAL EDIT ---
+    // Menyimpan data cell yang diklik (bisa grade yang sudah ada, atau data kosong untuk input baru)
     const [editingCell, setEditingCell] = useState<{
         grade?: GradeRecord, 
         studentId?: number, 
@@ -111,12 +115,12 @@ export default function GradesSection({ classroom }: Props) {
         title?: string
     } | null>(null)
 
-    // Fetch Data Nilai
+    // --- FUNGSI FETCH DATA ---
     const fetchData = async () => {
         setIsLoading(true)
         try {
-            // Kita ambil SEMUA data dulu, baru filter di frontend agar navigasi cepat (instant)
-            // Kecuali datanya ribuan, approach ini lebih mulus UX-nya daripada request berulang
+            // Kita ambil SEMUA data grades dari backend
+            // Filtering dilakukan di frontend (client-side) agar navigasi tanggal terasa instant
             const res = await axios.get(route('sensei.classrooms.grades.data', classroom.id))
             setGrades(res.data.grades)
             setAssignments(res.data.assignments)
@@ -127,11 +131,12 @@ export default function GradesSection({ classroom }: Props) {
         }
     }
 
+    // Load data saat komponen pertama kali dipasang
     useEffect(() => {
         fetchData()
     }, [classroom.id])
 
-    // --- LOGIC NAVIGASI (PREV / NEXT) ---
+    // --- FUNGSI NAVIGASI TANGGAL ---
     const handlePrev = () => {
         if (timeFilter === 'month') setCurrentDate(d => subMonths(d, 1))
         else if (timeFilter === 'week') setCurrentDate(d => subWeeks(d, 1))
@@ -144,40 +149,35 @@ export default function GradesSection({ classroom }: Props) {
         else if (timeFilter === 'day') setCurrentDate(d => addDays(d, 1))
     }
 
-    // Label Tanggal Dinamis
+    // Label Header Tanggal
     const getDateLabel = () => {
-        if (timeFilter === 'all') return 'Semua Periode'
         if (timeFilter === 'month') return format(currentDate, 'MMMM yyyy', { locale: idLocale })
         if (timeFilter === 'week') {
             const start = startOfWeek(currentDate, { weekStartsOn: 1 })
             const end = endOfWeek(currentDate, { weekStartsOn: 1 })
             return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`
         }
+        // day
         return format(currentDate, 'EEEE, d MMM yyyy', { locale: idLocale })
     }
 
-    // --- LOGIC FILTERING ---
+    // --- LOGIC FILTERING TUGAS ---
+    // Setiap kali assignments, timeFilter, atau currentDate berubah, kita filter ulang kolom tabel
     useEffect(() => {
-        if (timeFilter === 'all') {
-            setFilteredAssignments(assignments)
-            return
-        }
-
-        // Tentukan Range Tanggal berdasarkan currentDate
         let start: Date, end: Date
+
         if (timeFilter === 'day') {
             start = currentDate; end = currentDate; 
         } else if (timeFilter === 'week') {
             start = startOfWeek(currentDate, { weekStartsOn: 1 }); end = endOfWeek(currentDate, { weekStartsOn: 1 })
         } else {
-            // Default month
+            // month
             start = startOfMonth(currentDate); end = endOfMonth(currentDate)
         }
 
-        // Filter assignment berdasarkan tanggal created_at tugas tersebut
         const filtered = assignments.filter(a => {
-            // Kita cari sample grade dari tugas ini untuk tahu tanggal pembuatannya
-            // (Karena struktur Assignment di controller sebelumnya mungkin belum ada field 'date')
+            // Kita cari salah satu grade dari assignment ini untuk mengetahui tanggal pembuatannya
+            // (Backend mengelompokkan berdasarkan Type & Title)
             const sampleGrade = grades.find(g => g.type === a.type && g.title === a.title)
             
             if (!sampleGrade) return false 
@@ -187,7 +187,7 @@ export default function GradesSection({ classroom }: Props) {
             if (timeFilter === 'day') {
                 return format(assignDate, 'yyyy-MM-dd') === format(currentDate, 'yyyy-MM-dd')
             }
-            // Cek apakah tanggal tugas masuk dalam range yang dipilih
+            // Cek apakah tanggal tugas masuk dalam range tanggal yang dipilih
             return isWithinInterval(assignDate, { start, end })
         })
 
@@ -199,7 +199,7 @@ export default function GradesSection({ classroom }: Props) {
         <div className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 
-                {/* HEADER CONTROL */}
+                {/* HEADER CONTROL & NAVIGATION */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4">
                     <TabsList>
                         <TabsTrigger value="summary" className="gap-2"><BarChart3 size={16}/> Rekap Nilai</TabsTrigger>
@@ -209,9 +209,8 @@ export default function GradesSection({ classroom }: Props) {
                     {activeTab === 'summary' && (
                         <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto">
                             
-                            {/* Panel Navigasi Tanggal */}
+                            {/* Panel Filter & Navigasi */}
                             <div className="flex items-center gap-2 bg-white dark:bg-zinc-950 border rounded-md p-1 w-full sm:w-auto justify-between">
-                                
                                 {/* Dropdown Filter */}
                                 <div className="flex items-center">
                                     <Filter size={14} className="ml-2 text-muted-foreground mr-2" />
@@ -220,7 +219,6 @@ export default function GradesSection({ classroom }: Props) {
                                             <SelectValue placeholder="Pilih Waktu" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">Semua Waktu</SelectItem>
                                             <SelectItem value="month">Bulanan</SelectItem>
                                             <SelectItem value="week">Mingguan</SelectItem>
                                             <SelectItem value="day">Harian</SelectItem>
@@ -228,23 +226,21 @@ export default function GradesSection({ classroom }: Props) {
                                     </Select>
                                 </div>
 
-                                {/* Tombol Navigasi (Prev/Next) - Hanya muncul jika filter bukan 'all' */}
-                                {timeFilter !== 'all' && (
-                                    <div className="flex items-center gap-2 border-l pl-2 ml-1">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handlePrev}>
-                                            <ChevronLeft size={14} />
-                                        </Button>
-                                        
-                                        <span className="text-xs font-medium w-[140px] text-center truncate flex items-center justify-center gap-1">
-                                            <Calendar size={10} className="text-muted-foreground"/>
-                                            {getDateLabel()}
-                                        </span>
-                                        
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNext}>
-                                            <ChevronRight size={14} />
-                                        </Button>
-                                    </div>
-                                )}
+                                {/* Tombol Panah Kiri Kanan */}
+                                <div className="flex items-center gap-2 border-l pl-2 ml-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handlePrev}>
+                                        <ChevronLeft size={14} />
+                                    </Button>
+                                    
+                                    <span className="text-xs font-medium w-[150px] text-center truncate flex items-center justify-center gap-1">
+                                        <Calendar size={10} className="text-muted-foreground"/>
+                                        {getDateLabel()}
+                                    </span>
+                                    
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNext}>
+                                        <ChevronRight size={14} />
+                                    </Button>
+                                </div>
                             </div>
 
                             <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="w-full sm:w-auto">
@@ -264,7 +260,7 @@ export default function GradesSection({ classroom }: Props) {
                                     <TableRow>
                                         <TableHead className="w-[200px] font-bold sticky left-0 bg-neutral-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-900">Nama Siswa</TableHead>
                                         
-                                        {/* Header Tugas Dinamis */}
+                                        {/* Loop Kolom Tugas (Assignments) */}
                                         {filteredAssignments.length > 0 ? filteredAssignments.map((assign, idx) => (
                                             <TableHead key={idx} className="text-center min-w-[120px] border-l">
                                                 <div className="flex flex-col items-center py-2">
@@ -275,10 +271,7 @@ export default function GradesSection({ classroom }: Props) {
                                             </TableHead>
                                         )) : (
                                             <TableHead className="text-center italic text-muted-foreground p-8 min-w-[300px]">
-                                                {timeFilter === 'all' 
-                                                    ? 'Belum ada data nilai.' 
-                                                    : `Tidak ada tugas pada periode ${getDateLabel()}.`
-                                                }
+                                                Tidak ada tugas pada periode {getDateLabel()}.
                                             </TableHead>
                                         )}
 
@@ -287,19 +280,21 @@ export default function GradesSection({ classroom }: Props) {
                                 </TableHeader>
                                 <TableBody>
                                     {classroom.students.map((student) => {
-                                        // Ambil semua nilai siswa ini
+                                        // Ambil semua nilai milik siswa ini
                                         const studentGrades = grades.filter(g => g.student_profile_id === student.id)
                                         
-                                        // Ambil nilai HANYA yang relevan dengan tugas yang sedang ditampilkan (Filtered Assignments)
+                                        // Filter nilai HANYA yang relevan dengan tugas yang sedang ditampilkan di header
                                         const relevantGrades = studentGrades.filter(g => 
                                             filteredAssignments.some(a => a.type === g.type && a.title === g.title)
                                         )
 
+                                        // Hitung rata-rata baris
                                         const totalScore = relevantGrades.reduce((sum, g) => sum + g.score, 0)
                                         const avgScore = relevantGrades.length > 0 ? (totalScore / relevantGrades.length).toFixed(1) : '-'
 
                                         return (
                                             <TableRow key={student.id} className="hover:bg-neutral-50/50">
+                                                {/* Kolom Nama Siswa (Sticky Kiri) */}
                                                 <TableCell className="font-medium sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-950 dark:border-zinc-800">
                                                     <div className="flex flex-col">
                                                         <span>{student.full_name}</span>
@@ -307,11 +302,14 @@ export default function GradesSection({ classroom }: Props) {
                                                     </div>
                                                 </TableCell>
                                                 
+                                                {/* Loop Cell Nilai */}
                                                 {filteredAssignments.length > 0 ? filteredAssignments.map((assign, idx) => {
+                                                    // Cari nilai spesifik untuk tugas ini
                                                     const grade = studentGrades.find(g => g.type === assign.type && g.title === assign.title)
+                                                    
                                                     return (
                                                         <TableCell key={idx} className="text-center border-l p-1 dark:border-zinc-800 relative group">
-                                                            {/* Cell Interaktif */}
+                                                            {/* Cell Interaktif: Klik untuk Edit (jika ada nilai) atau Input Susulan (jika kosong) */}
                                                             <button 
                                                                 onClick={() => setEditingCell({ 
                                                                     grade, 
@@ -325,7 +323,9 @@ export default function GradesSection({ classroom }: Props) {
                                                                 {grade ? (
                                                                     <GradeBadge score={grade.score} isRemedial={grade.is_remedial} original={grade.original_score} />
                                                                 ) : (
-                                                                    <span className="text-muted-foreground text-xs opacity-20 group-hover:opacity-100 group-hover:text-blue-500 font-bold">+</span>
+                                                                    <span className="text-muted-foreground text-xs opacity-20 group-hover:opacity-100 group-hover:text-blue-500 font-bold flex items-center gap-1">
+                                                                        <Plus size={10} /> Input
+                                                                    </span>
                                                                 )}
                                                             </button>
                                                         </TableCell>
@@ -334,6 +334,7 @@ export default function GradesSection({ classroom }: Props) {
                                                     <TableCell className="text-center text-muted-foreground">-</TableCell>
                                                 )}
 
+                                                {/* Kolom Rata-rata (Sticky Kanan) */}
                                                 {filteredAssignments.length > 0 && (
                                                     <TableCell className="text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900 dark:border-zinc-800">
                                                         {avgScore}
@@ -348,7 +349,7 @@ export default function GradesSection({ classroom }: Props) {
                     </Card>
                 </TabsContent>
 
-                {/* TAB 2: INPUT NILAI BARU */}
+                {/* TAB 2: INPUT NILAI BARU (BATCH) */}
                 <TabsContent value="input" className="mt-0">
                     <InputGradeForm 
                         classroom={classroom} 
@@ -375,7 +376,7 @@ export default function GradesSection({ classroom }: Props) {
     )
 }
 
-// --- SUB COMPONENT: FORM INPUT (BATCH) ---
+// --- SUB COMPONENT 1: FORM INPUT BATCH ---
 function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'], onSuccess: () => void }) {
     const { data, setData, post, processing, reset, errors } = useForm({
         type: '',
@@ -386,6 +387,7 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         
+        // Convert object scores to array untuk dikirim ke backend
         const scoresArray = Object.keys(data.scores).map(studentId => {
             const val = data.scores[parseInt(studentId)];
             return {
@@ -393,6 +395,12 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
                 score: val === '' ? 0 : parseInt(val)
             }
         })
+
+        // Validasi minimal
+        if (scoresArray.length === 0) {
+            alert("Mohon isi nilai setidaknya satu siswa.")
+            return
+        }
 
         router.post(route('sensei.classrooms.grades.batch', classroom.id), {
             type: data.type,
@@ -410,7 +418,7 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
         <Card>
             <CardHeader>
                 <CardTitle>Input Nilai Tugas / Ujian (Batch)</CardTitle>
-                <CardDescription>Masukkan detail tugas, lalu input nilai untuk setiap siswa sekaligus.</CardDescription>
+                <CardDescription>Masukkan detail tugas, lalu input nilai untuk semua siswa sekaligus.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -441,7 +449,7 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
                         </div>
                     </div>
 
-                    <div className="border rounded-md overflow-hidden">
+                    <div className="border rounded-md overflow-hidden bg-white dark:bg-zinc-950">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -487,9 +495,9 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
     )
 }
 
-// --- SUB COMPONENT: MODAL EDIT NILAI ---
+// --- SUB COMPONENT 2: MODAL EDIT / SUSULAN ---
 function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any) {
-    const isNewEntry = !cellData?.grade; 
+    const isNewEntry = !cellData?.grade; // Jika grade null, berarti ini input baru (susulan)
 
     const { data, setData, put, post, processing, reset } = useForm({
         score: '',
@@ -498,7 +506,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
         student_id: '', type: '', title: ''
     })
 
-    // Populate data saat modal dibuka
+    // Populate data form saat modal dibuka
     useEffect(() => {
         if (open && cellData) {
             if (cellData.grade) {
@@ -510,7 +518,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
                     student_id: '', type: '', title: '' 
                 })
             } else {
-                // CREATE MODE (Susulan)
+                // CREATE MODE (Susulan untuk cell kosong)
                 setData({
                     score: '',
                     feedback: '',
@@ -527,6 +535,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
         e.preventDefault()
         
         if (isNewEntry) {
+            // Jika input baru (susulan), gunakan endpoint BATCH tapi isi 1 item saja
             router.post(route('sensei.classrooms.grades.batch', classroomId), {
                 type: data.type,
                 title: data.title,
@@ -536,6 +545,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
             })
 
         } else {
+            // Jika edit nilai lama, gunakan endpoint UPDATE
             router.put(route('sensei.classrooms.grades.update', [classroomId, cellData.grade.id]), {
                 score: parseInt(data.score),
                 feedback: data.feedback,
@@ -561,7 +571,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
                             : (
                                 <>
                                     Ubah nilai atau tandai sebagai remedial.
-                                    {cellData.grade.is_remedial && <span className="block text-amber-600 mt-1 font-bold">Status: Remedial (Asli: {cellData.grade.original_score})</span>}
+                                    {cellData.grade.is_remedial && <span className="block text-amber-600 mt-1 font-bold">Status: Remedial (Nilai Asli: {cellData.grade.original_score})</span>}
                                 </>
                             )
                         }
@@ -589,7 +599,7 @@ function EditGradeModal({ cellData, open, setOpen, classroomId, onSuccess }: any
                             />
                             <Label htmlFor="remedial" className="text-sm font-normal cursor-pointer flex-1">
                                 Tandai sebagai Remedial?
-                                <span className="block text-[10px] text-muted-foreground">Nilai lama ({cellData.grade.score}) akan disimpan sebagai history.</span>
+                                <span className="block text-[10px] text-muted-foreground">Nilai lama ({cellData.grade.score}) akan disimpan sebagai history (asli).</span>
                             </Label>
                         </div>
                     )}
