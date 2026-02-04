@@ -14,9 +14,7 @@ import {
     subMonths, 
     startOfMonth, 
     endOfMonth, 
-    eachDayOfInterval, 
-    isSameDay,
-    parseISO
+    eachDayOfInterval 
 } from 'date-fns' 
 import { id as idLocale } from 'date-fns/locale'
 import { 
@@ -40,7 +38,6 @@ import { route } from 'ziggy-js'
 import axios from 'axios'
 import { Html5Qrcode } from 'html5-qrcode' 
 
-// --- TYPES ---
 interface Student {
     id: number
     nik: string
@@ -51,7 +48,7 @@ interface AttendanceRecord {
     student_profile_id: number
     status: string
     note: string | null
-    date: string // YYYY-MM-DD
+    date?: string 
 }
 
 interface Props {
@@ -66,17 +63,17 @@ export default function AttendanceSection({ classroom }: Props) {
     const [viewMode, setViewMode] = useState<'day' | 'month'>('day')
     const [currentDate, setCurrentDate] = useState<Date>(new Date())
     
-    // Turunan state string date untuk API
     const dateString = format(currentDate, 'yyyy-MM-dd')
     const monthString = format(currentDate, 'yyyy-MM')
 
-    // State Data
     const [isLoadingData, setIsLoadingData] = useState(false)
-    const [fetchedData, setFetchedData] = useState<AttendanceRecord[]>([])
-    
-    // State Form Harian
-    const [isEditing, setIsEditing] = useState(false)
     const [processing, setProcessing] = useState(false)
+    const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]) // Data dari DB
+    
+    // State Mode Edit Global (Untuk memaksa semua jadi form edit)
+    const [isEditing, setIsEditing] = useState(false) 
+
+    // State Form Manual (Menampung inputan user)
     const [manualData, setManualData] = useState<Record<number, { status: string, note: string }>>({})
 
     // --- NAVIGASI ---
@@ -90,84 +87,67 @@ export default function AttendanceSection({ classroom }: Props) {
         else setCurrentDate(d => addMonths(d, 1))
     }
 
-    // --- FETCH DATA (Trigger on Date/Mode Change) ---
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchData = async () => {
-            setIsLoadingData(true);
-            // Reset dulu biar UI tidak membingungkan
-            if (isMounted) {
-                setFetchedData([]);
-            }
-
-            try {
-                // Pastikan nama route ini benar di web.php: 'sensei.classrooms.attendance.data'
-                const params: any = { mode: viewMode };
-                if (viewMode === 'day') params.date = dateString;
-                else params.month = monthString;
-
-                const response = await axios.get(route('sensei.classrooms.attendance.data', classroom.id), { params });
-
-                if (isMounted) {
-                    const records = response.data;
-                    setFetchedData(records);
-                    
-                    // Logic Auto-Switch Mode Harian
-                    if (viewMode === 'day') {
-                        if (records.length > 0) {
-                            // Data ada -> Mode Laporan (Read Only)
-                            setIsEditing(false);
-                        } else {
-                            // Data kosong -> Mode Input (Form)
-                            resetFormDefault();
-                            setIsEditing(true);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to fetch attendance:", error);
-                if (isMounted && viewMode === 'day') {
-                    setFetchedData([]);
-                    setIsEditing(true);
-                    resetFormDefault();
-                }
-            } finally {
-                if (isMounted) setIsLoadingData(false);
-            }
-        };
-
-        fetchData();
-
-        return () => { isMounted = false; };
-    }, [currentDate, viewMode, classroom.id]); // Dependency Array penting!
-
-    // --- FORM HELPERS ---
-    const resetFormDefault = () => {
-        const initial: any = {}
-        classroom.students.forEach(s => {
-            initial[s.id] = { status: 'hadir', note: '' }
-        })
-        setManualData(initial)
-    }
-
-    const populateFormFromExisting = () => {
+    // --- LOGIC SYNC DATA DB KE FORM ---
+    // Ini penting agar inputan form memiliki nilai awal yang benar
+    const syncFormWithData = (dbRecords: AttendanceRecord[]) => {
         const mapped: any = {}
-        // Default value
-        classroom.students.forEach(s => {
-            mapped[s.id] = { status: 'hadir', note: '' }
-        })
-        // Override with DB data
-        fetchedData.forEach(record => {
-            mapped[record.student_profile_id] = { 
-                status: record.status, 
-                note: record.note || '' 
+        
+        classroom.students.forEach(student => {
+            // Cek apakah siswa ini punya record di DB?
+            const record = dbRecords.find(r => r.student_profile_id === student.id)
+            
+            if (record) {
+                // Jika ada, pakai data dari DB
+                mapped[student.id] = { 
+                    status: record.status, 
+                    note: record.note || '' 
+                }
+            } else {
+                // Jika belum absen, defaultnya 'hadir' (atau bisa 'alpha' jika mau strict)
+                // Kita set default agar radio button terpilih otomatis
+                mapped[student.id] = { status: 'hadir', note: '' }
             }
         })
         setManualData(mapped)
-        setIsEditing(true)
     }
 
+    // --- FETCH DATA ---
+    useEffect(() => {
+        let isMounted = true
+        
+        const fetchAttendance = async () => {
+            setIsLoadingData(true)
+            // Reset Edit Mode saat ganti tanggal
+            setIsEditing(false) 
+            
+            try {
+                const params: any = { mode: viewMode }
+                if (viewMode === 'day') params.date = dateString
+                else params.month = monthString
+
+                const response = await axios.get(route('sensei.classrooms.attendance.data', classroom.id), { params })
+
+                if (isMounted) {
+                    const records = response.data || []
+                    setAttendanceData(records)
+                    
+                    // Khusus mode harian, sinkronkan data ke form manual
+                    if (viewMode === 'day') {
+                        syncFormWithData(records)
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading attendance:", error)
+            } finally {
+                if (isMounted) setIsLoadingData(false)
+            }
+        }
+
+        fetchAttendance()
+        return () => { isMounted = false }
+    }, [currentDate, viewMode, classroom.id])
+
+    // --- HANDLER MANUAL INPUT ---
     const handleManualChange = (studentId: number, field: 'status' | 'note', value: string) => {
         setManualData(prev => ({
             ...prev,
@@ -175,7 +155,7 @@ export default function AttendanceSection({ classroom }: Props) {
         }))
     }
 
-    // --- SUBMIT ---
+    // --- SUBMIT MANUAL ---
     const submitManual = (e: React.FormEvent) => {
         e.preventDefault()
         
@@ -185,7 +165,6 @@ export default function AttendanceSection({ classroom }: Props) {
             note: manualData[parseInt(studentId)].note
         }))
 
-        // Gunakan Router Inertia untuk Post
         router.post(route('sensei.classrooms.attendance.store', classroom.id), {
             date: dateString,
             attendances: attendancesArray
@@ -193,20 +172,20 @@ export default function AttendanceSection({ classroom }: Props) {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => {
-                // Update Local Data agar UI berubah jadi Laporan tanpa fetch ulang (Optimistic UI)
+                // Update tampilan lokal agar jadi Badge (Laporan)
                 const newData = attendancesArray.map(a => ({
                     student_profile_id: a.student_id,
                     status: a.status,
                     note: a.note,
                     date: dateString
-                }));
-                setFetchedData(newData as AttendanceRecord[]);
-                setIsEditing(false); // Kunci form jadi read-only
+                }))
+                setAttendanceData(newData as AttendanceRecord[])
+                setIsEditing(false) 
             }
         })
     }
 
-    // --- QR LOGIC (Reused) ---
+    // --- QR LOGIC ---
     const [isCameraOpen, setIsCameraOpen] = useState(false)
     const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
     const [qrInput, setQrInput] = useState('') 
@@ -257,16 +236,23 @@ export default function AttendanceSection({ classroom }: Props) {
             })
             setScanResult({ type: 'success', message: `✅ ${response.data.message}` })
             
-            // Opsional: Jika mode input aktif, kita bisa update manualData juga agar radio button berubah
+            // Update Realtime UI
             if (response.data.student) {
-                // Cari student ID berdasarkan nama (karena response QR cuma kasih nama)
-                // Idealnya response kasih ID, tapi kita pakai logic sederhana dulu
                 const student = classroom.students.find(s => s.full_name === response.data.student.name);
                 if (student) {
+                    // Update Form State
                     handleManualChange(student.id, 'status', 'hadir');
+                    // Update Display State (agar badge langsung muncul/berubah)
+                    setAttendanceData(prev => {
+                        const exists = prev.find(r => r.student_profile_id === student.id);
+                        if (exists) {
+                            return prev.map(r => r.student_profile_id === student.id ? { ...r, status: 'hadir' } : r);
+                        } else {
+                            return [...prev, { student_profile_id: student.id, status: 'hadir', note: 'Via QR Scan', date: dateString }];
+                        }
+                    });
                 }
             }
-
         } catch (error: any) {
             setScanResult({ type: 'error', message: `❌ ${error.response?.data?.message || 'Invalid QR.'}` })
         } finally {
@@ -289,7 +275,7 @@ export default function AttendanceSection({ classroom }: Props) {
         processScan(qrInput)
     }
 
-    // --- BADGES ---
+    // --- BADGE HELPERS ---
     const getStatusBadge = (status: string) => {
         const styles: any = {
             hadir: 'bg-green-100 text-green-700 hover:bg-green-200 border-none',
@@ -298,7 +284,7 @@ export default function AttendanceSection({ classroom }: Props) {
             alpha: 'bg-red-100 text-red-700 hover:bg-red-200 border-none',
             terlambat: 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-none'
         }
-        return <Badge className={`${styles[status] || 'bg-gray-100'} shadow-none`}>{status.toUpperCase()}</Badge>
+        return <Badge className={`${styles[status] || 'bg-gray-100'} shadow-none cursor-default`}>{status.toUpperCase()}</Badge>
     }
 
     const getMiniBadge = (status: string) => {
@@ -314,37 +300,33 @@ export default function AttendanceSection({ classroom }: Props) {
         )
     }
 
+    // --- RENDER ---
     return (
         <div className="space-y-6">
             
-            {/* 1. HEADER CONTROL */}
+            {/* HEADER & NAVIGASI */}
             <div className="flex flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between">
-                
-                {/* Switch Mode */}
                 <div className="flex items-center gap-2 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800 self-start sm:self-center">
                     <Button 
-                        variant={viewMode === 'day' ? 'default' : 'ghost'} size="sm" 
-                        onClick={() => setViewMode('day')}
+                        variant={viewMode === 'day' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('day')}
                         className={viewMode === 'day' ? 'bg-white text-black shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-muted-foreground'}
                     >
                         Harian
                     </Button>
                     <Button 
-                        variant={viewMode === 'month' ? 'default' : 'ghost'} size="sm" 
-                        onClick={() => setViewMode('month')}
+                        variant={viewMode === 'month' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('month')}
                         className={viewMode === 'month' ? 'bg-white text-black shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-muted-foreground'}
                     >
                         Bulanan
                     </Button>
                 </div>
 
-                {/* Navigator */}
                 <div className="flex items-center justify-between gap-4 w-full sm:w-auto sm:justify-center rounded-lg border px-3 py-2 sm:border-none sm:p-0">
                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev} disabled={isLoadingData}>
                         <ChevronLeft className="size-4" />
                     </Button>
                     
-                    <div className="flex flex-col items-center min-w-[150px]">
+                    <div className="flex flex-col items-center min-w-[160px]">
                         <div className="flex items-center gap-2">
                             {viewMode === 'day' ? <CalendarIcon className="size-4 text-muted-foreground" /> : <CalendarDays className="size-4 text-muted-foreground" />}
                             <span className="text-sm font-bold">
@@ -366,7 +348,6 @@ export default function AttendanceSection({ classroom }: Props) {
                     </Button>
                 </div>
 
-                {/* Loading Indicator */}
                 <div className="hidden sm:block text-right min-w-[120px]">
                     {isLoadingData ? (
                         <span className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
@@ -374,18 +355,13 @@ export default function AttendanceSection({ classroom }: Props) {
                         </span>
                     ) : (
                         <span className="text-xs text-muted-foreground">
-                            {viewMode === 'day' 
-                                ? (fetchedData.length > 0 ? 'Data Tersedia' : 'Belum Absen')
-                                : 'Rekap Bulanan'
-                            }
+                            {viewMode === 'day' ? `${attendanceData.length} / ${classroom.students.length} Hadir` : 'Rekap Bulanan'}
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* 2. MAIN CONTENT AREA */}
-            
-            {/* LOADING STATE */}
+            {/* KONTEN UTAMA */}
             {isLoadingData ? (
                 <div className="flex h-64 w-full flex-col items-center justify-center rounded-xl border bg-white text-muted-foreground dark:bg-zinc-950">
                     <Loader2 className="size-8 animate-spin mb-2" />
@@ -393,7 +369,7 @@ export default function AttendanceSection({ classroom }: Props) {
                 </div>
             ) : viewMode === 'month' ? (
                 
-                // --- VIEW MODE: BULANAN ---
+                // === VIEW BULANAN ===
                 <div className="rounded-xl border bg-white shadow-sm dark:bg-zinc-950 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs border-collapse">
@@ -415,10 +391,8 @@ export default function AttendanceSection({ classroom }: Props) {
                             </thead>
                             <tbody className="divide-y">
                                 {classroom.students.map((student) => {
-                                    // Filter records for this student
-                                    const records = fetchedData.filter(r => r.student_profile_id === student.id);
+                                    const records = attendanceData.filter(r => r.student_profile_id === student.id);
                                     const totalHadir = records.filter(r => r.status === 'hadir').length;
-
                                     return (
                                         <tr key={student.id} className="hover:bg-neutral-50/50">
                                             <td className="p-3 text-left font-medium sticky left-0 bg-white z-10 border-r border-neutral-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-950 dark:border-zinc-800">
@@ -426,17 +400,14 @@ export default function AttendanceSection({ classroom }: Props) {
                                             </td>
                                             {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
                                                 const dStr = format(day, 'yyyy-MM-dd');
-                                                // Pastikan format date dari DB konsisten (YYYY-MM-DD) agar match
-                                                const record = records.find(r => r.date.split(' ')[0] === dStr);
+                                                const record = records.find(r => r.date === dStr);
                                                 return (
                                                     <td key={day.toString()} className="p-1 text-center border-r last:border-0 dark:border-zinc-800">
                                                         {record ? getMiniBadge(record.status) : <span className="text-zinc-200 text-[9px]">•</span>}
                                                     </td>
                                                 )
                                             })}
-                                            <td className="p-2 text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">
-                                                {totalHadir}
-                                            </td>
+                                            <td className="p-2 text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">{totalHadir}</td>
                                         </tr>
                                     )
                                 })}
@@ -447,115 +418,116 @@ export default function AttendanceSection({ classroom }: Props) {
 
             ) : (
                 
-                // --- VIEW MODE: HARIAN ---
+                // === VIEW HARIAN (TABS) ===
                 <Tabs defaultValue="manual" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
                         <TabsTrigger value="manual" className="gap-2">
-                            <ListChecks size={16}/> {fetchedData.length > 0 && !isEditing ? 'Laporan Harian' : 'Input Absensi'}
+                            <ListChecks size={16}/> Laporan & Input
                         </TabsTrigger>
-                        <TabsTrigger value="qr" className="gap-2" disabled={fetchedData.length > 0 && !isEditing}>
+                        <TabsTrigger value="qr" className="gap-2">
                             <QrCode size={16}/> Scan QR Code
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* CONTENT: MANUAL / LAPORAN */}
+                    {/* CONTENT MANUAL (HYBRID VIEW) */}
                     <TabsContent value="manual" className="mt-4">
-                        
-                        {/* 1. JIKA DATA ADA & TIDAK EDIT -> TAMPILKAN LAPORAN */}
-                        {fetchedData.length > 0 && !isEditing ? (
+                        <form onSubmit={submitManual}>
                             <div className="rounded-xl border bg-white shadow-sm overflow-hidden dark:bg-zinc-950">
                                 <div className="flex items-center justify-between border-b px-4 py-3 bg-neutral-50 dark:bg-zinc-900">
-                                    <div className="flex items-center gap-2">
-                                        <CheckCircle2 className="size-4 text-green-600" />
-                                        <h3 className="text-sm font-bold uppercase text-muted-foreground">Absensi Tersimpan</h3>
+                                    <div className="grid grid-cols-12 w-full gap-4 text-xs font-bold uppercase text-muted-foreground">
+                                        <div className="col-span-12 md:col-span-3 flex items-center">Nama Siswa</div>
+                                        <div className="col-span-12 md:col-span-6 text-center hidden md:block">Status Kehadiran</div>
+                                        <div className="col-span-12 md:col-span-3 text-right flex items-center justify-end">
+                                            {/* Tombol Edit Global: Mengubah semua baris jadi mode edit */}
+                                            {!isEditing && attendanceData.length > 0 && (
+                                                <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} type="button">
+                                                    <Edit className="mr-2 size-3" /> Edit Semua Data
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={populateFormFromExisting}>
-                                        <Edit className="mr-2 size-3" /> Edit Data
-                                    </Button>
                                 </div>
+
                                 <div className="divide-y">
                                     {classroom.students.map((student) => {
-                                        const record = fetchedData.find(r => r.student_profile_id === student.id);
+                                        // Cek apakah siswa ini SUDAH punya record di DB?
+                                        const record = attendanceData.find(r => r.student_profile_id === student.id)
+                                        
+                                        // Logic Tampilan:
+                                        // Tampilkan Form (Radio) JIKA:
+                                        // 1. Sedang Mode Edit Global (isEditing = true)
+                                        // 2. ATAU Siswa ini belum punya record (Belum Absen)
+                                        const showForm = isEditing || !record;
+
                                         return (
-                                            <div key={student.id} className="flex items-center justify-between px-4 py-4 hover:bg-neutral-50/50">
-                                                <div>
+                                            <div key={student.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center hover:bg-neutral-50/50">
+                                                {/* Kolom Nama */}
+                                                <div className="col-span-12 md:col-span-3 mb-2 md:mb-0">
                                                     <p className="font-semibold text-sm">{student.full_name}</p>
                                                     <p className="text-xs text-muted-foreground font-mono">{student.nik}</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    {record ? getStatusBadge(record.status) : <Badge variant="outline">Belum Absen</Badge>}
-                                                    {record?.note && <p className="text-[10px] text-muted-foreground mt-1">"{record.note}"</p>}
+
+                                                {/* Kolom Status (Hybrid: Badge / Radio) */}
+                                                <div className="col-span-12 md:col-span-6 flex justify-center items-center min-h-[40px]">
+                                                    {showForm ? (
+                                                        <RadioGroup 
+                                                            value={manualData[student.id]?.status || 'hadir'} 
+                                                            onValueChange={(val) => handleManualChange(student.id, 'status', val)}
+                                                            className="flex flex-wrap items-center gap-2 sm:gap-4"
+                                                        >
+                                                            <AttendanceRadio idPrefix={student.id} value="hadir" label="H" color="bg-green-100 text-green-700 border-green-200" />
+                                                            <AttendanceRadio idPrefix={student.id} value="sakit" label="S" color="bg-yellow-100 text-yellow-700 border-yellow-200" />
+                                                            <AttendanceRadio idPrefix={student.id} value="izin" label="I" color="bg-blue-100 text-blue-700 border-blue-200" />
+                                                            <AttendanceRadio idPrefix={student.id} value="alpha" label="A" color="bg-red-100 text-red-700 border-red-200" />
+                                                            <AttendanceRadio idPrefix={student.id} value="terlambat" label="T" color="bg-orange-100 text-orange-700 border-orange-200" />
+                                                        </RadioGroup>
+                                                    ) : (
+                                                        // Jika sudah ada record & bukan mode edit -> Tampilkan Badge
+                                                        getStatusBadge(record!.status)
+                                                    )}
+                                                </div>
+
+                                                {/* Kolom Catatan */}
+                                                <div className="col-span-12 md:col-span-3 mt-2 md:mt-0 text-right">
+                                                    {showForm ? (
+                                                        <Input 
+                                                            placeholder="Ket." 
+                                                            value={manualData[student.id]?.note || ''}
+                                                            onChange={(e) => handleManualChange(student.id, 'note', e.target.value)}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                    ) : (
+                                                        record?.note && <span className="text-xs text-muted-foreground italic">"{record.note}"</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         )
                                     })}
                                 </div>
                             </div>
-                        ) : (
-                            
-                            /* 2. JIKA DATA KOSONG ATAU SEDANG EDIT -> TAMPILKAN FORM */
-                            <form onSubmit={submitManual}>
-                                <div className="rounded-xl border bg-white shadow-sm overflow-hidden dark:bg-zinc-950">
-                                    <div className="grid grid-cols-12 gap-4 border-b bg-neutral-50 px-4 py-3 text-xs font-bold uppercase text-muted-foreground dark:bg-zinc-900">
-                                        <div className="col-span-4 md:col-span-3">Nama Siswa</div>
-                                        <div className="col-span-8 md:col-span-6 text-center">Status</div>
-                                        <div className="col-span-12 md:col-span-3 hidden md:block">Catatan</div>
-                                    </div>
 
-                                    <div className="divide-y">
-                                        {classroom.students.map((student) => (
-                                            <div key={student.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center hover:bg-neutral-50/50">
-                                                <div className="col-span-12 md:col-span-3 mb-2 md:mb-0">
-                                                    <p className="font-semibold text-sm">{student.full_name}</p>
-                                                    <p className="text-xs text-muted-foreground font-mono">{student.nik}</p>
-                                                </div>
-                                                <div className="col-span-12 md:col-span-6 flex justify-center">
-                                                    <RadioGroup 
-                                                        value={manualData[student.id]?.status || 'hadir'} 
-                                                        onValueChange={(val) => handleManualChange(student.id, 'status', val)}
-                                                        className="flex flex-wrap items-center gap-2 sm:gap-4"
-                                                    >
-                                                        <AttendanceRadio idPrefix={student.id} value="hadir" label="H" color="bg-green-100 text-green-700 border-green-200" />
-                                                        <AttendanceRadio idPrefix={student.id} value="sakit" label="S" color="bg-yellow-100 text-yellow-700 border-yellow-200" />
-                                                        <AttendanceRadio idPrefix={student.id} value="izin" label="I" color="bg-blue-100 text-blue-700 border-blue-200" />
-                                                        <AttendanceRadio idPrefix={student.id} value="alpha" label="A" color="bg-red-100 text-red-700 border-red-200" />
-                                                        <AttendanceRadio idPrefix={student.id} value="terlambat" label="T" color="bg-orange-100 text-orange-700 border-orange-200" />
-                                                    </RadioGroup>
-                                                </div>
-                                                <div className="col-span-12 md:col-span-3 mt-2 md:mt-0">
-                                                    <Input 
-                                                        placeholder="Ket." 
-                                                        value={manualData[student.id]?.note || ''}
-                                                        onChange={(e) => handleManualChange(student.id, 'note', e.target.value)}
-                                                        className="h-8 text-xs"
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {classroom.students.length === 0 && (
-                                            <div className="p-8 text-center text-muted-foreground">Tidak ada siswa di kelas ini.</div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 flex justify-between sticky bottom-4 z-10">
-                                    {isEditing && fetchedData.length > 0 && (
-                                        <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
-                                            Batal Edit
-                                        </Button>
-                                    )}
+                            {/* FOOTER ACTION BUTTONS */}
+                            <div className="mt-4 flex justify-between sticky bottom-4 z-10">
+                                {isEditing && (
+                                    <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
+                                        Batal Edit
+                                    </Button>
+                                )}
+                                
+                                {/* Tombol Simpan Muncul Jika: Sedang Edit ATAU Ada siswa yang belum absen */}
+                                {(isEditing || attendanceData.length < classroom.students.length) && (
                                     <div className="ml-auto">
-                                        <Button type="submit" size="lg" className="shadow-xl bg-neutral-900 text-white dark:bg-white dark:text-black" disabled={processing || classroom.students.length === 0}>
+                                        <Button type="submit" size="lg" className="shadow-xl bg-neutral-900 text-white dark:bg-white dark:text-black" disabled={processing}>
                                             <Save className="mr-2 size-4" /> 
-                                            {processing ? 'Menyimpan...' : `Simpan Perubahan`}
+                                            {processing ? 'Menyimpan...' : `Simpan Data (${isEditing ? 'Semua' : 'Baru'})`}
                                         </Button>
                                     </div>
-                                </div>
-                            </form>
-                        )}
+                                )}
+                            </div>
+                        </form>
                     </TabsContent>
 
-                    {/* CONTENT: QR SCANNER */}
+                    {/* CONTENT QR SCANNER */}
                     <TabsContent value="qr" className="mt-4">
                         <div className="grid gap-6 md:grid-cols-2">
                             {/* Scanner */}
