@@ -41,7 +41,7 @@ import { route } from 'ziggy-js'
 interface Student {
     id: number
     nik: string
-    name: string // Ingat di model StudentProfile namanya 'full_name' atau 'name'? sesuaikan
+    full_name: string // Ingat di model StudentProfile namanya 'full_name' atau 'name'? sesuaikan
     gender: string
 }
 
@@ -133,10 +133,10 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                                     <div key={student.id} className="flex items-center justify-between rounded-xl border border-sidebar-border bg-white p-4 shadow-sm dark:bg-zinc-950">
                                         <div className="flex items-center gap-3">
                                             <div className="flex size-10 items-center justify-center rounded-full bg-neutral-100 font-bold text-neutral-600 dark:bg-neutral-800">
-                                                {student.name.charAt(0)}
+                                                {student.full_name.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-sm">{student.name}</p>
+                                                <p className="font-semibold text-sm">{student.full_name}</p>
                                                 <p className="text-xs text-muted-foreground font-mono">{student.nik}</p>
                                             </div>
                                         </div>
@@ -308,7 +308,7 @@ function RemoveStudentModal({ open, setOpen, student, classroomId }: any) {
                 <DialogHeader>
                     <DialogTitle>Keluarkan Siswa</DialogTitle>
                     <DialogDescription>
-                        Update status {student.name} di kelas ini. Tindakan ini akan mencatat riwayat keluar.
+                        Update status {student.full_name} di kelas ini. Tindakan ini akan mencatat riwayat keluar.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">

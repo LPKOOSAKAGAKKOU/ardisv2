@@ -123,7 +123,7 @@ class ClassroomController extends Controller
         // Load kelas beserta siswa yang aktif di dalamnya
         $classroom = Classroom::with(['students' => function($q) {
             $q->wherePivot('status', 'active')
-              ->orderBy('name', 'asc');
+              ->orderBy('full_name', 'asc'); // <--- GANTI 'name' JADI 'full_name'
         }])->findOrFail($id);
 
         // Ambil data siswa yang BISA ditambahkan (Siswa yang belum masuk kelas manapun yang aktif)
@@ -131,7 +131,7 @@ class ClassroomController extends Controller
         $availableStudents = StudentProfile::whereDoesntHave('classrooms', function($q) {
             $q->where('classrooms.status', 'active')
               ->where('classroom_students.status', 'active');
-        })->orderBy('name', 'asc')->get();
+        })->orderBy('full_name', 'asc')->get(); // <--- GANTI 'name' JADI 'full_name'
 
         return Inertia::render('sensei/classrooms/Show', [
             'classroom' => $classroom,
