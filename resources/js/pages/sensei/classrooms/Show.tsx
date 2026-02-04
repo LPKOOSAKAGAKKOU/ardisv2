@@ -22,9 +22,10 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import AppLayout from '@/layouts/app-layout'
 import { BreadcrumbItem } from '@/types'
-import { Head, useForm, router } from '@inertiajs/react'
+import { Head, useForm } from '@inertiajs/react'
 import { 
     BookOpen, 
     CalendarCheck, 
@@ -32,16 +33,18 @@ import {
     MoreHorizontal, 
     Plus, 
     UserMinus, 
-    Users 
+    UserPlus,
+    Users,
+    X
 } from 'lucide-react'
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { route } from 'ziggy-js'
 
 // --- TIPE DATA ---
 interface Student {
     id: number
     nik: string
-    full_name: string // Ingat di model StudentProfile namanya 'full_name' atau 'name'? sesuaikan
+    full_name: string // Sesuai kolom database
     gender: string
 }
 
@@ -133,6 +136,7 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                                     <div key={student.id} className="flex items-center justify-between rounded-xl border border-sidebar-border bg-white p-4 shadow-sm dark:bg-zinc-950">
                                         <div className="flex items-center gap-3">
                                             <div className="flex size-10 items-center justify-center rounded-full bg-neutral-100 font-bold text-neutral-600 dark:bg-neutral-800">
+                                                {/* Pakai full_name */}
                                                 {student.full_name.charAt(0)}
                                             </div>
                                             <div>
@@ -173,7 +177,6 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                             <CalendarCheck className="size-10 text-muted-foreground mb-4" />
                             <h3 className="font-semibold">Modul Absensi</h3>
                             <p className="text-sm text-muted-foreground mb-4">Fitur Scan QR dan Input Manual akan muncul di sini.</p>
-                            {/* Nanti kita buat komponen AttendanceSection.tsx terpisah */}
                         </div>
                     )}
 
@@ -183,13 +186,12 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                             <BookOpen className="size-10 text-muted-foreground mb-4" />
                             <h3 className="font-semibold">Modul Penilaian</h3>
                             <p className="text-sm text-muted-foreground">Fitur Input Nilai akan muncul di sini.</p>
-                             {/* Nanti kita buat komponen GradesSection.tsx terpisah */}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* MODAL: TAMBAH SISWA */}
+            {/* MODAL: TAMBAH SISWA (Versi Search Simple) */}
             <AddStudentModal 
                 open={isAddStudentOpen} 
                 setOpen={setIsAddStudentOpen} 
@@ -227,54 +229,151 @@ function TabButton({ active, onClick, icon, label }: { active: boolean, onClick:
     )
 }
 
-// MODAL TAMBAH SISWA
+// MODAL TAMBAH SISWA (Dengan Fitur Pencarian Simple)
 function AddStudentModal({ open, setOpen, availableStudents, classroomId }: any) {
     const { data, setData, post, processing, reset } = useForm({
         student_id: ''
     })
+
+    // State untuk pencarian & tampilan
+    const [searchQuery, setSearchQuery] = useState('')
+    const [selectedStudent, setSelectedStudent] = useState<any>(null)
+
+    // Reset state saat modal ditutup
+    useEffect(() => {
+        if (!open) {
+            setSearchQuery('')
+            setSelectedStudent(null)
+            setData('student_id', '')
+            reset()
+        }
+    }, [open])
+
+    // Logic Filter Manual
+    const filteredStudents = searchQuery === ''
+        ? [] 
+        : availableStudents.filter((student: any) =>
+            student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            student.nik.includes(searchQuery)
+        )
+
+    // Saat user memilih siswa dari list
+    const handleSelectStudent = (student: any) => {
+        setData('student_id', String(student.id))
+        setSelectedStudent(student)
+        setSearchQuery('') 
+    }
+
+    // Batalkan pilihan
+    const handleClearSelection = () => {
+        setData('student_id', '')
+        setSelectedStudent(null)
+        setSearchQuery('')
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         post(route('sensei.classrooms.add-student', classroomId), {
             onSuccess: () => {
                 setOpen(false)
-                reset()
             }
         })
     }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[500px] overflow-visible">
                 <DialogHeader>
                     <DialogTitle>Tambah Siswa ke Kelas</DialogTitle>
                     <DialogDescription>
-                        Pilih siswa yang tersedia. Siswa yang sedang aktif di kelas lain tidak akan muncul di sini.
+                        Cari siswa berdasarkan nama atau NIK, lalu klik Simpan.
                     </DialogDescription>
                 </DialogHeader>
+
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Pilih Siswa</label>
-                        <Select onValueChange={(val) => setData('student_id', val)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Cari nama siswa..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableStudents.length > 0 ? availableStudents.map((s: any) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>
-                                        {s.name || s.full_name} ({s.nik})
-                                    </SelectItem>
-                                )) : (
-                                    <div className="p-2 text-sm text-muted-foreground text-center">
-                                        Tidak ada siswa tersedia (free).
+                    
+                    {/* AREA INPUT PENCARIAN SIMPLE */}
+                    <div className="relative group">
+                        {/* Jika belum ada yang dipilih, tampilkan Input Search */}
+                        {!selectedStudent ? (
+                            <>
+                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-muted-foreground">
+                                    <UserPlus size={18} />
+                                </div>
+                                <Input
+                                    placeholder="Ketik nama siswa..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10 h-12 bg-white dark:bg-zinc-950 border-sidebar-border/70 rounded-xl focus-visible:ring-neutral-900"
+                                    autoFocus={open}
+                                />
+                                
+                                {/* DROPDOWN HASIL */}
+                                {searchQuery.length > 0 && (
+                                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-zinc-900 border border-sidebar-border rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                        {filteredStudents.length > 0 ? (
+                                            filteredStudents.map((student: any) => (
+                                                <button
+                                                    type="button"
+                                                    key={student.id}
+                                                    onClick={() => handleSelectStudent(student)}
+                                                    className="w-full text-left px-4 py-3 hover:bg-neutral-50 dark:hover:bg-zinc-800 flex items-center justify-between border-b last:border-0 border-sidebar-border transition-colors"
+                                                >
+                                                    <div className="min-w-0 pr-4">
+                                                        <p className="font-bold text-sm truncate">{student.full_name}</p>
+                                                        <p className="text-[10px] text-muted-foreground truncate font-mono">
+                                                            {student.nik}
+                                                        </p>
+                                                    </div>
+                                                    <Badge variant="outline" className="flex-shrink-0 bg-white dark:bg-zinc-800">
+                                                        Pilih
+                                                    </Badge>
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="p-4 text-center text-sm text-muted-foreground">
+                                                Tidak ditemukan siswa dengan nama "{searchQuery}"
+                                            </div>
+                                        )}
                                     </div>
                                 )}
-                            </SelectContent>
-                        </Select>
+                            </>
+                        ) : (
+                            // JIKA SUDAH DIPILIH (Tampilan Card Terpilih)
+                            <div className="flex items-center justify-between p-3 border border-neutral-200 rounded-xl bg-neutral-50 dark:bg-zinc-900 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex size-10 items-center justify-center rounded-full bg-white border shadow-sm font-bold text-neutral-700">
+                                        {selectedStudent.full_name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-sm">{selectedStudent.full_name}</p>
+                                        <p className="text-xs text-muted-foreground">{selectedStudent.nik}</p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handleClearSelection}
+                                    className="text-muted-foreground hover:text-red-600"
+                                >
+                                    <X size={18} />
+                                </Button>
+                            </div>
+                        )}
                     </div>
+
                     <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Batal</Button>
-                        <Button type="submit" disabled={processing || !data.student_id}>Simpan</Button>
+                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            className="bg-neutral-900 text-white dark:bg-white dark:text-black" 
+                            disabled={processing || !data.student_id}
+                        >
+                            {processing ? 'Menyimpan...' : 'Simpan Siswa'}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -293,7 +392,6 @@ function RemoveStudentModal({ open, setOpen, student, classroomId }: any) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        // Menggunakan method remove-student yang sudah kita buat di route
         post(route('sensei.classrooms.remove-student', [classroomId, student.id]), {
             onSuccess: () => {
                 setOpen(false)
