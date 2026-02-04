@@ -168,6 +168,9 @@ Route::middleware([
         Route::get('/classrooms/{id}/attendance/data', [ClassroomController::class, 'getAttendanceData'])
             ->name('classrooms.attendance.data');
 
+        Route::get('/classrooms/{id}/grades/data', [ClassroomController::class, 'getGradesData'])
+            ->name('sensei.classrooms.grades.data');
+
     });
 
 /*

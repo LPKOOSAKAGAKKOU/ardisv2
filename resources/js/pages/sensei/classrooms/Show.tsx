@@ -40,6 +40,7 @@ import {
 import React, { useState, useEffect } from 'react'
 import { route } from 'ziggy-js'
 import AttendanceSection from './AttendanceSection'
+import GradesSection from './GradesSection'
 
 // --- TIPE DATA ---
 interface Student {
@@ -177,13 +178,9 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                         <AttendanceSection classroom={classroom} />
                     )}
 
-                    {/* --- TAB NILAI (PLACEHOLDER) --- */}
+                    {/* --- TAB NILAI --- */}
                     {activeTab === 'grades' && (
-                        <div className="flex flex-col items-center justify-center py-12 border rounded-xl border-dashed">
-                            <BookOpen className="size-10 text-muted-foreground mb-4" />
-                            <h3 className="font-semibold">Modul Penilaian</h3>
-                            <p className="text-sm text-muted-foreground">Fitur Input Nilai akan muncul di sini.</p>
-                        </div>
+                        <GradesSection classroom={classroom} />
                     )}
                 </div>
             </div>
