@@ -237,7 +237,7 @@ class SenseiStudentController extends Controller
             ];
         });
 
-        return Inertia::render('sensei/students/Show', [
+        return Inertia::render('sensei/student/Show', [
             'student' => $student,
             'classHistory' => $classHistory
         ]);
