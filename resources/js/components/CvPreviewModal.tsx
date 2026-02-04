@@ -5,7 +5,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Download, Loader2 } from "lucide-react";
+import { FileSpreadsheet, Download, Loader2, RotateCw } from "lucide-react"; // Tambahkan RotateCw
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { route } from "ziggy-js";
@@ -33,7 +33,6 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
     const fetchPreview = async () => {
         setIsLoading(true);
         try {
-            // Gunakan .get dengan params eksplisit untuk memastikan query string preview=true terkirim
             const url = route('cv.generate', { 
                 userId: userId, 
                 interviewId: interviewId 
@@ -44,15 +43,7 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             });
             
             if (response.data.html) {
-                // Tambahkan sedikit CSS dasar agar HTML dari Excel tidak berantakan di iframe
-                const styledHtml = `
-                    <style>
-                        body { font-family: sans-serif; padding: 20px; display: flex; justify-content: center; }
-                        table { border-collapse: collapse; margin: 0 auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-                    </style>
-                    ${response.data.html}
-                `;
-                setHtmlContent(styledHtml);
+                setHtmlContent(response.data.html);
             }
         } catch (error) {
             console.error("Gagal memuat preview CV", error);
@@ -69,44 +60,55 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            {/* GUNAKAN max-w-7xl untuk lebar ekstra luas, dan w-[95vw] agar hampir memenuhi layar di desktop/mobile */}
-            <DialogContent className="max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] overflow-y-auto bg-muted/30 p-0 border shadow-2xl flex flex-col">
+            {/* Gunakan !max-w-7xl untuk memaksa lebar native tetap XL7 */}
+            <DialogContent className="!max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] flex flex-col p-0 overflow-hidden bg-muted/30 border shadow-2xl">
                 
-                {/* HEADER MODAL */}
-                <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-zinc-950 z-10">
+                <div className="sticky top-0 z-50 bg-background border-b p-4 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg hidden sm:block">
-                            <FileSpreadsheet size={20} />
+                        <div className="p-2 bg-primary/10 rounded">
+                            <FileSpreadsheet className="h-5 w-5 text-primary" />
                         </div>
-                        <DialogTitle className="text-lg font-bold truncate max-w-[200px] md:max-w-md">
-                            Pratinjau CV: {userName}
-                        </DialogTitle>
+                        <div>
+                            <DialogTitle className="text-lg font-bold">Pratinjau CV: {userName}</DialogTitle>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider">Laporan Hasil Resume Siswa</p>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex items-center gap-2">
+                        {/* TOMBOL REFRESH BARU */}
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={fetchPreview} 
+                            disabled={isLoading}
+                            className="gap-2 font-bold"
+                        >
+                            <RotateCw size={16} className={isLoading ? "animate-spin" : ""} />
+                            Refresh
+                        </Button>
+
                         <Button variant="outline" size="sm" onClick={onClose} className="font-semibold">
                             Tutup
                         </Button>
+
                         <Button size="sm" onClick={handleDownload} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-bold shadow-sm">
-                            <Download size={16} /> <span className="hidden sm:inline">Unduh Excel</span> (.xlsx)
+                            <Download size={16} /> Unduh (.xlsx)
                         </Button>
                     </div>
                 </div>
 
-                {/* AREA PREVIEW (KONTEN UTAMA) */}
-                <div className="flex-1 bg-neutral-200 dark:bg-zinc-900 p-2 md:p-8 overflow-auto flex justify-center">
-                    {/* Kertas Putih Virtual agar CV terlihat seperti dokumen asli */}
-                    <div className="w-full max-w-5xl h-fit min-h-full bg-white shadow-2xl rounded-sm relative">
+                <div className="flex-1 bg-neutral-200 dark:bg-zinc-900 p-4 md:p-8 flex justify-center overflow-y-auto">
+                    <div className="w-full max-w-5xl bg-white shadow-xl rounded-sm relative min-h-full">
                         {isLoading ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-3 bg-white/80 z-20">
                                 <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
-                                <p className="text-sm font-black uppercase tracking-widest text-blue-600">Menyusun Dokumen CV...</p>
+                                <p className="text-sm font-bold uppercase tracking-widest text-blue-600">Memperbarui Pratinjau...</p>
                             </div>
                         ) : (
                             <iframe 
                                 srcDoc={htmlContent} 
-                                className="w-full min-h-[1200px] border-none"
+                                className="w-full h-full min-h-[1200px] border-none"
                                 title="CV Preview"
-                                // Penting agar konten di dalam iframe bisa discroll dengan baik
                                 sandbox="allow-same-origin allow-scripts allow-popups" 
                             />
                         )}
