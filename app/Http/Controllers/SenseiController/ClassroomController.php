@@ -356,41 +356,106 @@ class ClassroomController extends Controller
         ]);
     }
 
-    /**
-     * 6. INPUT NILAI (Per Siswa atau Per Tugas)
-     * Sensei memasukkan nilai quiz/ujian.
+/**
+     * 8. GET GRADES DATA (JSON)
+     * Mengambil rekap nilai untuk satu kelas.
      */
-    public function storeGrade(Request $request, $classroomId)
+    public function getGradesData($classroomId)
+    {
+        // Ambil semua nilai di kelas ini
+        $grades = ClassroomGrade::where('classroom_id', $classroomId)
+            ->with('student:id,full_name,nik') // Eager load siswa
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Kelompokkan Tugas Unik (Berdasarkan Tipe & Judul)
+        $assignments = $grades->groupBy(function($item) {
+            return $item->type . ' - ' . $item->title;
+        })->map(function($items) {
+            return [
+                'type' => $items->first()->type,
+                'title' => $items->first()->title,
+                'avg' => round($items->avg('score'), 1)
+            ];
+        })->values();
+
+        return response()->json([
+            'grades' => $grades,
+            'assignments' => $assignments
+        ]);
+    }
+
+    /**
+     * 9. STORE BATCH GRADES (Input Massal)
+     * Menerima array nilai untuk satu tugas.
+     */
+    public function storeBatchGrades(Request $request, $classroomId)
     {
         $request->validate([
-            'student_id' => 'required|exists:student_profiles,id',
-            'type' => 'required|string', // Contoh: "Bunpo", "Ch 
-            'title' => 'required|string', // Contoh: "Bab 1", "Quiz 2"
-            'score' => 'required|integer|min:0|max:100',
-            'feedback' => 'nullable|string'
+            'type' => 'required|string',
+            'title' => 'required|string',
+            'scores' => 'required|array', // Format: [{student_id: 1, score: 90}, ...]
+            'scores.*.student_id' => 'required|exists:student_profiles,id',
+            'scores.*.score' => 'required|integer|min:0|max:100',
         ]);
 
         $classroom = Classroom::findOrFail($classroomId);
 
-        // Simpan Nilai
-        $grade = ClassroomGrade::create([
-            'classroom_id' => $classroom->id,
-            'student_profile_id' => $request->student_id,
-            'type' => $request->type,
-            'title' => $request->title,
-            'score' => $request->score,
-            'feedback' => $request->feedback
+        DB::transaction(function() use ($request, $classroom) {
+            foreach ($request->scores as $data) {
+                // Cek apakah nilai sudah ada? (UpdateOrCreate)
+                ClassroomGrade::updateOrCreate(
+                    [
+                        'classroom_id' => $classroom->id,
+                        'student_profile_id' => $data['student_id'],
+                        'type' => $request->type,
+                        'title' => $request->title,
+                    ],
+                    [
+                        'score' => $data['score'],
+                        // Jika update, nilai lama bisa dianggap original_score (logika sederhana)
+                        // 'feedback' => $data['feedback'] ?? null
+                    ]
+                );
+            }
+
+            // Log Batch
+            ClassroomLog::create([
+                'classroom_id' => $classroom->id,
+                'user_id' => Auth::id(),
+                'action' => 'grade_batch',
+                'description' => "Input nilai masal: {$request->type} - {$request->title}"
+            ]);
+        });
+
+        return back()->with('success', 'Nilai berhasil disimpan untuk seluruh siswa.');
+    }
+
+    /**
+     * 10. UPDATE SINGLE GRADE (Edit / Remedial)
+     * Edit nilai satu siswa. Jika remedial, catat nilai asli.
+     */
+    public function updateGrade(Request $request, $classroomId, $gradeId)
+    {
+        $request->validate([
+            'score' => 'required|integer|min:0|max:100',
+            'is_remedial' => 'boolean',
+            'feedback' => 'nullable|string'
         ]);
 
-        // Log
-        ClassroomLog::create([
-            'classroom_id' => $classroom->id,
-            'user_id' => Auth::id(),
-            'action' => 'grade_added',
-            'description' => "Input nilai {$request->type} ({$request->title}) untuk siswa ID: {$request->student_id}"
-        ]);
+        $grade = ClassroomGrade::where('classroom_id', $classroomId)->findOrFail($gradeId);
 
-        return back()->with('success', 'Nilai berhasil dimasukkan.');
+        // Logic Remedial: Jika ditandai remedial, simpan nilai lama ke original_score
+        if ($request->is_remedial) {
+            $grade->original_score = $grade->score;
+            $grade->is_remedial = true;
+        }
+
+        $grade->score = $request->score;
+        $grade->feedback = $request->feedback;
+        $grade->save();
+
+        return back()->with('success', 'Nilai berhasil diperbarui.');
     }
     
     /**
