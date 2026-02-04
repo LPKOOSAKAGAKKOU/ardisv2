@@ -60,6 +60,11 @@ const senseiNavItems = (): NavItem[] => [
         href: route('sensei.students.index'), // Tetap # sesuai request
         icon: Users 
     },
+    { 
+        title: 'Data Wawancara', 
+        href: route('sensei.interviews.index'), 
+        icon: MessageSquare 
+    },
 ]
 
 

@@ -15,6 +15,7 @@ use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
+use App\Http\Controllers\SenseiController\SenseiInterviewController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
@@ -182,7 +183,27 @@ Route::middleware([
         Route::post('/classrooms/{id}/grades/batch', [ClassroomController::class, 'storeBatchGrades'])->name('classrooms.grades.batch'); // NEW
         Route::put('/classrooms/{id}/grades/{gradeId}', [ClassroomController::class, 'updateGrade'])->name('classrooms.grades.update'); // NEW
 
-    });
+        // --- MANAJEMEN WAWANCARA (SENSEI) ---
+        // PENTING: Harus dibungkus Route::controller agar 'index', 'show', dll terbaca
+        Route::controller(App\Http\Controllers\SenseiController\SenseiInterviewController::class)->group(function () {
+            
+            // List & Detail
+            Route::get('/interviews', 'index')->name('interviews.index');
+            Route::get('/interviews/{id}', 'show')->name('interviews.show');
+            
+            // Assign & Remove Siswa
+            Route::post('/interviews/{id}/assign', 'assignStudent')->name('interviews.assign');
+            Route::delete('/interviews/details/{detailId}', 'removeStudent')->name('interviews.remove-student');
+            
+            // Reorder (Urutan Wawancara)
+            Route::patch('/interviews/{id}/batch-reorder', 'batchReorder')->name('interviews.batch-reorder');
+            
+            // Preview Kyuujinhyou
+            Route::post('/interviews/{id}/preview-kyuujinhyou', 'previewKyuujinhyou')->name('interviews.preview-kyuujinhyou');
+            
+        });
+
+});
 
 /*
 |--------------------------------------------------------------------------
