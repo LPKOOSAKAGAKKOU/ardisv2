@@ -15,8 +15,8 @@ import {
     startOfMonth, 
     endOfMonth, 
     eachDayOfInterval, 
-    isSameDay, 
-    parseISO 
+    isSameDay,
+    parseISO
 } from 'date-fns' 
 import { id as idLocale } from 'date-fns/locale'
 import { 
@@ -32,13 +32,15 @@ import {
     Edit,
     Loader2,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    CalendarDays
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { route } from 'ziggy-js'
 import axios from 'axios'
 import { Html5Qrcode } from 'html5-qrcode' 
 
+// --- TYPES ---
 interface Student {
     id: number
     nik: string
@@ -49,7 +51,7 @@ interface AttendanceRecord {
     student_profile_id: number
     status: string
     note: string | null
-    date?: string // Field date diperlukan untuk mapping mode bulanan
+    date: string // YYYY-MM-DD
 }
 
 interface Props {
@@ -64,45 +66,20 @@ export default function AttendanceSection({ classroom }: Props) {
     const [viewMode, setViewMode] = useState<'day' | 'month'>('day')
     const [currentDate, setCurrentDate] = useState<Date>(new Date())
     
-    // Turunan state untuk kompatibilitas logic lama (string 'yyyy-mm-dd')
-    const date = format(currentDate, 'yyyy-MM-dd')
+    // Turunan state string date untuk API
+    const dateString = format(currentDate, 'yyyy-MM-dd')
+    const monthString = format(currentDate, 'yyyy-MM')
 
-    // State Data & UI
-    const [processing, setProcessing] = useState(false)
+    // State Data
     const [isLoadingData, setIsLoadingData] = useState(false)
-    const [existingData, setExistingData] = useState<AttendanceRecord[] | null>(null)
-    const [isEditing, setIsEditing] = useState(false) 
-
-    // --- INITIALIZE MANUAL DATA ---
+    const [fetchedData, setFetchedData] = useState<AttendanceRecord[]>([])
+    
+    // State Form Harian
+    const [isEditing, setIsEditing] = useState(false)
+    const [processing, setProcessing] = useState(false)
     const [manualData, setManualData] = useState<Record<number, { status: string, note: string }>>({})
 
-    // Helper: Reset Form
-    const resetToDefault = () => {
-        const initial: any = {}
-        classroom.students.forEach(s => {
-            initial[s.id] = { status: 'hadir', note: '' }
-        })
-        setManualData(initial)
-    }
-
-    // Helper: Populate Form (Mode Edit)
-    const populateFormFromExisting = (data: AttendanceRecord[]) => {
-        const mapped: any = {}
-        classroom.students.forEach(s => {
-            mapped[s.id] = { status: 'hadir', note: '' }
-        })
-        data.forEach(record => {
-            // Pastikan hanya map data yang tanggalnya cocok (untuk safety)
-            // Di mode 'day', semua data pasti tanggalnya sama.
-            mapped[record.student_profile_id] = { 
-                status: record.status, 
-                note: record.note || '' 
-            }
-        })
-        setManualData(mapped)
-    }
-
-    // --- NAVIGASI TANGGAL ---
+    // --- NAVIGASI ---
     const handlePrev = () => {
         if (viewMode === 'day') setCurrentDate(d => subDays(d, 1))
         else setCurrentDate(d => subMonths(d, 1))
@@ -113,76 +90,87 @@ export default function AttendanceSection({ classroom }: Props) {
         else setCurrentDate(d => addMonths(d, 1))
     }
 
-    // --- EFFECT: FETCH DATA (Trigger saat ViewMode / Tanggal Berubah) ---
+    // --- FETCH DATA (Trigger on Date/Mode Change) ---
     useEffect(() => {
-        let isMounted = true
-        
-        const checkAttendance = async () => {
-            setIsLoadingData(true)
-            try {
-                // Siapkan parameter query
-                const params: any = { mode: viewMode }
-                
-                if (viewMode === 'day') {
-                    params.date = format(currentDate, 'yyyy-MM-dd')
-                } else {
-                    params.month = format(currentDate, 'yyyy-MM')
-                }
+        let isMounted = true;
 
-                // Gunakan endpoint generic yang bisa handle filter mode
-                // Pastikan backend route 'attendance.data' atau 'attendance.show' mendukung parameter ini
-                // Disini saya menggunakan route existing 'attendance.show' namun mengirim params extra
-                const response = await axios.get(route('sensei.classrooms.attendance.show', { 
-                    classroom: classroom.id,
-                    ...params // Spread params (date/month & mode)
-                }))
+        const fetchData = async () => {
+            setIsLoadingData(true);
+            try {
+                // Pastikan route 'sensei.classrooms.attendance.data' sudah dibuat di Laravel
+                // Jika belum, buat route GET yang me-return JSON data absensi
+                const params: any = { mode: viewMode };
+                if (viewMode === 'day') params.date = dateString;
+                else params.month = monthString;
+
+                const response = await axios.get(route('sensei.classrooms.attendance.data', classroom.id), { params });
 
                 if (isMounted) {
-                    // Logic khusus Mode Harian
+                    setFetchedData(response.data);
+                    
+                    // Logic Auto-Switch Mode
                     if (viewMode === 'day') {
-                        if (response.data && response.data.length > 0) {
-                            setExistingData(response.data)
-                            setIsEditing(false) 
+                        if (response.data.length > 0) {
+                            // Data ada -> Mode Laporan
+                            setIsEditing(false);
                         } else {
-                            setExistingData(null)
-                            setIsEditing(true)
-                            resetToDefault()
+                            // Data kosong -> Mode Input
+                            resetFormDefault();
+                            setIsEditing(true);
                         }
-                    } 
-                    // Logic khusus Mode Bulanan (Langsung simpan semua data)
-                    else {
-                        setExistingData(response.data || [])
                     }
                 }
             } catch (error) {
-                console.error("Gagal mengambil data absensi", error)
+                console.error("Failed to fetch attendance:", error);
                 if (isMounted && viewMode === 'day') {
-                    setExistingData(null)
-                    setIsEditing(true)
-                    resetToDefault()
+                    setFetchedData([]);
+                    setIsEditing(true);
+                    resetFormDefault();
                 }
             } finally {
-                if (isMounted) setIsLoadingData(false)
+                if (isMounted) setIsLoadingData(false);
             }
-        }
+        };
 
-        checkAttendance()
+        fetchData();
 
-        return () => { isMounted = false }
-    }, [currentDate, viewMode, classroom.id])
+        return () => { isMounted = false; };
+    }, [currentDate, viewMode, classroom.id]);
 
+    // --- FORM HELPERS ---
+    const resetFormDefault = () => {
+        const initial: any = {}
+        classroom.students.forEach(s => {
+            initial[s.id] = { status: 'hadir', note: '' }
+        })
+        setManualData(initial)
+    }
 
-    // --- LOGIC LAMA: MANUAL INPUT ---
+    const populateFormFromExisting = () => {
+        const mapped: any = {}
+        // Default value
+        classroom.students.forEach(s => {
+            mapped[s.id] = { status: 'hadir', note: '' }
+        })
+        // Override with DB data
+        fetchedData.forEach(record => {
+            mapped[record.student_profile_id] = { 
+                status: record.status, 
+                note: record.note || '' 
+            }
+        })
+        setManualData(mapped)
+        setIsEditing(true)
+    }
+
     const handleManualChange = (studentId: number, field: 'status' | 'note', value: string) => {
         setManualData(prev => ({
             ...prev,
-            [studentId]: {
-                ...prev[studentId],
-                [field]: value
-            }
+            [studentId]: { ...prev[studentId], [field]: value }
         }))
     }
 
+    // --- SUBMIT ---
     const submitManual = (e: React.FormEvent) => {
         e.preventDefault()
         
@@ -192,29 +180,32 @@ export default function AttendanceSection({ classroom }: Props) {
             note: manualData[parseInt(studentId)].note
         }))
 
+        // Gunakan Router Inertia untuk Post, tapi handle onSuccess manual untuk update state lokal
         router.post(route('sensei.classrooms.attendance.store', classroom.id), {
-            date: date,
+            date: dateString,
             attendances: attendancesArray
         }, {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => {
-                setExistingData(attendancesArray.map(a => ({
+                // Update Local Data agar UI berubah jadi Laporan tanpa fetch ulang
+                const newData = attendancesArray.map(a => ({
                     student_profile_id: a.student_id,
                     status: a.status,
-                    note: a.note
-                })))
-                setIsEditing(false) 
+                    note: a.note,
+                    date: dateString
+                }));
+                setFetchedData(newData as AttendanceRecord[]);
+                setIsEditing(false);
             }
         })
     }
 
-    // --- LOGIC LAMA: QR CAMERA ---
+    // --- QR LOGIC (Reused) ---
     const [isCameraOpen, setIsCameraOpen] = useState(false)
     const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
     const [qrInput, setQrInput] = useState('') 
     const [isScanningApi, setIsScanningApi] = useState(false)
-    
     const lastScannedRef = useRef<string | null>(null)
     const scannerRef = useRef<Html5Qrcode | null>(null)
 
@@ -246,7 +237,6 @@ export default function AttendanceSection({ classroom }: Props) {
         };
         if (isCameraOpen) startCamera();
         else stopCamera();
-
         return () => { scannerRef.current?.stop().catch(() => {}); };
     }, [isCameraOpen]);
 
@@ -256,12 +246,14 @@ export default function AttendanceSection({ classroom }: Props) {
         setScanResult(null) 
         try {
             const response = await axios.post(route('sensei.classrooms.attendance.qr', classroom.id), {
-                date: date,
+                date: dateString,
                 qr_code: code,
                 status: 'hadir'
             })
             setScanResult({ type: 'success', message: `✅ ${response.data.message}` })
-            // Logic refresh data realtime bisa ditambahkan disini
+            
+            // Optional: Update data lokal realtime jika mode laporan sedang aktif
+            // Tapi karena QR biasanya dipake saat mode Edit/Input, fetch ulang manual atau biarkan user refresh.
         } catch (error: any) {
             setScanResult({ type: 'error', message: `❌ ${error.response?.data?.message || 'Invalid QR.'}` })
         } finally {
@@ -284,26 +276,22 @@ export default function AttendanceSection({ classroom }: Props) {
         processScan(qrInput)
     }
 
-    // --- RENDER HELPERS ---
+    // --- BADGES ---
     const getStatusBadge = (status: string) => {
-        switch(status) {
-            case 'hadir': return <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none">Hadir</Badge>
-            case 'sakit': return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none">Sakit</Badge>
-            case 'izin': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Izin</Badge>
-            case 'alpha': return <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-none">Alpha</Badge>
-            case 'terlambat': return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-none">Telat</Badge>
-            default: return <Badge variant="outline">{status}</Badge>
+        const styles: any = {
+            hadir: 'bg-green-100 text-green-700 hover:bg-green-200 border-none',
+            sakit: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none',
+            izin: 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none',
+            alpha: 'bg-red-100 text-red-700 hover:bg-red-200 border-none',
+            terlambat: 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-none'
         }
+        return <Badge className={`${styles[status] || 'bg-gray-100'} shadow-none`}>{status.toUpperCase()}</Badge>
     }
 
-    // Badge Mini untuk View Bulanan
     const getMiniBadge = (status: string) => {
         const colors: any = {
-            hadir: 'bg-green-500',
-            sakit: 'bg-yellow-500',
-            izin: 'bg-blue-500',
-            alpha: 'bg-red-500',
-            terlambat: 'bg-orange-500'
+            hadir: 'bg-green-500', sakit: 'bg-yellow-500', izin: 'bg-blue-500',
+            alpha: 'bg-red-500', terlambat: 'bg-orange-500'
         }
         const labels: any = { hadir: 'H', sakit: 'S', izin: 'I', alpha: 'A', terlambat: 'T' }
         return (
@@ -316,22 +304,20 @@ export default function AttendanceSection({ classroom }: Props) {
     return (
         <div className="space-y-6">
             
-            {/* 1. HEADER & NAVIGASI */}
+            {/* 1. HEADER CONTROL */}
             <div className="flex flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between">
                 
                 {/* Switch Mode */}
                 <div className="flex items-center gap-2 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800 self-start sm:self-center">
                     <Button 
-                        variant={viewMode === 'day' ? 'default' : 'ghost'} 
-                        size="sm" 
+                        variant={viewMode === 'day' ? 'default' : 'ghost'} size="sm" 
                         onClick={() => setViewMode('day')}
                         className={viewMode === 'day' ? 'bg-white text-black shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-muted-foreground'}
                     >
                         Harian
                     </Button>
                     <Button 
-                        variant={viewMode === 'month' ? 'default' : 'ghost'} 
-                        size="sm" 
+                        variant={viewMode === 'month' ? 'default' : 'ghost'} size="sm" 
                         onClick={() => setViewMode('month')}
                         className={viewMode === 'month' ? 'bg-white text-black shadow-sm dark:bg-zinc-950 dark:text-white' : 'text-muted-foreground'}
                     >
@@ -339,15 +325,15 @@ export default function AttendanceSection({ classroom }: Props) {
                     </Button>
                 </div>
 
-                {/* Date Navigator */}
+                {/* Navigator */}
                 <div className="flex items-center justify-between gap-4 w-full sm:w-auto sm:justify-center rounded-lg border px-3 py-2 sm:border-none sm:p-0">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev} disabled={isLoadingData}>
                         <ChevronLeft className="size-4" />
                     </Button>
                     
-                    <div className="flex flex-col items-center min-w-[140px]">
+                    <div className="flex flex-col items-center min-w-[150px]">
                         <div className="flex items-center gap-2">
-                            <CalendarIcon className="size-4 text-muted-foreground" />
+                            {viewMode === 'day' ? <CalendarIcon className="size-4 text-muted-foreground" /> : <CalendarDays className="size-4 text-muted-foreground" />}
                             <span className="text-sm font-bold">
                                 {viewMode === 'day' 
                                     ? format(currentDate, 'd MMMM yyyy', { locale: idLocale })
@@ -362,12 +348,12 @@ export default function AttendanceSection({ classroom }: Props) {
                         )}
                     </div>
 
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext} disabled={isLoadingData}>
                         <ChevronRight className="size-4" />
                     </Button>
                 </div>
 
-                {/* Status Loading (Hidden Mobile) */}
+                {/* Loading Indicator */}
                 <div className="hidden sm:block text-right min-w-[120px]">
                     {isLoadingData ? (
                         <span className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
@@ -375,16 +361,13 @@ export default function AttendanceSection({ classroom }: Props) {
                         </span>
                     ) : (
                         <span className="text-xs text-muted-foreground">
-                            {viewMode === 'day' 
-                                ? (existingData ? 'Data Tersedia' : 'Belum Absen')
-                                : 'Rekap Bulanan'
-                            }
+                            {viewMode === 'day' ? (fetchedData.length > 0 ? 'Data Tersedia' : 'Belum Absen') : 'Rekap Bulanan'}
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* 2. KONTEN UTAMA (Render Berdasarkan Mode) */}
+            {/* 2. MAIN CONTENT AREA */}
             
             {/* LOADING STATE */}
             {isLoadingData ? (
@@ -400,7 +383,7 @@ export default function AttendanceSection({ classroom }: Props) {
                         <table className="w-full text-xs border-collapse">
                             <thead>
                                 <tr className="bg-neutral-50 border-b dark:bg-zinc-900">
-                                    <th className="p-3 text-left font-bold min-w-[150px] sticky left-0 bg-neutral-50 z-10 border-r dark:bg-zinc-900">Nama Siswa</th>
+                                    <th className="p-3 text-left font-bold min-w-[150px] sticky left-0 bg-neutral-50 z-10 border-r dark:bg-zinc-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nama Siswa</th>
                                     {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => (
                                         <th key={day.toString()} className="p-2 text-center min-w-[35px] border-r last:border-0 font-normal text-muted-foreground">
                                             <div className="flex flex-col items-center gap-1">
@@ -411,14 +394,14 @@ export default function AttendanceSection({ classroom }: Props) {
                                             </div>
                                         </th>
                                     ))}
-                                    <th className="p-2 text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">Total</th>
+                                    <th className="p-2 text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">Total H</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {classroom.students.map((student) => {
-                                    // Filter data absen siswa ini untuk bulan terpilih
-                                    const records = existingData?.filter(r => r.student_profile_id === student.id) || []
-                                    const totalHadir = records.filter(r => r.status === 'hadir').length
+                                    // Filter records for this student
+                                    const records = fetchedData.filter(r => r.student_profile_id === student.id);
+                                    const totalHadir = records.filter(r => r.status === 'hadir').length;
 
                                     return (
                                         <tr key={student.id} className="hover:bg-neutral-50/50">
@@ -426,8 +409,8 @@ export default function AttendanceSection({ classroom }: Props) {
                                                 <div className="truncate w-[140px]">{student.full_name}</div>
                                             </td>
                                             {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
-                                                const dateStr = format(day, 'yyyy-MM-dd')
-                                                const record = records.find(r => r.date === dateStr)
+                                                const dStr = format(day, 'yyyy-MM-dd');
+                                                const record = records.find(r => r.date === dStr);
                                                 return (
                                                     <td key={day.toString()} className="p-1 text-center border-r last:border-0 dark:border-zinc-800">
                                                         {record ? getMiniBadge(record.status) : <span className="text-zinc-200 text-[9px]">•</span>}
@@ -447,36 +430,35 @@ export default function AttendanceSection({ classroom }: Props) {
 
             ) : (
                 
-                // --- VIEW MODE: HARIAN (Logic Lama) ---
+                // --- VIEW MODE: HARIAN ---
                 <Tabs defaultValue="manual" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
                         <TabsTrigger value="manual" className="gap-2">
-                            <ListChecks size={16}/> {existingData && !isEditing ? 'Laporan Harian' : 'Input Absensi'}
+                            <ListChecks size={16}/> {fetchedData.length > 0 && !isEditing ? 'Laporan Harian' : 'Input Absensi'}
                         </TabsTrigger>
-                        {/* QR Code disabled jika hanya lihat laporan */}
-                        <TabsTrigger value="qr" className="gap-2" disabled={!!existingData && !isEditing}>
+                        <TabsTrigger value="qr" className="gap-2" disabled={fetchedData.length > 0 && !isEditing}>
                             <QrCode size={16}/> Scan QR Code
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* CONTENT MANUAL */}
+                    {/* CONTENT: MANUAL / LAPORAN */}
                     <TabsContent value="manual" className="mt-4">
                         
-                        {/* CASE: LAPORAN (READ ONLY) */}
-                        {existingData && !isEditing ? (
+                        {/* 1. JIKA DATA ADA & TIDAK EDIT -> TAMPILKAN LAPORAN */}
+                        {fetchedData.length > 0 && !isEditing ? (
                             <div className="rounded-xl border bg-white shadow-sm overflow-hidden dark:bg-zinc-950">
                                 <div className="flex items-center justify-between border-b px-4 py-3 bg-neutral-50 dark:bg-zinc-900">
-                                    <h3 className="text-sm font-bold uppercase text-muted-foreground">Ringkasan Kehadiran</h3>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        if (existingData) populateFormFromExisting(existingData)
-                                        setIsEditing(true)
-                                    }}>
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="size-4 text-green-600" />
+                                        <h3 className="text-sm font-bold uppercase text-muted-foreground">Absensi Tersimpan</h3>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={populateFormFromExisting}>
                                         <Edit className="mr-2 size-3" /> Edit Data
                                     </Button>
                                 </div>
                                 <div className="divide-y">
                                     {classroom.students.map((student) => {
-                                        const record = existingData.find(r => r.student_profile_id === student.id)
+                                        const record = fetchedData.find(r => r.student_profile_id === student.id);
                                         return (
                                             <div key={student.id} className="flex items-center justify-between px-4 py-4 hover:bg-neutral-50/50">
                                                 <div>
@@ -493,7 +475,8 @@ export default function AttendanceSection({ classroom }: Props) {
                                 </div>
                             </div>
                         ) : (
-                            /* CASE: FORM INPUT (EDIT / NEW) */
+                            
+                            /* 2. JIKA DATA KOSONG ATAU SEDANG EDIT -> TAMPILKAN FORM */
                             <form onSubmit={submitManual}>
                                 <div className="rounded-xl border bg-white shadow-sm overflow-hidden dark:bg-zinc-950">
                                     <div className="grid grid-cols-12 gap-4 border-b bg-neutral-50 px-4 py-3 text-xs font-bold uppercase text-muted-foreground dark:bg-zinc-900">
@@ -503,15 +486,12 @@ export default function AttendanceSection({ classroom }: Props) {
                                     </div>
 
                                     <div className="divide-y">
-                                        {classroom.students.length > 0 ? classroom.students.map((student) => (
+                                        {classroom.students.map((student) => (
                                             <div key={student.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center hover:bg-neutral-50/50">
-                                                {/* Nama */}
                                                 <div className="col-span-12 md:col-span-3 mb-2 md:mb-0">
                                                     <p className="font-semibold text-sm">{student.full_name}</p>
                                                     <p className="text-xs text-muted-foreground font-mono">{student.nik}</p>
                                                 </div>
-
-                                                {/* Radio Group */}
                                                 <div className="col-span-12 md:col-span-6 flex justify-center">
                                                     <RadioGroup 
                                                         value={manualData[student.id]?.status || 'hadir'} 
@@ -525,31 +505,30 @@ export default function AttendanceSection({ classroom }: Props) {
                                                         <AttendanceRadio idPrefix={student.id} value="terlambat" label="T" color="bg-orange-100 text-orange-700 border-orange-200" />
                                                     </RadioGroup>
                                                 </div>
-
-                                                {/* Input Catatan */}
                                                 <div className="col-span-12 md:col-span-3 mt-2 md:mt-0">
                                                     <Input 
-                                                        placeholder="Ket. (Opsional)" 
+                                                        placeholder="Ket." 
                                                         value={manualData[student.id]?.note || ''}
                                                         onChange={(e) => handleManualChange(student.id, 'note', e.target.value)}
                                                         className="h-8 text-xs"
                                                     />
                                                 </div>
                                             </div>
-                                        )) : (
+                                        ))}
+                                        {classroom.students.length === 0 && (
                                             <div className="p-8 text-center text-muted-foreground">Tidak ada siswa di kelas ini.</div>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="mt-4 flex justify-between sticky bottom-4 z-10">
-                                    {isEditing && existingData && (
+                                    {isEditing && fetchedData.length > 0 && (
                                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>
                                             Batal Edit
                                         </Button>
                                     )}
                                     <div className="ml-auto">
-                                        <Button type="submit" size="lg" className="shadow-xl bg-neutral-900 text-white dark:bg-white dark:text-black" disabled={processing}>
+                                        <Button type="submit" size="lg" className="shadow-xl bg-neutral-900 text-white dark:bg-white dark:text-black" disabled={processing || classroom.students.length === 0}>
                                             <Save className="mr-2 size-4" /> 
                                             {processing ? 'Menyimpan...' : `Simpan Perubahan`}
                                         </Button>
@@ -559,10 +538,10 @@ export default function AttendanceSection({ classroom }: Props) {
                         )}
                     </TabsContent>
 
-                    {/* CONTENT QR SCANNER */}
+                    {/* CONTENT: QR SCANNER */}
                     <TabsContent value="qr" className="mt-4">
                         <div className="grid gap-6 md:grid-cols-2">
-                            {/* Scanner Area */}
+                            {/* Scanner */}
                             <Card className="overflow-hidden border-2 border-dashed shadow-sm">
                                 <CardContent className="flex flex-col items-center justify-center p-6 text-center min-h-[400px]">
                                     {isCameraOpen ? (
@@ -607,7 +586,7 @@ export default function AttendanceSection({ classroom }: Props) {
                                 </CardContent>
                             </Card>
 
-                            {/* Result Area */}
+                            {/* Result */}
                             <Card className={`flex flex-col justify-center border-l-4 transition-colors ${
                                 scanResult?.type === 'success' 
                                     ? 'border-l-green-500 bg-green-50/50 dark:bg-green-900/10' 
@@ -650,7 +629,6 @@ export default function AttendanceSection({ classroom }: Props) {
     )
 }
 
-// FIXED: Tambah prop idPrefix agar ID unik per siswa
 function AttendanceRadio({ idPrefix, value, label, color }: { idPrefix: number, value: string, label: string, color: string }) {
     const uniqueId = `r-${idPrefix}-${value}`
     return (
