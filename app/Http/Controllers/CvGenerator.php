@@ -227,42 +227,18 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (PERBAIKAN FINAL) ---
+            // --- BAGIAN PREVIEW (DI SINI PERBAIKANNYA) ---
             if ($request->query('preview') === 'true') {
-                try {
-                    // PASTIKAN baris ini ada jika belum didefinisikan di atas
-                    $sheet = $spreadsheet->getActiveSheet(); 
-                    
-                    // 1. Matikan garis kisi
-                    $sheet->setShowGridlines(false); 
+                $writer = IOFactory::createWriter($spreadsheet, 'Html');
+                
+                ob_start();
+                $writer->save('php://output');
+                $htmlContent = ob_get_clean();
 
-                    $writer = IOFactory::createWriter($spreadsheet, 'Html');
-                    
-                    // 2. Setting agar CSS border aman
-                    $writer->setGenerateSheetStyles(true);
-                    $writer->setGenerateSheetNavigationBlock(false);
-                    $writer->setEmbedImages(true); // Penting agar foto profil muncul di preview
-
-                    // 3. Bersihkan buffer sebelumnya agar tidak ada karakter 'sampah'
-                    if (ob_get_length()) ob_end_clean();
-                    
-                    ob_start();
-                    $writer->save('php://output');
-                    $htmlContent = ob_get_clean();
-
-                    // 4. Return JSON murni
-                    return response()->json([
-                        'status' => 'success',
-                        'html' => $htmlContent
-                    ]);
-
-                } catch (\Exception $e) {
-                    // Jika ada error di tengah jalan, kirim pesan errornya ke modal
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => $e->getMessage()
-                    ], 500);
-                }
+                return response()->json([
+                    'status' => 'success',
+                    'html' => $htmlContent
+                ]);
             }
 
             // --- BAGIAN DOWNLOAD (XLSX) ---
