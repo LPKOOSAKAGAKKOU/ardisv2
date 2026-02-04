@@ -60,55 +60,58 @@ class ClassroomController extends Controller
         ]);
     }
 
-    /**
-     * 1. CREATE CLASS
-     * Aturan: Jika Sensei buat kelas baru, kelas lama otomatis Nonaktif.
-     */
     public function store(Request $request)
     {
+        // 1. Validasi Input
         $request->validate([
             'name' => 'required|string',
-            'level' => 'required|in:ATARASHII,N5,N4,N3,N2,N1,Pra-Pemberangakatan,Pra-Pemberangkatan Kaigo',
+            // Gunakan ARRAY agar aman dengan spasi & koma
+            'level' => [
+                'required', 
+                'in:ATARASHII,N5,N4,N3,N2,N1,Pra-Pemberangkatan,Pra-Pemberangkatan Kaigo'
+            ],
         ]);
 
         $user = Auth::user();
-        // Asumsi: Relasi User -> Teacher sudah ada.
-        // Jika user login adalah admin yang memilihkan guru, sesuaikan logic ini.
         $teacher = $user->role === 'sensei' ? $user->teacher : null; 
         
         if (!$teacher) {
+            // Error ini akan masuk ke props.errors.error
             return back()->withErrors(['error' => 'Data Sensei tidak ditemukan untuk akun ini.']);
         }
 
         DB::beginTransaction();
         try {
-            // A. Nonaktifkan semua kelas aktif milik sensei ini (Auto-Close)
+            // A. Nonaktifkan kelas lama
             Classroom::where('teacher_id', $teacher->id)
                 ->where('status', 'active')
                 ->update(['status' => 'finished', 'end_date' => now()]);
 
             // B. Buat Kelas Baru
-            $classroom = Classroom::create([
+            Classroom::create([
                 'teacher_id' => $teacher->id,
                 'name' => $request->name,
-                'level' => $request->level,
+                'level' => $request->level, // Pastikan value ini diterima Database Enum
                 'status' => 'active',
                 'start_date' => now(),
             ]);
 
-            // C. Catat Log
+            // C. Log
             ClassroomLog::create([
-                'classroom_id' => $classroom->id,
+                'classroom_id' => $classroom->id ?? 0, // Handle jika create gagal (meski harusnya masuk catch)
                 'user_id' => $user->id,
                 'action' => 'created',
-                'description' => "Kelas {$classroom->name} dibuat. Kelas lama dinonaktifkan."
+                'description' => "Kelas {$request->name} dibuat."
             ]);
 
             DB::commit();
             return back()->with('success', 'Kelas baru berhasil dibuka!');
+            
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withErrors(['error' => $e->getMessage()]);
+            // INI PENYEBAB SILENT ERROR:
+            // Error dikirim sebagai 'error', tapi di frontend tidak ditampilkan.
+            return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()]);
         }
     }
 

@@ -27,6 +27,7 @@ interface ClassroomFormProps {
 }
 
 export default function ClassroomForm({ open, setOpen }: ClassroomFormProps) {
+    // Tambahkan 'errors' dari useForm untuk menangkap error global
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         name: '',
         level: '',
@@ -59,6 +60,14 @@ export default function ClassroomForm({ open, setOpen }: ClassroomFormProps) {
                             Membuka kelas baru untuk memulai pembelajaran.
                         </DialogDescription>
                     </DialogHeader>
+
+                    {/* 1. TAMPILKAN GENERAL ERROR (SOLUSI SILENT ERROR) */}
+                    {/* Ubah errors.error menjadi (errors as any).error */}
+                    {(errors as any).error && (
+                        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+                            <span className="font-bold">Error:</span> {(errors as any).error}
+                        </div>
+                    )}
 
                     {/* Warning Box */}
                     <div className="my-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
