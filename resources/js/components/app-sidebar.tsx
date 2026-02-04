@@ -45,9 +45,21 @@ const adminNavItems = (): NavItem[] => [
 
 
 const senseiNavItems = (): NavItem[] => [
-    { title: 'Dashboard', href: route('sensei.dashboard'), icon: LayoutGrid },
-    { title: 'Data Kelas', href: '#', icon: School },
-    { title: 'Data Siswa', href: '#', icon: Users },
+    { 
+        title: 'Dashboard', 
+        href: route('sensei.dashboard'), 
+        icon: LayoutGrid 
+    },
+    { 
+        title: 'Data Kelas', 
+        href: route('sensei.classrooms.index'), // <-- Update ini
+        icon: School 
+    },
+    { 
+        title: 'Data Siswa', 
+        href: '#', // Tetap # sesuai request
+        icon: Users 
+    },
 ]
 
 
