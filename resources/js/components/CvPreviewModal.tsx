@@ -43,7 +43,25 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             });
             
             if (response.data.html) {
-                setHtmlContent(response.data.html);
+                const styledHtml = `
+                    <style>
+                        /* Menghilangkan margin default body iframe */
+                        body { 
+                            background-color: white; 
+                            margin: 0; 
+                            padding: 20px; 
+                            display: flex; 
+                            justify-content: center; 
+                        }
+                        /* Memastikan tabel rapi di tengah */
+                        table { 
+                            border-collapse: collapse !important; 
+                            margin: 0 auto !important; 
+                        }
+                    </style>
+                    ${response.data.html}
+                `;
+                setHtmlContent(styledHtml);
             }
         } catch (error) {
             console.error("Gagal memuat preview CV", error);

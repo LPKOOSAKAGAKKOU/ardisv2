@@ -229,8 +229,15 @@ class CvGenerator extends Controller
 
             // --- BAGIAN PREVIEW (DI SINI PERBAIKANNYA) ---
             if ($request->query('preview') === 'true') {
+                // 1. Matikan garis grid (kotak-kotak bantu Excel)
+                $sheet->setShowGridlines(false); 
+
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
+                // 2. Pastikan styles di-generate agar border yang Anda buat manual tetap muncul
+                $writer->setGenerateSheetStyles(true);
+                $writer->setGenerateSheetNavigationBlock(false);
+
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
