@@ -227,14 +227,31 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (DI SINI PERBAIKANNYA) ---
+            // --- BAGIAN PREVIEW (PERBAIKAN AGAR TIDAK ERROR) ---
             if ($request->query('preview') === 'true') {
-                $writer = IOFactory::createWriter($spreadsheet, 'Html');
+                // 1. Ambil sheet aktif (Pastikan variabel $spreadsheet sudah ada di atas)
+                $activeSheet = $spreadsheet->getActiveSheet();
                 
+                // 2. Matikan Gridlines (Garis kotak-kotak bantu)
+                $activeSheet->setShowGridlines(false); 
+
+                // 3. Setup Writer HTML
+                $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Html');
+                $writer->setGenerateSheetStyles(true); // Wajib agar border manual muncul
+                $writer->setGenerateSheetNavigationBlock(false);
+                $writer->setEmbedImages(true); // Agar foto profil siswa ikut tampil
+
+                // 4. BERSIHKAN SEMUA BUFFER SEBELUMNYA (Ini kunci agar tidak error)
+                while (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+
+                // 5. Mulai tangkap output HTML
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
 
+                // 6. Kirim JSON
                 return response()->json([
                     'status' => 'success',
                     'html' => $htmlContent
