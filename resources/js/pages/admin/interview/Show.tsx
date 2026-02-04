@@ -275,7 +275,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
         });
     };
 
-    const handleOpenCvPreview = (userId: number, userName: string) => {
+    const onPreviewCV = (userId: number, userName: string) => {
         setSelectedCvUser({ id: userId, name: userName });
         setCvModalOpen(true);
     };
