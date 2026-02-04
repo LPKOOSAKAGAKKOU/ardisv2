@@ -57,7 +57,7 @@ const senseiNavItems = (): NavItem[] => [
     },
     { 
         title: 'Data Siswa', 
-        href: '#', // Tetap # sesuai request
+        href: route('sensei.students.index'), // Tetap # sesuai request
         icon: Users 
     },
 ]

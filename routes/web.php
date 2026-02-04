@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\SenseiController\ClassroomController;
+use App\Http\Controllers\SenseiController\SenseiStudentController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
@@ -131,8 +132,16 @@ Route::middleware([
             Inertia::render('sensei/dashboard')
         )->name('dashboard');
 
-        // --- MANAJEMEN SISWA (Read Only / Shared) ---
-        Route::resource('students', StudentController::class);
+        // --- MANAJEMEN DOKUMEN SISWA ---
+        Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])->name('documents.request');
+        
+        Route::prefix('students')->group(function () {
+            Route::post('{id}/documents-store', [StudentDocumentController::class, 'storeDocument'])->name('documents.store');
+            Route::post('{id}/preview-file', [StudentDocumentController::class, 'previewDocument'])->name('documents.preview');
+        });
+
+        // --- MANAJEMEN SISWA (Cukup satu baris ini) ---
+        Route::resource('students', SenseiStudentController::class);
 
         // --- MANAJEMEN KELAS (CORE SENSEI) ---
         
