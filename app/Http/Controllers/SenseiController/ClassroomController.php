@@ -87,18 +87,23 @@ class ClassroomController extends Controller
                 ->where('status', 'active')
                 ->update(['status' => 'finished', 'end_date' => now()]);
 
-            // B. Buat Kelas Baru
-            Classroom::create([
+            // B. Buat Kelas Baru & SIMPAN KE VARIABEL
+            $classroom = Classroom::create([  // <--- TAMBAHKAN $classroom = 
                 'teacher_id' => $teacher->id,
                 'name' => $request->name,
-                'level' => $request->level, // Pastikan value ini diterima Database Enum
+                'level' => $request->level,
                 'status' => 'active',
                 'start_date' => now(),
             ]);
 
+            // Validasi extra (opsional tapi bagus)
+            if (!$classroom) {
+                throw new \Exception("Gagal membuat data kelas.");
+            }
+
             // C. Log
             ClassroomLog::create([
-                'classroom_id' => $classroom->id ?? 0, // Handle jika create gagal (meski harusnya masuk catch)
+                'classroom_id' => $classroom->id, // <--- HAPUS '?? 0' (Sudah pasti ada ID-nya sekarang)
                 'user_id' => $user->id,
                 'action' => 'created',
                 'description' => "Kelas {$request->name} dibuat."
@@ -109,8 +114,6 @@ class ClassroomController extends Controller
             
         } catch (\Exception $e) {
             DB::rollback();
-            // INI PENYEBAB SILENT ERROR:
-            // Error dikirim sebagai 'error', tapi di frontend tidak ditampilkan.
             return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()]);
         }
     }
