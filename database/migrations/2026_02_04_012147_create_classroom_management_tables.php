@@ -60,6 +60,8 @@ return new class extends Migration
             $table->string('type'); // Contoh: "Bunpo", "Kanji", "Choukai", "Harian"
             $table->string('title'); // Contoh: "Bab 1-5", "Quiz Mingguan 1"
             $table->integer('score'); // Nilai (0-100)
+            $table->integer('original_score')->nullable(); // Nilai sebelum remed
+            $table->boolean('is_remedial')->default(false); // Apakah ini nilai remedial?
             $table->text('feedback')->nullable(); // Catatan Sensei untuk nilai ini
             
             $table->timestamps();

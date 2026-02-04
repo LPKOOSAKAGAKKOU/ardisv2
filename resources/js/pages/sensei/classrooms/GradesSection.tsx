@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
     Select,
     SelectContent,
@@ -18,6 +19,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useForm, router } from '@inertiajs/react'
 import { 
@@ -27,12 +36,14 @@ import {
     Loader2, 
     Plus, 
     Save, 
-    Trash2 
+    Trash2,
+    AlertCircle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { route } from 'ziggy-js'
 import axios from 'axios'
 
+// --- TYPES ---
 interface Student {
     id: number
     nik: string
@@ -45,12 +56,15 @@ interface GradeRecord {
     type: string
     title: string
     score: number
+    original_score?: number
+    is_remedial?: boolean
     feedback: string | null
 }
 
 interface Assignment {
     type: string
     title: string
+    avg: number
 }
 
 interface Props {
@@ -65,6 +79,9 @@ export default function GradesSection({ classroom }: Props) {
     const [isLoading, setIsLoading] = useState(false)
     const [grades, setGrades] = useState<GradeRecord[]>([])
     const [assignments, setAssignments] = useState<Assignment[]>([])
+    
+    // State Modal Edit
+    const [editingGrade, setEditingGrade] = useState<GradeRecord | null>(null)
 
     // Fetch Data Nilai
     const fetchData = async () => {
@@ -108,30 +125,31 @@ export default function GradesSection({ classroom }: Props) {
                             <Table>
                                 <TableHeader className="bg-neutral-50 dark:bg-zinc-900">
                                     <TableRow>
-                                        <TableHead className="w-[200px] font-bold sticky left-0 bg-neutral-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nama Siswa</TableHead>
+                                        <TableHead className="w-[200px] font-bold sticky left-0 bg-neutral-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-900">Nama Siswa</TableHead>
                                         {assignments.length > 0 ? assignments.map((assign, idx) => (
                                             <TableHead key={idx} className="text-center min-w-[100px] border-l">
                                                 <div className="flex flex-col items-center py-2">
                                                     <span className="text-[10px] uppercase font-bold text-muted-foreground">{assign.type}</span>
                                                     <span className="text-xs font-semibold text-foreground">{assign.title}</span>
+                                                    <Badge variant="secondary" className="mt-1 text-[9px] h-4 px-1">Avg: {assign.avg}</Badge>
                                                 </div>
                                             </TableHead>
                                         )) : (
                                             <TableHead className="text-center italic text-muted-foreground">Belum ada tugas</TableHead>
                                         )}
-                                        {assignments.length > 0 && <TableHead className="text-center font-bold border-l bg-neutral-50 sticky right-0">Rata-rata</TableHead>}
+                                        {assignments.length > 0 && <TableHead className="text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">Total Avg</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {classroom.students.map((student) => {
-                                        // Hitung rata-rata siswa ini
+                                        // Filter nilai siswa ini
                                         const studentGrades = grades.filter(g => g.student_profile_id === student.id)
                                         const totalScore = studentGrades.reduce((sum, g) => sum + g.score, 0)
                                         const avgScore = studentGrades.length > 0 ? (totalScore / studentGrades.length).toFixed(1) : '-'
 
                                         return (
                                             <TableRow key={student.id} className="hover:bg-neutral-50/50">
-                                                <TableCell className="font-medium sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-950">
+                                                <TableCell className="font-medium sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:bg-zinc-950 dark:border-zinc-800">
                                                     <div className="flex flex-col">
                                                         <span>{student.full_name}</span>
                                                         <span className="text-[10px] text-muted-foreground font-mono">{student.nik}</span>
@@ -141,11 +159,17 @@ export default function GradesSection({ classroom }: Props) {
                                                 {assignments.length > 0 ? assignments.map((assign, idx) => {
                                                     const grade = studentGrades.find(g => g.type === assign.type && g.title === assign.title)
                                                     return (
-                                                        <TableCell key={idx} className="text-center border-l p-2">
+                                                        <TableCell key={idx} className="text-center border-l p-2 dark:border-zinc-800">
                                                             {grade ? (
-                                                                <GradeBadge score={grade.score} />
+                                                                <button 
+                                                                    onClick={() => setEditingGrade(grade)}
+                                                                    className="w-full h-full flex justify-center items-center hover:bg-neutral-100 rounded p-1 transition-colors"
+                                                                    title="Klik untuk edit / remedial"
+                                                                >
+                                                                    <GradeBadge score={grade.score} isRemedial={grade.is_remedial} original={grade.original_score} />
+                                                                </button>
                                                             ) : (
-                                                                <span className="text-muted-foreground">-</span>
+                                                                <span className="text-muted-foreground text-xs">-</span>
                                                             )}
                                                         </TableCell>
                                                     )
@@ -154,7 +178,7 @@ export default function GradesSection({ classroom }: Props) {
                                                 )}
 
                                                 {assignments.length > 0 && (
-                                                    <TableCell className="text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900">
+                                                    <TableCell className="text-center font-bold border-l bg-neutral-50 sticky right-0 dark:bg-zinc-900 dark:border-zinc-800">
                                                         {avgScore}
                                                     </TableCell>
                                                 )}
@@ -178,95 +202,64 @@ export default function GradesSection({ classroom }: Props) {
                     />
                 </TabsContent>
             </Tabs>
+
+            {/* MODAL EDIT NILAI */}
+            <EditGradeModal 
+                grade={editingGrade} 
+                open={!!editingGrade} 
+                setOpen={(val) => !val && setEditingGrade(null)} 
+                classroomId={classroom.id}
+                onSuccess={() => {
+                    fetchData()
+                    setEditingGrade(null)
+                }}
+            />
         </div>
     )
 }
 
-// --- SUB COMPONENT: FORM INPUT ---
+// --- SUB COMPONENT: FORM INPUT (BATCH) ---
 function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'], onSuccess: () => void }) {
     const { data, setData, post, processing, reset, errors } = useForm({
         type: '',
         title: '',
-        // Format: { studentId: score }
         scores: {} as Record<number, string>, 
     })
-
-    // Init scores state kosong
-    useEffect(() => {
-        const initialScores: any = {}
-        classroom.students.forEach(s => initialScores[s.id] = '')
-        setData('scores', initialScores)
-    }, [])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         
-        // Karena endpoint storeGrade di controller Anda didesain untuk SINGLE student,
-        // Kita harus modifikasi controller agar bisa terima BATCH insert (seperti absen),
-        // ATAU kita loop request di frontend (tapi ini kurang efisien).
-        
-        // SEMENTARA: Agar sesuai dengan Controller `storeGrade` yang ada (Single Entry), 
-        // kita akan buat request berulang. 
-        // IDEALNYA: Anda buat method `storeGradeBatch` di controller.
-        
-        // Mari kita asumsikan kita pakai metode loop axios manual disini untuk kompatibilitas controller yg ada
-        // Tapi cara terbaik adalah update controller.
-        
-        // UPDATE CONTROLLER DISARANKAN:
-        // public function storeBatchGrades(Request $request) { ... loop insert ... }
-
-        // Disini saya akan gunakan approach "Kirim Array" dan kita ubah sedikit controller agar support array.
-        // Jika tidak diubah, loop axios akan sangat lambat.
-        
-        // Mari kita kirim data dalam format yang bisa ditangkap controller jika dimodifikasi sedikit:
-        // Kita post ke endpoint baru / batch endpoint.
-        
-        // Tapi karena instruksi "tanpa ubah logic lama", mari kita coba kirim satu per satu
-        // menggunakan Promise.all. Ini solusi frontend tanpa sentuh backend.
-        
-        const promises = classroom.students.map(student => {
-            const scoreVal = data.scores[student.id]
-            if (scoreVal === '' || scoreVal === undefined) return null // Skip kosong
-
-            return axios.post(route('sensei.classrooms.grades.store', classroom.id), {
-                student_id: student.id,
-                type: data.type,
-                title: data.title,
-                score: parseInt(scoreVal),
-                feedback: ''
-            })
+        // Convert object scores to array
+        const scoresArray = Object.keys(data.scores).map(studentId => {
+            const val = data.scores[parseInt(studentId)];
+            // Jika kosong, isi 0 (sesuai request) atau skip. Disini kita isi 0 agar tersimpan.
+            return {
+                student_id: parseInt(studentId),
+                score: val === '' ? 0 : parseInt(val)
+            }
         })
 
-        // Filter null promises
-        const validPromises = promises.filter(p => p !== null)
-
-        if (validPromises.length === 0) {
-            alert("Isi minimal satu nilai siswa.")
-            return
-        }
-
-        // Execute all
-        Promise.all(validPromises)
-            .then(() => {
+        // Gunakan endpoint BATCH baru
+        router.post(route('sensei.classrooms.grades.batch', classroom.id), {
+            type: data.type,
+            title: data.title,
+            scores: scoresArray
+        }, {
+            onSuccess: () => {
                 reset()
                 onSuccess()
-                // alert("Semua nilai berhasil disimpan.")
-            })
-            .catch(err => {
-                console.error(err)
-                alert("Terjadi kesalahan saat menyimpan sebagian nilai.")
-            })
+            }
+        })
     }
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Input Nilai Tugas / Ujian</CardTitle>
-                <CardDescription>Masukkan detail tugas, lalu input nilai untuk setiap siswa.</CardDescription>
+                <CardTitle>Input Nilai Tugas / Ujian (Batch)</CardTitle>
+                <CardDescription>Masukkan detail tugas, lalu input nilai untuk setiap siswa sekaligus.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Header Tugas */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Kategori Tugas</Label>
@@ -294,7 +287,7 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
                         </div>
                     </div>
 
-                    <div className="border rounded-md">
+                    <div className="border rounded-md overflow-hidden">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -340,16 +333,105 @@ function InputGradeForm({ classroom, onSuccess }: { classroom: Props['classroom'
     )
 }
 
+// --- SUB COMPONENT: MODAL EDIT NILAI ---
+function EditGradeModal({ grade, open, setOpen, classroomId, onSuccess }: any) {
+    const { data, setData, put, processing, reset } = useForm({
+        score: '',
+        feedback: '',
+        is_remedial: false
+    })
+
+    // Populate data saat modal dibuka
+    useEffect(() => {
+        if (grade) {
+            setData({
+                score: String(grade.score),
+                feedback: grade.feedback || '',
+                is_remedial: grade.is_remedial || false
+            })
+        }
+    }, [grade])
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!grade) return
+
+        put(route('sensei.classrooms.grades.update', [classroomId, grade.id]), {
+            onSuccess: () => {
+                setOpen(false)
+                onSuccess()
+            }
+        })
+    }
+
+    if (!grade) return null
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Edit Nilai: {grade.title}</DialogTitle>
+                    <DialogDescription>
+                        Ubah nilai atau tandai sebagai remedial.
+                        {grade.is_remedial && <span className="block text-amber-600 mt-1 font-bold">Status: Remedial (Asli: {grade.original_score})</span>}
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Nilai Baru</Label>
+                        <Input 
+                            type="number" min="0" max="100" 
+                            value={data.score} 
+                            onChange={e => setData('score', e.target.value)} 
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox 
+                            id="remedial" 
+                            checked={data.is_remedial}
+                            onCheckedChange={(checked) => setData('is_remedial', checked as boolean)}
+                        />
+                        <Label htmlFor="remedial" className="text-sm font-normal cursor-pointer">
+                            Ini adalah nilai Remedial?
+                        </Label>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Catatan / Feedback</Label>
+                        <Input 
+                            value={data.feedback} 
+                            onChange={e => setData('feedback', e.target.value)} 
+                            placeholder="Opsional..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Batal</Button>
+                        <Button type="submit" disabled={processing}>Simpan Perubahan</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // --- UTILS ---
-function GradeBadge({ score }: { score: number }) {
+function GradeBadge({ score, isRemedial, original }: { score: number, isRemedial?: boolean, original?: number }) {
     let color = "bg-red-100 text-red-700"
     if (score >= 90) color = "bg-green-100 text-green-700"
     else if (score >= 75) color = "bg-blue-100 text-blue-700"
     else if (score >= 60) color = "bg-yellow-100 text-yellow-700"
 
+    // Jika remedial, warna kuning oranye biar mencolok
+    if (isRemedial) color = "bg-amber-100 text-amber-700 border-amber-300 border"
+
     return (
-        <Badge className={`${color} hover:${color} border-none shadow-none`}>
-            {score}
-        </Badge>
+        <div className="flex flex-col items-center">
+            <Badge className={`${color} hover:${color} shadow-none cursor-pointer w-10 justify-center`}>
+                {score}
+            </Badge>
+            {isRemedial && original !== undefined && (
+                <span className="text-[9px] text-muted-foreground line-through mt-0.5">{original}</span>
+            )}
+        </div>
     )
 }
