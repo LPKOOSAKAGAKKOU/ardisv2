@@ -8,6 +8,7 @@ class StudentProfile extends Model
 {
     // Menggunakan guarded kosong agar semua kolom yang Anda list tadi bisa masuk sekaligus
     protected $guarded = []; 
+    protected $appends = ['qr_code_value'];
 
     /**
      * Casting atribut agar otomatis menjadi tipe data yang sesuai.
@@ -50,5 +51,37 @@ class StudentProfile extends Model
     {
         // Karena di interview_details pakainya user_id, hubungkan ke User
         return $this->user->hasMany(InterviewDetail::class);
+    }
+
+    // ... di dalam class StudentProfile
+    public function classrooms() {
+        return $this->belongsToMany(Classroom::class, 'classroom_students')
+                    ->withPivot(['status', 'joined_at', 'left_at'])
+                    ->orderBy('pivot_joined_at', 'desc'); // Urutkan dari yang terbaru
+    }
+
+    // Cek apakah siswa sedang punya kelas aktif (untuk validasi)
+    public function hasActiveClass() {
+        return $this->classrooms()
+                    ->wherePivot('status', 'active')
+                    ->where('classrooms.status', 'active')
+                    ->exists();
+    }
+
+    // Relasi ke Nilai
+    public function grades() {
+        return $this->hasMany(ClassroomGrade::class);
+    }
+
+    // Relasi ke Absensi
+    public function attendances() {
+        return $this->hasMany(ClassroomAttendance::class);
+    }
+
+    public function getQrCodeValueAttribute()
+    {
+        // Kita gunakan hash_hmac dengan SHA256
+        // Key-nya menggunakan APP_KEY dari .env agar aman dan unik per aplikasi
+        return hash_hmac('sha256', $this->nik, config('app.key'));
     }
 }

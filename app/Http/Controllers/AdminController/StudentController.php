@@ -247,12 +247,71 @@ class StudentController extends Controller
 
     public function show($id)
     {
-        // Ambil data lengkap dengan semua relasi
-        $student = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
-            ->findOrFail($id);
+        // 1. Ambil data siswa dengan semua relasi + Filter Absen & Nilai per Kelas
+        $student = StudentProfile::with([
+            'user',         // Foto & Email
+            'educations',   // Pendidikan
+            'experiences',  // Pengalaman Kerja
+            'families',     // Keluarga
+            
+            // RELASI KELAS (Complex Query)
+            'classrooms' => function($query) use ($id) {
+                $query->with('teacher') // Ambil data Sensei
+                      
+                      // Ambil ABSENSI (Filter hanya punya siswa ini)
+                      ->with(['attendances' => function($q) use ($id) {
+                          $q->where('student_profile_id', $id)
+                            ->orderBy('date', 'desc');
+                      }])
+                      
+                      // Ambil NILAI (Filter hanya punya siswa ini)
+                      ->with(['grades' => function($q) use ($id) {
+                          $q->where('student_profile_id', $id)
+                            ->orderBy('created_at', 'desc');
+                      }])
+                      
+                      // Urutkan kelas dari yang paling baru dimasuki
+                      ->orderByPivot('joined_at', 'desc');
+            }
+        ])->findOrFail($id);
 
-        return Inertia::render('admin/student/Show', [
-            'student' => $student
+        // 2. Formatting Data untuk Frontend
+        // Kita rapikan strukturnya agar Frontend tinggal looping tanpa pusing logic
+        $classHistory = $student->classrooms->map(function ($class) {
+            
+            // Hitung statistik absen sederhana (Opsional, tapi berguna)
+            $totalAbsen = $class->attendances->count();
+            $hadir = $class->attendances->where('status', 'hadir')->count();
+            $persentaseKehadiran = $totalAbsen > 0 ? round(($hadir / $totalAbsen) * 100) : 0;
+
+            return [
+                // Info Dasar Kelas
+                'id'            => $class->id,
+                'name'          => $class->name,
+                'level'         => $class->level,
+                'status_class'  => $class->status, // Status kelas (active/finished)
+                
+                // Info Sensei
+                'teacher_name'  => $class->teacher ? $class->teacher->name : 'Tidak ada Guru',
+                'teacher_type'  => $class->teacher ? $class->teacher->type_label : '-',
+                
+                // Info Pivot (Status Siswa di Kelas)
+                'status_student'=> $class->pivot->status, // active, graduated, dropped
+                'joined_at'     => $class->pivot->joined_at,
+                'left_at'       => $class->pivot->left_at,
+                'notes'         => $class->pivot->notes,
+                
+                // DATA BARU: Absensi & Nilai
+                'attendance_summary' => "{$persentaseKehadiran}% ({$hadir}/{$totalAbsen})",
+                'attendances'   => $class->attendances, // Array list absen
+                'grades'        => $class->grades,      // Array list nilai
+            ];
+        });
+
+        // 3. Return ke Inertia
+        return Inertia::render('admin/students/Show', [
+            'student' => $student,
+            'classHistory' => $classHistory
         ]);
     }
 

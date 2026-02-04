@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminController\InterviewController;
 use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
+use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\StudentController\DashboardController;
 use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
@@ -125,12 +126,44 @@ Route::middleware([
     ->name('sensei.')
     ->group(function () {
 
+        // --- DASHBOARD ---
         Route::get('dashboard', fn () =>
             Inertia::render('sensei/dashboard')
         )->name('dashboard');
 
-        // Sensei juga bisa akses StudentController yang sama
+        // --- MANAJEMEN SISWA (Read Only / Shared) ---
         Route::resource('students', StudentController::class);
+
+        // --- MANAJEMEN KELAS (CORE SENSEI) ---
+        
+        // 1. CRUD Kelas (Create, Index, Show, etc)
+        // Ini menghandle function store() untuk membuat kelas baru
+        Route::resource('classrooms', ClassroomController::class);
+
+        // 2. Manage Siswa di dalam Kelas
+        Route::post('/classrooms/{id}/add-student', [ClassroomController::class, 'addStudent'])
+            ->name('classrooms.add-student');
+
+        Route::post('/classrooms/{id}/students/{studentId}/remove', [ClassroomController::class, 'removeStudent'])
+            ->name('classrooms.remove-student');
+
+        // 3. Absensi (Attendance)
+        // Manual / Batch Input
+        Route::post('/classrooms/{id}/attendance', [ClassroomController::class, 'storeAttendance'])
+            ->name('classrooms.attendance.store');
+        
+        // QR Code Scan (Single Input)
+        Route::post('/classrooms/{id}/attendance/qr', [ClassroomController::class, 'storeAttendanceQR'])
+            ->name('classrooms.attendance.qr');
+
+        // 4. Penilaian (Grades)
+        // Input Nilai
+        Route::post('/classrooms/{id}/grades', [ClassroomController::class, 'storeGrade'])
+            ->name('classrooms.grades.store');
+        
+        // Hapus Nilai
+        Route::delete('/classrooms/{id}/grades/{gradeId}', [ClassroomController::class, 'destroyGrade'])
+            ->name('classrooms.grades.destroy');
 
     });
 
