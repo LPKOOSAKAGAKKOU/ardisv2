@@ -232,8 +232,6 @@ class ClassroomController extends Controller
     {
         $request->validate([
             'date' => 'required|date',
-            // Kita terima array data absen agar bisa simpan satu kelas sekaligus
-            // Format: [{student_id: 1, status: 'hadir', note: ''}, ...]
             'attendances' => 'required|array',
             'attendances.*.student_id' => 'required|exists:student_profiles,id',
             'attendances.*.status' => 'required|in:hadir,sakit,izin,alpha,terlambat',
@@ -241,16 +239,17 @@ class ClassroomController extends Controller
         ]);
 
         $classroom = Classroom::findOrFail($classroomId);
+        
+        // Pastikan format tanggal konsisten Y-m-d
+        $dateOnly = \Carbon\Carbon::parse($request->date)->format('Y-m-d');
 
-        DB::transaction(function() use ($request, $classroom) {
+        DB::transaction(function() use ($request, $classroom, $dateOnly) {
             foreach ($request->attendances as $data) {
-                // Gunakan updateOrCreate agar jika data tanggal tsb sudah ada, 
-                // datanya di-update (koreksi), bukan error duplicate.
                 ClassroomAttendance::updateOrCreate(
                     [
                         'classroom_id' => $classroom->id,
                         'student_profile_id' => $data['student_id'],
-                        'date' => $request->date, // Unique Key gabungan
+                        'date' => $dateOnly, // Gunakan tanggal yang sudah diformat
                     ],
                     [
                         'status' => $data['status'],
@@ -259,13 +258,20 @@ class ClassroomController extends Controller
                 );
             }
 
-            // Log activity (sekali saja per batch)
-            ClassroomLog::create([
-                'classroom_id' => $classroom->id,
-                'user_id' => Auth::id(),
-                'action' => 'attendance_filled',
-                'description' => "Mengisi absensi untuk tanggal {$request->date}"
-            ]);
+            // Cek log harian agar tidak spam log
+            $logExists = ClassroomLog::where('classroom_id', $classroom->id)
+                ->where('action', 'attendance_filled')
+                ->where('description', 'like', "%{$dateOnly}%")
+                ->exists();
+
+            if (!$logExists) {
+                ClassroomLog::create([
+                    'classroom_id' => $classroom->id,
+                    'user_id' => Auth::id(),
+                    'action' => 'attendance_filled',
+                    'description' => "Mengisi absensi untuk tanggal {$dateOnly}"
+                ]);
+            }
         });
 
         return back()->with('success', 'Data absensi berhasil disimpan.');
@@ -407,14 +413,14 @@ class ClassroomController extends Controller
         $request->validate([
             'mode' => 'required|in:day,month',
             'date' => 'required_if:mode,day|date',
-            'month' => 'required_if:mode,month|date_format:Y-m', // Format: 2026-02
+            'month' => 'required_if:mode,month|date_format:Y-m',
         ]);
 
         $query = ClassroomAttendance::where('classroom_id', $classroomId);
 
         if ($request->mode === 'day') {
-            // Ambil data spesifik 1 hari
-            $data = $query->where('date', $request->date)->get();
+            // PENTING: Gunakan whereDate agar jam diabaikan
+            $data = $query->whereDate('date', $request->date)->get();
         } else {
             // Ambil data 1 bulan penuh
             $parts = explode('-', $request->month); // [2026, 02]

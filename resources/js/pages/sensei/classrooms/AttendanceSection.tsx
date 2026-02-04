@@ -96,9 +96,13 @@ export default function AttendanceSection({ classroom }: Props) {
 
         const fetchData = async () => {
             setIsLoadingData(true);
+            // Reset dulu biar UI tidak membingungkan
+            if (isMounted) {
+                setFetchedData([]);
+            }
+
             try {
-                // Pastikan route 'sensei.classrooms.attendance.data' sudah dibuat di Laravel
-                // Jika belum, buat route GET yang me-return JSON data absensi
+                // Pastikan nama route ini benar di web.php: 'sensei.classrooms.attendance.data'
                 const params: any = { mode: viewMode };
                 if (viewMode === 'day') params.date = dateString;
                 else params.month = monthString;
@@ -106,15 +110,16 @@ export default function AttendanceSection({ classroom }: Props) {
                 const response = await axios.get(route('sensei.classrooms.attendance.data', classroom.id), { params });
 
                 if (isMounted) {
-                    setFetchedData(response.data);
+                    const records = response.data;
+                    setFetchedData(records);
                     
-                    // Logic Auto-Switch Mode
+                    // Logic Auto-Switch Mode Harian
                     if (viewMode === 'day') {
-                        if (response.data.length > 0) {
-                            // Data ada -> Mode Laporan
+                        if (records.length > 0) {
+                            // Data ada -> Mode Laporan (Read Only)
                             setIsEditing(false);
                         } else {
-                            // Data kosong -> Mode Input
+                            // Data kosong -> Mode Input (Form)
                             resetFormDefault();
                             setIsEditing(true);
                         }
@@ -135,7 +140,7 @@ export default function AttendanceSection({ classroom }: Props) {
         fetchData();
 
         return () => { isMounted = false; };
-    }, [currentDate, viewMode, classroom.id]);
+    }, [currentDate, viewMode, classroom.id]); // Dependency Array penting!
 
     // --- FORM HELPERS ---
     const resetFormDefault = () => {
@@ -180,7 +185,7 @@ export default function AttendanceSection({ classroom }: Props) {
             note: manualData[parseInt(studentId)].note
         }))
 
-        // Gunakan Router Inertia untuk Post, tapi handle onSuccess manual untuk update state lokal
+        // Gunakan Router Inertia untuk Post
         router.post(route('sensei.classrooms.attendance.store', classroom.id), {
             date: dateString,
             attendances: attendancesArray
@@ -188,7 +193,7 @@ export default function AttendanceSection({ classroom }: Props) {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => {
-                // Update Local Data agar UI berubah jadi Laporan tanpa fetch ulang
+                // Update Local Data agar UI berubah jadi Laporan tanpa fetch ulang (Optimistic UI)
                 const newData = attendancesArray.map(a => ({
                     student_profile_id: a.student_id,
                     status: a.status,
@@ -196,7 +201,7 @@ export default function AttendanceSection({ classroom }: Props) {
                     date: dateString
                 }));
                 setFetchedData(newData as AttendanceRecord[]);
-                setIsEditing(false);
+                setIsEditing(false); // Kunci form jadi read-only
             }
         })
     }
@@ -252,8 +257,16 @@ export default function AttendanceSection({ classroom }: Props) {
             })
             setScanResult({ type: 'success', message: `✅ ${response.data.message}` })
             
-            // Optional: Update data lokal realtime jika mode laporan sedang aktif
-            // Tapi karena QR biasanya dipake saat mode Edit/Input, fetch ulang manual atau biarkan user refresh.
+            // Opsional: Jika mode input aktif, kita bisa update manualData juga agar radio button berubah
+            if (response.data.student) {
+                // Cari student ID berdasarkan nama (karena response QR cuma kasih nama)
+                // Idealnya response kasih ID, tapi kita pakai logic sederhana dulu
+                const student = classroom.students.find(s => s.full_name === response.data.student.name);
+                if (student) {
+                    handleManualChange(student.id, 'status', 'hadir');
+                }
+            }
+
         } catch (error: any) {
             setScanResult({ type: 'error', message: `❌ ${error.response?.data?.message || 'Invalid QR.'}` })
         } finally {
@@ -361,7 +374,10 @@ export default function AttendanceSection({ classroom }: Props) {
                         </span>
                     ) : (
                         <span className="text-xs text-muted-foreground">
-                            {viewMode === 'day' ? (fetchedData.length > 0 ? 'Data Tersedia' : 'Belum Absen') : 'Rekap Bulanan'}
+                            {viewMode === 'day' 
+                                ? (fetchedData.length > 0 ? 'Data Tersedia' : 'Belum Absen')
+                                : 'Rekap Bulanan'
+                            }
                         </span>
                     )}
                 </div>
@@ -410,7 +426,8 @@ export default function AttendanceSection({ classroom }: Props) {
                                             </td>
                                             {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
                                                 const dStr = format(day, 'yyyy-MM-dd');
-                                                const record = records.find(r => r.date === dStr);
+                                                // Pastikan format date dari DB konsisten (YYYY-MM-DD) agar match
+                                                const record = records.find(r => r.date.split(' ')[0] === dStr);
                                                 return (
                                                     <td key={day.toString()} className="p-1 text-center border-r last:border-0 dark:border-zinc-800">
                                                         {record ? getMiniBadge(record.status) : <span className="text-zinc-200 text-[9px]">•</span>}
