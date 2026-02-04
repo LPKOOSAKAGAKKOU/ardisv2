@@ -397,4 +397,33 @@ class ClassroomController extends Controller
 
         return back()->with('success', 'Data nilai berhasil dihapus.');
     }
+
+    /**
+     * 7. GET ATTENDANCE DATA (JSON)
+     * Digunakan untuk fetch data absensi harian atau bulanan via Axios.
+     */
+    public function getAttendanceData(Request $request, $classroomId)
+    {
+        $request->validate([
+            'mode' => 'required|in:day,month',
+            'date' => 'required_if:mode,day|date',
+            'month' => 'required_if:mode,month|date_format:Y-m', // Format: 2026-02
+        ]);
+
+        $query = ClassroomAttendance::where('classroom_id', $classroomId);
+
+        if ($request->mode === 'day') {
+            // Ambil data spesifik 1 hari
+            $data = $query->where('date', $request->date)->get();
+        } else {
+            // Ambil data 1 bulan penuh
+            $parts = explode('-', $request->month); // [2026, 02]
+            $data = $query->whereYear('date', $parts[0])
+                          ->whereMonth('date', $parts[1])
+                          ->orderBy('date', 'asc')
+                          ->get();
+        }
+
+        return response()->json($data);
+    }
 }

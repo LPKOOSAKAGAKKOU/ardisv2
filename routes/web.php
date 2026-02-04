@@ -165,6 +165,9 @@ Route::middleware([
         Route::delete('/classrooms/{id}/grades/{gradeId}', [ClassroomController::class, 'destroyGrade'])
             ->name('classrooms.grades.destroy');
 
+        Route::get('/classrooms/{id}/attendance/data', [ClassroomController::class, 'getAttendanceData'])
+            ->name('classrooms.attendance.data');
+
     });
 
 /*
