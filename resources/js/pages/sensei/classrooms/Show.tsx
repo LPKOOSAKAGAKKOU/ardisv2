@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import React, { useState, useEffect } from 'react'
 import { route } from 'ziggy-js'
+import AttendanceSection from './AttendanceSection'
 
 // --- TIPE DATA ---
 interface Student {
@@ -171,13 +172,9 @@ export default function ClassroomShow({ classroom, availableStudents }: Props) {
                         </div>
                     )}
 
-                    {/* --- TAB ABSENSI (PLACEHOLDER) --- */}
+                    {/* --- TAB ABSENSI --- */}
                     {activeTab === 'attendance' && (
-                        <div className="flex flex-col items-center justify-center py-12 border rounded-xl border-dashed">
-                            <CalendarCheck className="size-10 text-muted-foreground mb-4" />
-                            <h3 className="font-semibold">Modul Absensi</h3>
-                            <p className="text-sm text-muted-foreground mb-4">Fitur Scan QR dan Input Manual akan muncul di sini.</p>
-                        </div>
+                        <AttendanceSection classroom={classroom} />
                     )}
 
                     {/* --- TAB NILAI (PLACEHOLDER) --- */}
