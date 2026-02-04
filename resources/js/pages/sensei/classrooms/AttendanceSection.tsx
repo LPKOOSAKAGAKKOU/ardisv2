@@ -1,24 +1,28 @@
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { router } from '@inertiajs/react' // <--- Ganti useForm jadi router
+import { router } from '@inertiajs/react'
 import { format } from 'date-fns' 
 import { id as idLocale } from 'date-fns/locale'
 import { 
     CalendarIcon, 
     CheckCircle2, 
+    Camera,
     ListChecks, 
     QrCode, 
     Save, 
     ScanLine, 
-    XCircle 
+    XCircle,
+    StopCircle
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { route } from 'ziggy-js'
 import axios from 'axios'
+import { Html5QrcodeScanner } from 'html5-qrcode'
 
 interface Student {
     id: number
@@ -37,7 +41,7 @@ export default function AttendanceSection({ classroom }: Props) {
     // State Tanggal
     const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0])
     
-    // State Loading Manual (Pengganti processing dari useForm)
+    // State Loading
     const [processing, setProcessing] = useState(false)
 
     // --- LOGIC MANUAL ATTENDANCE ---
@@ -62,14 +66,12 @@ export default function AttendanceSection({ classroom }: Props) {
     const submitManual = (e: React.FormEvent) => {
         e.preventDefault()
         
-        // Transform object ke array
         const attendancesArray = Object.keys(manualData).map(studentId => ({
             student_id: parseInt(studentId),
             status: manualData[parseInt(studentId)].status,
             note: manualData[parseInt(studentId)].note
         }))
 
-        // PERBAIKAN: Gunakan router.post manual
         router.post(route('sensei.classrooms.attendance.store', classroom.id), {
             date: date,
             attendances: attendancesArray
@@ -77,28 +79,79 @@ export default function AttendanceSection({ classroom }: Props) {
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => {
-                // Optional: Beri notifikasi sukses
                 // alert("Absensi berhasil disimpan!") 
             }
         })
     }
 
-    // --- LOGIC QR SCANNER ---
-    const [qrInput, setQrInput] = useState('')
+    // --- LOGIC QR CAMERA SCANNER ---
+    const [isCameraOpen, setIsCameraOpen] = useState(false)
     const [scanResult, setScanResult] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-    const [isScanning, setIsScanning] = useState(false)
+    const [qrInput, setQrInput] = useState('') // Tetap simpan ini untuk fallback manual input
+    const [isScanningApi, setIsScanningApi] = useState(false) // Loading state saat kirim ke API
+    
+    // Ref untuk mencegah double scan (Cooldown system)
+    const lastScannedRef = useRef<string | null>(null)
+    const scannerRef = useRef<Html5QrcodeScanner | null>(null)
 
-    const handleQrSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!qrInput) return
+    // Effect untuk Handle Kamera
+    useEffect(() => {
+        if (isCameraOpen) {
+            // Hapus instance lama jika ada (cleanup)
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(console.error)
+            }
 
-        setIsScanning(true)
-        setScanResult(null)
+            // Inisialisasi Scanner Baru
+            const scanner = new Html5QrcodeScanner(
+                "reader", 
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                    showTorchButtonIfSupported: true
+                },
+                /* verbose= */ false
+            )
+            
+            scannerRef.current = scanner
+
+            scanner.render(
+                (decodedText) => {
+                    // Success Callback
+                    handleCameraScan(decodedText)
+                }, 
+                (errorMessage) => {
+                    // Error/Waiting Callback (Biasanya diabaikan agar console tidak penuh)
+                }
+            )
+        } else {
+            // Jika kamera ditutup, bersihkan scanner
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(console.error)
+                scannerRef.current = null
+            }
+        }
+
+        // Cleanup saat unmount
+        return () => {
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(console.error)
+            }
+        }
+    }, [isCameraOpen])
+
+    // Fungsi Utama Proses Scan (Dipakai Kamera & Input Manual)
+    const processScan = async (code: string) => {
+        if (isScanningApi) return // Cegah spam request
+
+        setIsScanningApi(true)
+        setScanResult(null) // Reset pesan
 
         try {
             const response = await axios.post(route('sensei.classrooms.attendance.qr', classroom.id), {
                 date: date,
-                qr_code: qrInput,
+                qr_code: code,
                 status: 'hadir'
             })
 
@@ -106,18 +159,45 @@ export default function AttendanceSection({ classroom }: Props) {
                 type: 'success',
                 message: `✅ ${response.data.message}`
             })
-            setQrInput('') 
             
+            // Audio Feedback (Opsional)
+            // const audio = new Audio('/sounds/success.mp3'); audio.play();
+
         } catch (error: any) {
             setScanResult({
                 type: 'error',
-                message: `❌ ${error.response?.data?.message || 'QR Code tidak valid.'}`
+                message: `❌ ${error.response?.data?.message || 'QR Code tidak valid/Siswa tidak ditemukan.'}`
             })
-            setQrInput('') 
+            // const audio = new Audio('/sounds/error.mp3'); audio.play();
         } finally {
-            setIsScanning(false)
-            document.getElementById('qr-input-field')?.focus()
+            setIsScanningApi(false)
+            setQrInput('') // Clear input manual jika pakai itu
+            
+            // Fokus balik ke input manual jika kamera mati, biar flow enak
+            if (!isCameraOpen) {
+                document.getElementById('qr-input-field')?.focus()
+            }
         }
+    }
+
+    // Wrapper Khusus Kamera dengan Cooldown
+    const handleCameraScan = (decodedText: string) => {
+        // Jika kode sama dengan yang barusan discan dalam 3 detik terakhir, abaikan
+        if (lastScannedRef.current === decodedText) return
+
+        // Set cooldown
+        lastScannedRef.current = decodedText
+        setTimeout(() => { lastScannedRef.current = null }, 3000) // Reset cooldown setelah 3 detik
+
+        // Proses
+        processScan(decodedText)
+    }
+
+    // Wrapper Khusus Input Manual (Enter)
+    const handleManualSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!qrInput) return
+        processScan(qrInput)
     }
 
     return (
@@ -152,7 +232,7 @@ export default function AttendanceSection({ classroom }: Props) {
                     <TabsTrigger value="qr" className="gap-2"><QrCode size={16}/> Scan QR Code</TabsTrigger>
                 </TabsList>
 
-                {/* CONTENT MANUAL */}
+                {/* --- TAB MANUAL --- */}
                 <TabsContent value="manual" className="mt-4">
                     <form onSubmit={submitManual}>
                         <div className="rounded-xl border bg-white shadow-sm overflow-hidden dark:bg-zinc-950">
@@ -211,60 +291,106 @@ export default function AttendanceSection({ classroom }: Props) {
                     </form>
                 </TabsContent>
 
-                {/* CONTENT QR (Sama seperti sebelumnya) */}
+                {/* --- TAB QR SCANNER (CAMERA ENABLED) --- */}
                 <TabsContent value="qr" className="mt-4">
                     <div className="grid gap-6 md:grid-cols-2">
-                        <Card className="overflow-hidden border-2 border-dashed">
-                            <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
-                                <div className="mb-4 rounded-full bg-blue-50 p-6 dark:bg-blue-900/20">
-                                    <ScanLine className="size-12 text-blue-500 animate-pulse" />
-                                </div>
-                                <h3 className="text-lg font-bold">Scanner Mode</h3>
-                                <p className="text-sm text-muted-foreground mb-6">
-                                    Pastikan kursor aktif di kolom input di bawah, lalu scan kartu siswa.
-                                </p>
+                        {/* Scanner Area */}
+                        <Card className="overflow-hidden border-2 border-dashed shadow-sm">
+                            <CardContent className="flex flex-col items-center justify-center p-6 text-center min-h-[400px]">
+                                
+                                {/* A. Camera View Container */}
+                                {isCameraOpen ? (
+                                    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-zinc-200 bg-black shadow-inner">
+                                        <div id="reader" className="w-full h-full min-h-[300px]" />
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                                        <div className="mb-4 rounded-full bg-blue-50 p-6 dark:bg-blue-900/20">
+                                            <ScanLine className="size-12 text-blue-500" />
+                                        </div>
+                                        <p className="text-sm font-medium">Kamera tidak aktif</p>
+                                    </div>
+                                )}
 
-                                <form onSubmit={handleQrSubmit} className="w-full max-w-sm relative">
-                                    <Input
-                                        id="qr-input-field"
-                                        value={qrInput}
-                                        onChange={(e) => setQrInput(e.target.value)}
-                                        placeholder="Klik & Scan QR..."
-                                        className="h-12 text-center text-lg tracking-widest font-mono"
-                                        autoFocus
-                                        autoComplete="off"
-                                        disabled={isScanning}
-                                    />
-                                    {isScanning && (
-                                        <div className="absolute right-3 top-3">
-                                            <div className="size-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                {/* B. Camera Controls */}
+                                <div className="mt-6 flex flex-col gap-3 w-full max-w-xs">
+                                    <Button 
+                                        variant={isCameraOpen ? "destructive" : "default"}
+                                        onClick={() => setIsCameraOpen(!isCameraOpen)}
+                                        className="w-full"
+                                    >
+                                        {isCameraOpen ? (
+                                            <><StopCircle className="mr-2 size-4" /> Matikan Kamera</>
+                                        ) : (
+                                            <><Camera className="mr-2 size-4" /> Buka Kamera HP</>
+                                        )}
+                                    </Button>
+
+                                    {/* C. Fallback Input Manual (Hidden jika kamera nyala biar bersih) */}
+                                    {!isCameraOpen && (
+                                        <div className="relative mt-4">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <span className="w-full border-t" />
+                                            </div>
+                                            <div className="relative flex justify-center text-xs uppercase">
+                                                <span className="bg-white px-2 text-muted-foreground dark:bg-zinc-950">Atau pakai scanner USB</span>
+                                            </div>
                                         </div>
                                     )}
-                                </form>
-                                <p className="mt-4 text-xs text-muted-foreground">
-                                    Tips: Gunakan barcode scanner USB.
-                                </p>
+
+                                    {!isCameraOpen && (
+                                        <form onSubmit={handleManualSubmit} className="mt-4 flex gap-2">
+                                            <Input
+                                                id="qr-input-field"
+                                                value={qrInput}
+                                                onChange={(e) => setQrInput(e.target.value)}
+                                                placeholder="Klik di sini & Scan..."
+                                                className="text-center font-mono"
+                                                autoComplete="off"
+                                            />
+                                        </form>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card className={scanResult?.type === 'success' ? 'bg-green-50 border-green-200 dark:bg-green-900/10' : scanResult?.type === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-900/10' : ''}>
+                        {/* Result Area */}
+                        <Card className={`flex flex-col justify-center border-l-4 transition-colors ${
+                            scanResult?.type === 'success' 
+                                ? 'border-l-green-500 bg-green-50/50 dark:bg-green-900/10' 
+                                : scanResult?.type === 'error' 
+                                    ? 'border-l-red-500 bg-red-50/50 dark:bg-red-900/10' 
+                                    : 'border-l-zinc-300'
+                        }`}>
                             <CardContent className="flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
-                                {scanResult ? (
+                                {isScanningApi ? (
+                                    <div className="flex flex-col items-center animate-pulse">
+                                        <div className="size-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                                        <p className="text-muted-foreground font-medium">Memproses data...</p>
+                                    </div>
+                                ) : scanResult ? (
                                     <>
                                         {scanResult.type === 'success' ? (
-                                            <CheckCircle2 className="size-16 text-green-600 mb-4" />
+                                            <CheckCircle2 className="size-20 text-green-600 mb-6 drop-shadow-sm" />
                                         ) : (
-                                            <XCircle className="size-16 text-red-600 mb-4" />
+                                            <XCircle className="size-20 text-red-600 mb-6 drop-shadow-sm" />
                                         )}
-                                        <h3 className="text-xl font-bold">
-                                            {scanResult.type === 'success' ? 'Scan Berhasil!' : 'Scan Gagal'}
+                                        <h3 className="text-2xl font-bold tracking-tight">
+                                            {scanResult.type === 'success' ? 'Scan Berhasil!' : 'Gagal'}
                                         </h3>
-                                        <p className="mt-2 text-lg font-medium">{scanResult.message}</p>
+                                        <p className="mt-2 text-lg font-medium text-foreground/80">{scanResult.message}</p>
+                                        
+                                        {scanResult.type === 'success' && (
+                                            <p className="mt-4 text-xs text-muted-foreground bg-white/50 px-3 py-1 rounded-full border">
+                                                Siap scan siswa berikutnya...
+                                            </p>
+                                        )}
                                     </>
                                 ) : (
-                                    <div className="opacity-50 flex flex-col items-center">
-                                        <QrCode className="size-16 mb-4" />
-                                        <p>Hasil scan akan muncul di sini.</p>
+                                    <div className="opacity-40 flex flex-col items-center">
+                                        <QrCode className="size-24 mb-4" />
+                                        <h4 className="text-lg font-semibold">Menunggu Scan...</h4>
+                                        <p className="text-sm">Arahkan kamera ke kartu QR siswa</p>
                                     </div>
                                 )}
                             </CardContent>
