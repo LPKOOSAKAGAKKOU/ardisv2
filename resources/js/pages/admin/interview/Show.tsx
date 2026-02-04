@@ -41,6 +41,7 @@ import { route } from 'ziggy-js';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import CvPreviewModal from '@/components/CvPreviewModal'; // <-- Import Modal Baru
 
 // --- DND-KIT ---
 import {
@@ -112,7 +113,7 @@ const INTERVIEW_TOKUTEI_REPORTS = [
 
 
 // --- KOMPONEN BARIS / CARD YANG BISA DI DRAG ---
-function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs }: any) {
+function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs, onPreviewCV }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
 
     const style = {
@@ -170,15 +171,25 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
 
             <td className="px-4 py-4 w-64 text-right">
                 <div className="flex items-center justify-end gap-1">
-                    <a href={route('cv.generate', { userId: detail.user_id, interviewId: interviewId })} target="_blank">
-                        <Button variant="outline" size="sm" className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5">
-                            <FileSpreadsheet size={14} /> CV
+                    {/* GANTI LINK DOWNLOAD DENGAN BUTTON PREVIEW */}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 border-emerald-600 text-emerald-600 hover:bg-emerald-50 gap-1.5"
+                        onClick={() => onPreviewCV(detail.user_id, detail.user?.student_profile?.full_name)}
+                    >
+                        <FileSpreadsheet size={14} /> CV
+                    </Button>
+                    <Button onClick={() => onUpdateModal(detail)} variant="secondary" size="sm" className="h-8">Status</Button>
+                    <a 
+                        href={`/admin/students/${detail.user?.student_profile?.id}`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                    >
+                        <Button variant="ghost" size="sm" className="h-8 text-blue-600 font-bold">
+                            Profil
                         </Button>
                     </a>
-                    <Button onClick={() => onUpdateModal(detail)} variant="secondary" size="sm" className="h-8">Status</Button>
-                    <Link href={`/admin/students/${detail.user?.student_profile?.id}`}>
-                        <Button variant="ghost" size="sm" className="h-8 text-blue-600 font-bold">Profil</Button>
-                    </Link>
                     <Button onClick={() => onRemove(detail.id)} variant="ghost" size="sm" className="h-8 text-neutral-300 hover:text-rose-600">
                         <Trash2 size={16} />
                     </Button>
@@ -201,6 +212,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const [hasChanges, setHasChanges] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+
+    const [cvModalOpen, setCvModalOpen] = useState(false);
+    const [selectedCvUser, setSelectedCvUser] = useState<{id: number, name: string} | null>(null);
     
     // State Baru untuk Kelola Dokumen Admin
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -258,6 +272,11 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
             },
             preserveScroll: true
         });
+    };
+
+    const handleOpenCvPreview = (userId: number, userName: string) => {
+        setSelectedCvUser({ id: userId, name: userName });
+        setCvModalOpen(true);
     };
 
     useEffect(() => {
@@ -1191,6 +1210,14 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                     )}
                 </DialogContent>
             </Dialog>
+            {/* TAMBAHKAN MODAL PREVIEW CV DISINI */}
+            <CvPreviewModal 
+                isOpen={cvModalOpen}
+                onClose={() => setCvModalOpen(false)}
+                userId={selectedCvUser?.id || null}
+                interviewId={interview.id}
+                userName={selectedCvUser?.name || 'Siswa'}
+            />
         </AppLayout>
     );
 }

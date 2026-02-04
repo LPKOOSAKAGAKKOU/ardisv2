@@ -222,6 +222,24 @@ class CvGenerator extends Controller
         $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
         $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
+        // --- CEK APAKAH INI REQUEST PREVIEW? ---
+        if ($request->has('preview') && $request->preview == 'true') {
+            $writer = IOFactory::createWriter($spreadsheet, 'Html');
+            
+            // Konfigurasi agar CSS Excel masuk ke HTML
+            $writer->setEmbedImages(true); // Agar foto masuk
+            
+            ob_start();
+            $writer->save('php://output');
+            $htmlContent = ob_get_contents();
+            ob_end_clean();
+
+            return response()->json([
+                'status' => 'success',
+                'html' => $htmlContent
+            ]);
+        }
+
         // --- DOWNLOAD ---
         $filename = "CV_" . str_replace(' ', '_', $profile->full_name) . ".xlsx";
         if (ob_get_contents()) ob_end_clean();
