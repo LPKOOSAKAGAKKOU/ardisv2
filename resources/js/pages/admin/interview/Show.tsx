@@ -117,10 +117,11 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
+        transform: transform ? CSS.Transform.toString(transform) : undefined, 
         transition,
         zIndex: isDragging ? 50 : 'auto',
         position: 'relative' as const,
+        touchAction: 'none' // Penting untuk mobile drag
     };
 
     return (
