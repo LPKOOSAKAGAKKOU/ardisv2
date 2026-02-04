@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminController\InterviewController;
 use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
+use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
 use App\Http\Controllers\SenseiController\SenseiInterviewController;
@@ -129,9 +130,7 @@ Route::middleware([
     ->group(function () {
 
         // --- DASHBOARD ---
-        Route::get('dashboard', fn () =>
-            Inertia::render('sensei/dashboard')
-        )->name('dashboard');
+        Route::get('dashboard', [SenseiDashboardController::class, 'index'])->name('dashboard');
 
         // --- MANAJEMEN DOKUMEN SISWA ---
         Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])->name('documents.request');
