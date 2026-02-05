@@ -337,9 +337,9 @@ class InterviewController extends Controller
 
         // 3. AMBIL DATA MASTER UNTUK DROPDOWN FORM (INI YANG BARU)
         // Data ini diperlukan agar dropdown di StudentForm (Modal) berfungsi
-        $provinces = Province::select('id', 'name')->get(); // Sesuaikan nama kolom tabel Anda
-        $jobSectors = JobSector::select('id', 'name', 'code')->get();
-        $majors = Major::select('id', 'name')->get();
+        $provinces = Province::all(); // Contoh tabel provinsi
+        $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
+        $majors = Major::all(); // Contoh tabel jurusan
 
         // 4. Return ke Inertia
         return Inertia::render('admin/interview/Show', [
