@@ -23,9 +23,11 @@ interface Props {
     provinces: { id: number; name: string }[];
     jobSectors: { id: number; name: string; code: string }[];
     majors: { id: number; name: string }[]; // Tambahkan baris ini
+    isModal?: boolean; 
+    onSuccess?: () => void;
 }
 
-export default function StudentForm({ student, provinces, jobSectors, majors }: Props) {
+export default function StudentForm({ student, provinces, jobSectors, majors, isModal = false, onSuccess }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
     const validateStep = (currentStep: number) => {
@@ -118,24 +120,27 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Pastikan menggunakan fungsi route() agar otomatis terhubung ke Laravel
-        if (isEdit) {
-            // Rute otomatis: admin.students.update
-            put(route('admin.students.update', student.id), {
-                preserveScroll: true,
-            });
-        } else {
-            // Rute otomatis: admin.students.store
-            post(route('admin.students.store'), {
-                preserveScroll: true,
-                onError: (errors) => {
-                    // JIKA DIAM SAJA, CEK LOG INI DI CONSOLE (F12)
-                    console.error("Gagal Simpan. Cek validasi:", errors);
-                    alert("Gagal menyimpan. Pastikan NIK/Email belum terdaftar.");
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                // JIKA MODAL: Panggil callback onSuccess untuk menutup modal
+                if (isModal && onSuccess) {
+                    onSuccess();
                 }
-            });
+            },
+            onError: (err: any) => {
+                console.error("Gagal Simpan:", err);
+                alert("Gagal menyimpan. Cek kembali isian form.");
+            }
+        };
+
+        if (isEdit) {
+            put(route('admin.students.update', student.id), options);
+        } else {
+            post(route('admin.students.store'), options);
         }
     };
+
     const addEducation = () => {
         setData('educations', [...data.educations, { level: 'SMA/SMK', school_name: '', school_type: 'Negeri', major: '', entry_date: '', graduation_date: '' }]);
     };
@@ -154,12 +159,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
         setData(field, updated);
     };
 
-    return (
-        <AppLayout breadcrumbs={[{ title: 'Data Siswa', href: '/admin/students' }, { title: isEdit ? 'Edit' : 'Tambah', href: '#' }]}>
-            <Head title={isEdit ? 'Edit Siswa' : 'Siswa Baru'} />
-            
-            <div className="max-w-7xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
-                
+    const FormContent = (
+        <div className={isModal ? "p-1" : "max-w-7xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8"}>                
                 {/* Header Section */}
                 <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
                     <div>
@@ -999,7 +1000,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                     </div>
 
                     {/* RIGHT SIDE: SIDEBAR SUMMARY */}
-                    <div className="lg:col-span-4 relative">
+                    <div className={`${isModal ? 'hidden' : 'lg:col-span-4 relative'}`}>
                         <div className="sticky top-4 sm:top-8 space-y-4 sm:space-y-6">
                             <Card className="border-primary/20 bg-primary/5 shadow-none overflow-hidden rounded-2xl">
                                 {/* Header Ringkasan */}
@@ -1059,6 +1060,19 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
 
                 </form>
             </div>
+    );
+
+    // --- RENDER LOGIC ---
+    // Jika isModal = true, render konten saja.
+    // Jika isModal = false, bungkus dengan AppLayout (Halaman Penuh)
+    if (isModal) {
+        return FormContent;
+    }
+
+    return (
+        <AppLayout breadcrumbs={[{ title: 'Data Siswa', href: '/admin/students' }, { title: isEdit ? 'Edit' : 'Tambah', href: '#' }]}>
+            <Head title={isEdit ? 'Edit Siswa' : 'Siswa Baru'} />
+            {FormContent}           
         </AppLayout>
     );
 }

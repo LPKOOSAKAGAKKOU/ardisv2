@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import StudentForm from '@/pages/admin/student/StudentForm';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { 
     FileText, Upload, Users, CheckCircle, XCircle, 
@@ -6,7 +7,7 @@ import {
     ExternalLink, Download, ArrowLeft, Info, Eye,
     UserPlus, Trash2, Hash, GripVertical, Save,
     FileSpreadsheet, MoreVertical, ChevronRight,
-    Loader2, UploadCloud, AlertTriangle, CheckCircle2, BadgeCheck
+    Loader2, UploadCloud, AlertTriangle, CheckCircle2, BadgeCheck, Edit
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,10 @@ import { CSS } from '@dnd-kit/utilities';
 interface Props {
     interview: any;
     availableStudents?: any[];
+    // Tambahan untuk form edit:
+    provinces?: any[];
+    jobSectors?: any[];
+    majors?: any[];
 }
 
 const GINOU_DOCS = [
@@ -113,7 +118,7 @@ const INTERVIEW_TOKUTEI_REPORTS = [
 
 
 // --- KOMPONEN BARIS / CARD YANG BISA DI DRAG ---
-function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs, onPreviewCV }: any) {
+function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onManageDocs, onPreviewCV, onEditStudent }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: detail.id });
 
     const style = {
@@ -181,6 +186,15 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
                     >
                         <FileSpreadsheet size={14} /> CV
                     </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                        onClick={onEditStudent} 
+                        title="Edit Data Siswa"
+                    >
+                        <Edit size={16} />
+                    </Button>
                     <Button onClick={() => onUpdateModal(detail)} variant="secondary" size="sm" className="h-8">Status</Button>
                     <a 
                         href={`/admin/students/${detail.user?.student_profile?.id}`}
@@ -216,6 +230,9 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
 
     const [cvModalOpen, setCvModalOpen] = useState(false);
     const [selectedCvUser, setSelectedCvUser] = useState<{id: number, name: string} | null>(null);
+
+    const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+    const [studentToEdit, setStudentToEdit] = useState<any>(null);
     
     // State Baru untuk Kelola Dokumen Admin
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -256,6 +273,11 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     const passedStudents = useMemo(() => {
         return localDetails.filter((d: any) => d.result === 'passed');
     }, [localDetails]); 
+
+    const handleEditStudent = (studentProfile: any, user: any) => {
+        setStudentToEdit({ ...studentProfile, user: user });
+        setIsEditStudentOpen(true);
+    };
 
     const handleUpdateSchedule = (e: React.FormEvent) => {
         e.preventDefault();
@@ -753,6 +775,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                                     interviewId={interview.id}
                                                     onManageDocs={handleManageDocs}
                                                     onPreviewCV={onPreviewCV} // <--- TAMBAHKAN BARIS INI
+                                                    onEditStudent={() => handleEditStudent(detail.user?.student_profile, detail.user)}
                                                 />
                                             )) : (
                                                 <tr>
@@ -1209,6 +1232,29 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
                                 </Button>
                             </div>
                         </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
+                <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background">
+                    <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-20">
+                        <DialogTitle>Edit Profil Siswa</DialogTitle>
+                    </DialogHeader>
+                    
+                    {studentToEdit && (
+                        <StudentForm 
+                            student={studentToEdit}
+                            provinces={provinces}
+                            jobSectors={jobSectors}
+                            majors={majors}
+                            isModal={true} // <-- KUNCINYA DISINI
+                            onSuccess={() => {
+                                setIsEditStudentOpen(false);
+                                // Optional: refresh data halaman ini jika perlu
+                                // router.reload({ only: ['interview'] });
+                            }}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

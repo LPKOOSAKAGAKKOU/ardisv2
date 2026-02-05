@@ -7,6 +7,9 @@ use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Models\Company;
 use App\Models\AcceptingOrganization;
+use App\Models\Province;   // <-- Pastikan Model di-import
+use App\Models\JobSector;  // <-- Pastikan Model di-import
+use App\Models\Major;      // <-- Pastikan Model di-import
 use App\Services\YunervaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -313,26 +316,38 @@ class InterviewController extends Controller
      */
     public function show($id)
     {
+        // 1. Ambil Data Interview & Relasi
         $interview = Interview::with([
             'company',
             'acceptingOrganization',
-            'details.user.student_profile.educations',
+            'details.user.student_profile.educations', 
             'details.user.student_profile.experiences',
             'details.user.student_profile.families'
         ])->findOrFail($id);
 
-        // TAMBAHKAN INI: Ambil daftar user dengan role student untuk fitur Assign
-        // Anda bisa memfilter agar siswa yang sudah terdaftar tidak muncul lagi
+        // 2. Ambil Siswa yang Tersedia (untuk fitur assign)
         $alreadyAssignedIds = $interview->details->pluck('user_id');
-        // Ganti baris 151
-        $availableStudents = \App\Models\User::where('role', 'student') // Sesuaikan nama kolomnya, misal 'role' atau 'type'
+        
+        $availableStudents = User::role('student') // Asumsi pakai Spatie, atau where('role', 'student')
             ->with('student_profile')
             ->whereNotIn('id', $alreadyAssignedIds)
             ->get();
 
+        // 3. AMBIL DATA MASTER UNTUK DROPDOWN FORM (INI YANG BARU)
+        // Data ini diperlukan agar dropdown di StudentForm (Modal) berfungsi
+        $provinces = Province::select('id', 'name')->get(); // Sesuaikan nama kolom tabel Anda
+        $jobSectors = JobSector::select('id', 'name', 'code')->get();
+        $majors = Major::select('id', 'name')->get();
+
+        // 4. Return ke Inertia
         return Inertia::render('admin/interview/Show', [
             'interview' => $interview,
-            'availableStudents' => $availableStudents // Kirim ke Frontend
+            'availableStudents' => $availableStudents,
+            
+            // Kirim data master ke props frontend
+            'provinces' => $provinces,
+            'jobSectors' => $jobSectors,
+            'majors' => $majors,
         ]);
     }
 
