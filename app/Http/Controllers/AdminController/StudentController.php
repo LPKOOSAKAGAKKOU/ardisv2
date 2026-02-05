@@ -236,8 +236,7 @@ class StudentController extends Controller
 
             DB::commit();
             
-            return redirect()->route('admin.students.index')
-                            ->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui dalam format kapital.');
+            return back()->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui dalam format kapital.');
 
         } catch (\Exception $e) {
             DB::rollback();
