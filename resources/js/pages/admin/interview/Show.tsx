@@ -1243,7 +1243,7 @@ export default function InterviewShow({
             </Dialog>
 
             <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
-                <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background">
+                <DialogContent className="max-w-7xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background">
                     <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-20">
                         <DialogTitle>Edit Profil Siswa</DialogTitle>
                     </DialogHeader>
