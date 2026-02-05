@@ -10,6 +10,7 @@ use App\Models\AcceptingOrganization;
 use App\Models\Province;   // <-- Pastikan Model di-import
 use App\Models\JobSector;  // <-- Pastikan Model di-import
 use App\Models\Major;      // <-- Pastikan Model di-import
+use App\Models\User;
 use App\Services\YunervaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
