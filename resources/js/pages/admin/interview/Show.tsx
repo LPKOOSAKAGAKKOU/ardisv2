@@ -214,7 +214,13 @@ function SortableRow({ detail, index, onRemove, onUpdateModal, interviewId, onMa
     );
 }
 
-export default function InterviewShow({ interview, availableStudents = [] }: Props) {
+export default function InterviewShow({ 
+        interview, 
+        availableStudents = [], 
+        provinces = [], 
+        jobSectors = [], 
+        majors = [] 
+    }: Props) {
     const [isUploading, setIsUploading] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
