@@ -1245,7 +1245,22 @@ export default function InterviewShow({
             <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
                 <DialogContent className="max-w-7xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background">
                     <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-20">
-                        <DialogTitle>Edit Profil Siswa</DialogTitle>
+                        <div className="flex flex-col gap-1">
+                            <DialogTitle className="flex items-center gap-2">
+                                Edit Profil Siswa
+                                {studentToEdit?.full_name && (
+                                    <>
+                                        <span className="hidden sm:inline text-muted-foreground font-light text-lg">|</span>
+                                        <span className="text-blue-600 truncate max-w-[200px] sm:max-w-md">
+                                            {studentToEdit.full_name}
+                                        </span>
+                                    </>
+                                )}
+                            </DialogTitle>
+                            <p className="text-xs text-muted-foreground">
+                                {studentToEdit?.nik ? `NIK: ${studentToEdit.nik}` : 'Perbarui data siswa'}
+                            </p>
+                        </div>
                     </DialogHeader>
                         
                     {studentToEdit && (
