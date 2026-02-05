@@ -281,8 +281,15 @@ export default function InterviewShow({
     }, [localDetails]); 
 
     const handleEditStudent = (studentProfile: any, user: any) => {
+        // 1. Siapkan data & Buka Modal Edit
         setStudentToEdit({ ...studentProfile, user: user });
         setIsEditStudentOpen(true);
+
+        // 2. Buka Modal CV juga secara otomatis
+        if (user?.id) {
+            setSelectedCvUser({ id: user.id, name: studentProfile.full_name });
+            setCvModalOpen(true);
+        }
     };
 
     const handleUpdateSchedule = (e: React.FormEvent) => {
@@ -1242,10 +1249,54 @@ export default function InterviewShow({
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
-                <DialogContent className="max-w-7xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background">
-                    <DialogHeader className="px-6 py-4 border-b sticky top-0 bg-background z-20">
-                        <DialogTitle>Edit Profil Siswa</DialogTitle>
+            {/* --- MODAL 1: CV PREVIEW (POSISI KIRI) --- */}
+            {/* Kita bungkus dalam div conditional untuk memaksa styling jika mode split aktif */}
+            <div className={isEditStudentOpen ? "split-view-mode-active" : ""}>
+                <CvPreviewModal 
+                    isOpen={cvModalOpen}
+                    onClose={() => setCvModalOpen(false)}
+                    userId={selectedCvUser?.id || null}
+                    interviewId={interview.id}
+                    userName={selectedCvUser?.name || 'Siswa'}
+                    // TAMBAHKAN PROPS INI KE KOMPONEN CvPreviewModal ANDA (Jika support className)
+                    // Jika komponen CvPreviewModal belum support className, lihat catatan di bawah.
+                    className={isEditStudentOpen 
+                        ? "fixed left-0 top-0 z-40 h-screen w-[50vw] max-w-none rounded-none border-r shadow-2xl translate-x-0 data-[state=open]:slide-in-from-left" 
+                        : undefined
+                    }
+                />
+            </div>
+
+            {/* --- MODAL 2: FORM EDIT (POSISI KANAN) --- */}
+            <Dialog 
+                open={isEditStudentOpen} 
+                onOpenChange={setIsEditStudentOpen}
+                // TRICK PENTING: 
+                // Jika CV terbuka (Split Mode), matikan 'modal' behavior.
+                // Ini menghilangkan backdrop gelap dan memungkinkan kita scroll CV di sebelah kiri.
+                modal={!cvModalOpen} 
+            >
+                <DialogContent 
+                    // LOGIKA CSS:
+                    // Jika CV terbuka -> Full Height, Lebar 50%, Nempel Kanan, Hapus Radius, Animasi dari Kanan
+                    // Jika CV tutup -> Tampilan Modal Biasa (Tengah)
+                    className={cvModalOpen
+                        ? "fixed right-0 top-0 z-50 h-screen w-[50vw] max-w-none translate-x-0 rounded-none border-l bg-background shadow-2xl duration-300 data-[state=open]:slide-in-from-right p-0 overflow-y-auto"
+                        : "max-w-7xl w-[95vw] h-[90vh] p-0 overflow-y-auto bg-background"
+                    }
+                    // Hilangkan tombol close default (X) jika mode split agar header lebih bersih
+                    hideCloseButton={cvModalOpen}
+                >
+                    <DialogHeader className={`px-6 py-4 border-b sticky top-0 bg-background z-20 ${cvModalOpen ? 'shadow-sm' : ''}`}>
+                        <div className="flex items-center justify-between">
+                            <DialogTitle>Edit Profil Siswa</DialogTitle>
+                            {/* Tombol Close Manual untuk Mode Split */}
+                            {cvModalOpen && (
+                                <Button variant="ghost" size="icon" onClick={() => setIsEditStudentOpen(false)} className="h-8 w-8">
+                                    <XCircle size={20} />
+                                </Button>
+                            )}
+                        </div>
                     </DialogHeader>
                     
                     {studentToEdit && (
@@ -1254,11 +1305,11 @@ export default function InterviewShow({
                             provinces={provinces}
                             jobSectors={jobSectors}
                             majors={majors}
-                            isModal={true} // <-- KUNCINYA DISINI
+                            isModal={true}
                             onSuccess={() => {
                                 setIsEditStudentOpen(false);
-                                // Optional: refresh data halaman ini jika perlu
-                                // router.reload({ only: ['interview'] });
+                                // Optional: Tutup CV juga kalau sudah selesai edit
+                                // setCvModalOpen(false);
                             }}
                         />
                     )}
