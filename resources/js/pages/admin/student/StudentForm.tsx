@@ -950,7 +950,16 @@ export default function StudentForm({ student, provinces, jobSectors, majors, is
                         )}
 
                         {/* Navigation Footer */}
-                        <div className={`flex items-center justify-between mt-6 sm:mt-8 p-3 sm:p-4 bg-secondary/10 rounded-xl border border-border ${isModal ? 'bg-background border-t border-x-0 border-b-0 rounded-none fixed bottom-0 left-0 right-0 p-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' : ''}`}>
+                        <div className={`
+                            flex items-center justify-between 
+                            ${isModal 
+                                /* STYLE KHUSUS MODAL */
+                                ? 'col-span-12 sticky bottom-0 z-50 bg-background border-t p-4 -mx-1 mt-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]' 
+                                
+                                /* STYLE HALAMAN BIASA */
+                                : 'mt-6 sm:mt-8 p-3 sm:p-4 bg-secondary/10 rounded-xl border border-border'
+                            }
+                        `}>
                             <Button 
                                 variant="ghost" 
                                 type="button"
