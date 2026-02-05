@@ -16,10 +16,9 @@ interface Props {
     userId: number | null;
     interviewId: number | null;
     userName: string;
-    className?: string;
 }
 
-export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, userName, className }: Props) {
+export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, userName }: Props) {
     const [htmlContent, setHtmlContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -78,7 +77,7 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose} modal={!className}> {/* Matikan modal jika ada className (mode split) */}
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             {/* Gunakan !max-w-7xl untuk memaksa lebar native tetap XL7 */}
             <DialogContent className="!max-w-7xl w-[95vw] lg:max-w-[90vw] max-h-[95vh] flex flex-col p-0 overflow-hidden bg-muted/30 border shadow-2xl">
                 
