@@ -236,7 +236,13 @@ class StudentController extends Controller
 
             DB::commit();
             
-            return back()->with('success', 'Data profil ' . $profile->full_name . ' berhasil diperbarui dalam format kapital.');
+            if (str_contains(url()->previous(), '/edit')) {
+                // Jika dari halaman Edit biasa, lempar ke Halaman Profil (Show)
+                return redirect()->route('admin.students.show', $profile->id)->with('success', $message);
+            }
+
+            // Jika dari Modal (URL sebelumnya adalah Interview/Index), tetap di halaman tersebut
+            return back()->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollback();
