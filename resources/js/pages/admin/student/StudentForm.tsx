@@ -160,9 +160,9 @@ export default function StudentForm({ student, provinces, jobSectors, majors, is
     };
 
     const FormContent = (
-        <div className={isModal ? "p-1" : "max-w-7xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8"}>                
+        <div className={isModal ? "w-full p-1" : "max-w-7xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8"}>              
                 {/* Header Section */}
-                <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <div className={`flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8 ${isModal ? 'hidden' : ''}`}>
                     <div>
                         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
                             {isEdit ? 'Perbarui Data Siswa' : 'Registrasi Siswa Baru'}
@@ -181,7 +181,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, is
                 <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
                     
                     {/* Main Content Area */}
-                    <div className="lg:col-span-8 space-y-4 sm:space-y-6">
+                    <div className={isModal ? "col-span-12 space-y-4" : "lg:col-span-8 space-y-6"}>
                         
                         {/* STEP 1: IDENTITAS */}
                         {step === 1 && (
@@ -950,7 +950,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, is
                         )}
 
                         {/* Navigation Footer */}
-                        <div className="flex items-center justify-between mt-6 sm:mt-8 p-3 sm:p-4 bg-secondary/10 rounded-xl border border-border">
+                        <div className={`flex items-center justify-between mt-6 sm:mt-8 p-3 sm:p-4 bg-secondary/10 rounded-xl border border-border ${isModal ? 'bg-background border-t border-x-0 border-b-0 rounded-none fixed bottom-0 left-0 right-0 p-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]' : ''}`}>
                             <Button 
                                 variant="ghost" 
                                 type="button"
