@@ -7,10 +7,10 @@ use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Models\Company;
 use App\Models\AcceptingOrganization;
-use App\Models\Province;   // <-- Pastikan Model di-import
-use App\Models\JobSector;  // <-- Pastikan Model di-import
-use App\Models\Major;      // <-- Pastikan Model di-import
 use App\Models\User;
+use App\Models\Province;
+use App\Models\JobSector;
+use App\Models\Major;
 use App\Services\YunervaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -321,6 +321,7 @@ class InterviewController extends Controller
         $interview = Interview::with([
             'company',
             'acceptingOrganization',
+            // Load relasi nested yang dalam untuk keperluan form edit siswa
             'details.user.student_profile.educations', 
             'details.user.student_profile.experiences',
             'details.user.student_profile.families'
@@ -329,7 +330,7 @@ class InterviewController extends Controller
         // 2. Ambil Siswa yang Tersedia (untuk fitur assign)
         $alreadyAssignedIds = $interview->details->pluck('user_id');
         
-        $availableStudents = User::role('student') // Asumsi pakai Spatie, atau where('role', 'student')
+        $availableStudents = User::where('role', 'student') // Sesuaikan nama kolomnya, misal 'role' atau 'type'
             ->with('student_profile')
             ->whereNotIn('id', $alreadyAssignedIds)
             ->get();
