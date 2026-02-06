@@ -105,9 +105,9 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AA26', (int)Carbon::parse($profile->entry_date_lpk)->diffInMonths(now()) . 'ヶ月');
             $sheet->setCellValue('AI26', $maps['religion'][$profile->religion] ?? '-');
             if ($profile->japanese_language_certificate_yunerva_uuid) {
-                $sheet->setCellValue('AA11', 'JFT-Basic（A2）または JLPT N4 の資格を取得済み。');
+                $sheet->setCellValue('AA11', 'JFT-Basic（A2）または N4 の資格を取得済み');
             } else {
-                $sheet->setCellValue('AA11', '日本語能力試験の資格は取得していません。');
+                $sheet->setCellValue('AA11', '日本語能力試験の資格は取得していません');
             }
 
             // --- 2. FOTO (YUNERVA) ---
