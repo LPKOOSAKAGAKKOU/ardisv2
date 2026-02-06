@@ -268,6 +268,36 @@ class CvGenerator extends Controller
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
 
+                // Hilangkan gridlines, tampilkan hanya border aktif
+                $customStyle = '
+                <style>
+                    /* Hilangkan semua border default */
+                    table.sheet0 {
+                        border-collapse: collapse;
+                        background: white;
+                    }
+                    
+                    table.sheet0 td,
+                    table.sheet0 th {
+                        border: none !important;
+                        padding: 4px;
+                    }
+                    
+                    /* Tampilkan HANYA border yang ada di inline style */
+                    table.sheet0 td[style*="border"],
+                    table.sheet0 th[style*="border"] {
+                        border: revert !important;
+                    }
+                    
+                    /* Font Jepang */
+                    body {
+                        font-family: "MS Gothic", "Yu Gothic", "Meiryo", sans-serif;
+                    }
+                </style>
+                ';
+                
+                $htmlContent = str_replace('</head>', $customStyle . '</head>', $htmlContent);
+
                 return response()->json([
                     'status' => 'success',
                     'html' => $htmlContent
