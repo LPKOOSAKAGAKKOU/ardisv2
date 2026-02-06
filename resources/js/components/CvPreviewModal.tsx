@@ -44,21 +44,22 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             
             if (response.data.html) {
                 const styledHtml = `
-                <style>
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        height: 100%;
-                        overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
-                        background: white;
-                    }
-
-                    table {
-                        border-collapse: collapse !important;
-                        margin: 0 auto !important;
-                    }
-                </style>
-                ${response.data.html}
+                    <style>
+                        /* Menghilangkan margin default body iframe */
+                        body { 
+                            background-color: white; 
+                            margin: 0; 
+                            padding: 20px; 
+                            display: flex; 
+                            justify-content: center; 
+                        }
+                        /* Memastikan tabel rapi di tengah */
+                        table { 
+                            border-collapse: collapse !important; 
+                            margin: 0 auto !important; 
+                        }
+                    </style>
+                    ${response.data.html}
                 `;
                 setHtmlContent(styledHtml);
             }
@@ -122,11 +123,12 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                                 <p className="text-sm font-bold uppercase tracking-widest text-blue-600">Memperbarui Pratinjau...</p>
                             </div>
                         ) : (
-                            <iframe 
-                                srcDoc={htmlContent} 
+                            <iframe
+                                srcDoc={htmlContent}
                                 className="w-full h-full min-h-[1200px] border-none"
                                 title="CV Preview"
-                                sandbox="allow-same-origin allow-scripts allow-popups" 
+                                scrolling="no"   // 🔥 PAKSA NON-SCROLL
+                                sandbox="allow-same-origin allow-scripts allow-popups"
                             />
                         )}
                     </div>
