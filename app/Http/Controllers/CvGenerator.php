@@ -242,34 +242,36 @@ class CvGenerator extends Controller
 
             // --- BAGIAN PREVIEW (DARI AWAL) ---
             if ($request->query('preview') === 'true') {
-                // Set Print Area agar hanya render A1:AP58
-                $sheet->getPageSetup()->setPrintArea('B2:AP58');
-                
-                // Opsional: Remove kolom & baris di luar range
+
+                // 🔥 HAPUS KOLOM A & BARIS 1 DULU
+                $sheet->removeColumn('A', 1);
+                $sheet->removeRow(1, 1);
+
+                // 🔄 AMBIL ULANG batas setelah pergeseran
                 $highestColumn = $sheet->getHighestColumn();
                 $highestRow = $sheet->getHighestRow();
 
-                // 🔥 HAPUS KOLOM A (karena kosong)
-                $sheet->removeColumn('A', 1);
+                // Print area sekarang otomatis mulai A1 (eks B2)
+                $sheet->getPageSetup()->setPrintArea('A1:AO57');
 
-                // 🔥 HAPUS BARIS 1 (karena kosong)
-                $sheet->removeRow(1, 1);
+                // Hapus kolom setelah AO (eks AP)
+                if (\PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn)
+                    > \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString('AO')) {
 
-                // Hapus kolom setelah AP
-                if ($highestColumn > 'AP') {
                     $sheet->removeColumnByIndex(
-                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString('AQ'),
-                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn) - 42
+                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString('AP'),
+                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn)
+                        - \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString('AP') + 1
                     );
                 }
-                
-                // Hapus baris setelah 58
-                if ($highestRow > 58) {
-                    $sheet->removeRow(59, $highestRow - 58);
+
+                // Hapus baris setelah 57 (eks 58)
+                if ($highestRow > 57) {
+                    $sheet->removeRow(58, $highestRow - 57);
                 }
-                
+
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
-                
+
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
@@ -279,6 +281,7 @@ class CvGenerator extends Controller
                     'html' => $htmlContent
                 ]);
             }
+
 
             // --- BAGIAN DOWNLOAD (XLSX) ---
             $filename = "CV_" . str_replace(' ', '_', $profile->full_name) . ".xlsx";
