@@ -110,30 +110,79 @@ class CvGenerator extends Controller
                 $sheet->setCellValue('AA11', '日本語能力試験の資格は取得していません');
             }
 
-            // --- 2. FOTO (YUNERVA) ---
+            // --- 2. FOTO (YUNERVA & AUTO CROP) ---
             if ($profile->photo_yunerva_uuid) {
                 try {
                     $yunerva = app(YunervaService::class);
                     $res = $yunerva->generateViewLink($profile->photo_yunerva_uuid, $profile->yunerva_file_password);
+                    
                     if (($res['status'] ?? '') === 'success') {
+                        $rawImageData = file_get_contents($res['data']['view_url']);
                         $tempPath = storage_path('app/temp_photo_' . $profile->photo_yunerva_uuid . '.jpg');
-                        File::put($tempPath, file_get_contents($res['data']['view_url']));
+                        $croppedPath = storage_path('app/cropped_' . $profile->photo_yunerva_uuid . '.jpg');
 
-                        $drawing = new Drawing();
-                        $drawing->setPath($tempPath);
+                        // Simpan file asli dulu untuk dianalisis/diproses
+                        File::put($tempPath, $rawImageData);
+
+                        // Tembak AI untuk minta koordinat crop wajah (Rasio 3:4)
+                        $cropCoords = $this->getFaceCropCoordinates($rawImageData);
+
+                        if ($cropCoords) {
+                            // Proses Crop menggunakan GD (Bawaan PHP)
+                            $img = imagecreatefromstring($rawImageData);
+                            $croppedImg = imagecrop($img, [
+                                'x' => $cropCoords['x'], 
+                                'y' => $cropCoords['y'], 
+                                'width' => $cropCoords['width'], 
+                                'height' => $cropCoords['height']
+                            ]);
+                            
+                            if ($croppedImg) {
+                                imagejpeg($croppedImg, $croppedPath, 90);
+                                $finalPath = $croppedPath;
+                            } else {
+                                $finalPath = $tempPath; // Fallback jika crop gagal
+                            }
+                        } else {
+                            $finalPath = $tempPath;
+                        }
+
+                        // Setting ke Excel
+                        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                        $drawing->setPath($finalPath);
                         $drawing->setCoordinates('AI12');
-                        
-                        list($width, $height) = getimagesize($tempPath);
-                        if ($width / 136 > $height / 158) $drawing->setWidth(136); else $drawing->setHeight(158);
 
+                        // Ukuran Cell Target: 136x158 pixel
+                        $targetW = 136;
+                        $targetH = 158;
+
+                        list($w, $h) = getimagesize($finalPath);
+                        
+                        // Logika Center Alignment di dalam Cell
                         $drawing->setResizeProportional(true);
-                        $drawing->setOffsetX(2);
-                        $drawing->setOffsetY(2);
+                        if ($w / $targetW > $h / $targetH) {
+                            $drawing->setWidth($targetW);
+                            // Hitung offset Y agar di tengah secara vertikal
+                            $renderH = ($h * $targetW) / $w;
+                            $drawing->setOffsetY(($targetH - $renderH) / 2);
+                        } else {
+                            $drawing->setHeight($targetH);
+                            // Hitung offset X agar di tengah secara horizontal
+                            $renderW = ($w * $targetH) / $h;
+                            $drawing->setOffsetX(($targetW - $renderW) / 2);
+                        }
+
                         $drawing->setWorksheet($sheet);
 
-                        register_shutdown_function(fn() => File::exists($tempPath) && File::delete($tempPath));
+                        // Cleanup
+                        register_shutdown_function(function() use ($tempPath, $croppedPath) {
+                            if (File::exists($tempPath)) File::delete($tempPath);
+                            if (File::exists($croppedPath)) File::delete($croppedPath);
+                        });
                     }
-                } catch (\Exception $e) { Log::error("Foto Error: " . $e->getMessage()); }
+                } catch (\Exception $e) { 
+                    \Log::error("Foto Error: " . $e->getMessage()); 
+                }
             }
 
             // --- 3. PENDIDIKAN (31-34) ---
@@ -306,4 +355,43 @@ class CvGenerator extends Controller
             ], 500);
         }
     }
+
+    private function getFaceCropCoordinates($imageRawData)
+    {
+    $apiKey = config('services.gemini.key');
+    $base64Image = base64_encode($imageRawData);
+
+    $prompt = "Analyze this person's photo. I need to crop it for a formal ID photo (3:4 ratio). 
+    Focus on the face. Ensure the head (top of hair to chin) occupies about 60-70% of the crop height.
+    Return ONLY a JSON object with 'x', 'y', 'width', 'height' in pixels.
+    Example: {'x': 100, 'y': 50, 'width': 300, 'height': 400}";
+
+    try {
+        $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+            'contents' => [
+                [
+                    'parts' => [
+                        ['text' => $prompt],
+                        [
+                            'inline_data' => [
+                                'mime_type' => 'image/jpeg',
+                                'data' => $base64Image
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        if ($response->successful()) {
+            $res = $response->json();
+            $text = $res['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $cleanJson = trim(str_replace(['```json', '```'], '', $text));
+            return json_decode($cleanJson, true);
+        }
+    } catch (\Exception $e) {
+        return null;
+    }
+    return null;
+}
 }
