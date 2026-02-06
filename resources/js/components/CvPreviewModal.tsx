@@ -47,10 +47,16 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                 <style>
                     html, body {
                         margin: 0;
-                        padding: 24px 0; /* 🔥 ATAS–BAWAH SAJA */
+                        padding: 0;
                         height: 130%;
-                        overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
+                        overflow: hidden;
                         background: white;
+                    }
+
+                    /* spacer atas & bawah */
+                    .spacer {
+                        height: 24px;
+                        width: 100%;
                     }
 
                     table {
@@ -58,9 +64,11 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                         margin: 0 auto !important;
                     }
                 </style>
-                ${response.data.html}
-                `;
 
+                <div class="spacer"></div>
+                ${response.data.html}
+                <div class="spacer"></div>
+                `;
                 setHtmlContent(styledHtml);
             }
         } catch (error) {
