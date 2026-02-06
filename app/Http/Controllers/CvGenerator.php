@@ -104,6 +104,11 @@ class CvGenerator extends Controller
             $sheet->setCellValue('W26', $maps['yes_no'][$profile->family_in_japan] ?? '無');
             $sheet->setCellValue('AA26', (int)Carbon::parse($profile->entry_date_lpk)->diffInMonths(now()) . 'ヶ月');
             $sheet->setCellValue('AI26', $maps['religion'][$profile->religion] ?? '-');
+            if ($profile->japanese_language_certificate_yunerva_uuid) {
+                $sheet->setCellValue('AA11', 'JFT-Basic（A2）または JLPT N4 の資格を取得済み。');
+            } else {
+                $sheet->setCellValue('AA11', '日本語能力試験の資格は取得していません。');
+            }
 
             // --- 2. FOTO (YUNERVA) ---
             if ($profile->photo_yunerva_uuid) {
@@ -218,11 +223,11 @@ class CvGenerator extends Controller
             })->take(9);
 
             foreach ($sortedFamilies as $fam) {
-                $sheet->setCellValue('G'.$row, $fam->relationship);
+                $sheet->setCellValue('F'.$row, $fam->relationship);
                 $sheet->setCellValue('M'.$row, $fam->name);
                 $sheet->setCellValue('AD'.$row, $fam->age . ' 歳');
                 $sheet->setCellValue('AI'.$row, $masterSectors[strtolower(trim($fam->occupation))] ?? $fam->occupation);
-                $sheet->getStyle("G$row:AI$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                $sheet->getStyle("F$row:AI$row")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
                 $sheet->getStyle('AD'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $row++;
             }
