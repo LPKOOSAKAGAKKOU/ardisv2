@@ -45,33 +45,49 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             if (response.data.html) {
                 const styledHtml = `
                 <style>
-                    /* 1. Paksa scrollbar hilang di level dokumen internal */
                     html, body {
                         margin: 0;
                         padding: 0;
                         width: 100%;
-                        /* Menghilangkan scrollbar internal agar hanya scrollbar parent yang muncul */
-                        overflow: hidden; 
+                        height: 100vh; /* Paksa tinggi body sama dengan tinggi iframe */
                         background-color: white !important;
+                        overflow: hidden; /* Mencegah scroll double di level paling luar */
                     }
 
-                    /* 2. Gunakan wrapper atau padding pada body untuk margin */
                     body {
                         display: flex;
-                        justify-content: center;
-                        /* Padding memberikan jarak tanpa 'memotong' bayangan box-shadow */
-                        padding: 50px 0; 
+                        flex-direction: column;
+                        align-items: center;
+                        /* Inilah yang akan menangani scroll */
+                        overflow-y: auto; 
+                        padding: 60px 0; /* Margin atas bawah yang lebih besar */
                         box-sizing: border-box;
-                        height: auto;
+                    }
+
+                    /* Container tambahan untuk memastikan tabel tidak terpotong */
+                    #inner-content {
+                        display: flex;
+                        justify-content: center;
+                        width: 100%;
+                        min-height: min-content;
                     }
 
                     table {
                         border-collapse: collapse !important;
-                        margin: 0 auto !important; /* Margin atas bawah diatur oleh padding body */
+                        margin: 0 auto !important;
                         background-color: white;
                         box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                        /* Supaya tabel tidak menempel ke pinggir layar pada mobile */
-                        max-width: fit-content; 
+                        /* Memastikan tabel tidak gepeng */
+                        flex-shrink: 0; 
+                    }
+
+                    /* Menghilangkan scrollbar agar terlihat bersih (opsional) */
+                    body::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    body::-webkit-scrollbar-thumb {
+                        background: #ccc;
+                        border-radius: 4px;
                     }
                 </style>
                 <div id="inner-content">
@@ -144,6 +160,8 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                                 srcDoc={htmlContent} 
                                 className="w-full h-full min-h-[1200px] border-none"
                                 title="CV Preview"
+                                scrolling="no" // Matikan scrollbar iframe
+                                style={{ overflow: 'hidden' }} // Tambahan proteksi CSS
                                 sandbox="allow-same-origin allow-scripts allow-popups" 
                             />
                         )}
