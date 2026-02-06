@@ -135,9 +135,14 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                 <div className="flex-1 bg-neutral-200 dark:bg-zinc-900 p-4 md:p-8 flex justify-center overflow-y-auto">
                     <div className="w-full max-w-5xl bg-white shadow-xl rounded-sm relative">
                         {isLoading ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-3 bg-white/80 z-20 min-h-[500px]">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground gap-3 bg-white w-full min-h-[70vh] rounded-sm shadow-sm">
                                 <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
-                                <p className="text-sm font-bold uppercase tracking-widest text-blue-600">Memperbarui Pratinjau...</p>
+                                <div className="flex flex-col items-center gap-1">
+                                    <p className="text-sm font-bold uppercase tracking-widest text-blue-600">
+                                        Memperbarui Pratinjau...
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">Mohon tunggu sebentar</p>
+                                </div>
                             </div>
                         ) : (
                             <iframe 
