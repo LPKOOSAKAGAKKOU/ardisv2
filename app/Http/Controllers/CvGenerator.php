@@ -240,31 +240,23 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (PALING MUDAH) ---
+            // --- BAGIAN PREVIEW (SIMPLE) ---
             if ($request->query('preview') === 'true') {
+                // Buat worksheet baru dengan range terbatas
+                $tempSheet = $spreadsheet->getActiveSheet()->copy();
+                
+                // Set range yang akan di-render
+                $tempSheet->getPageSetup()->setPrintArea('A1:AP58');
+                
+                // Aktifkan sheet temporary
+                $spreadsheet->removeSheetByIndex(0);
+                $spreadsheet->addSheet($tempSheet, 0);
+                
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
-                
-                // Tambahkan CSS untuk hide kolom & baris di luar range
-                $customStyle = '
-                <style>
-                    /* Sembunyikan kolom setelah AP (kolom ke-42) */
-                    table.sheet0 td:nth-child(n+43),
-                    table.sheet0 th:nth-child(n+43) {
-                        display: none;
-                    }
-                    
-                    /* Sembunyikan baris setelah 58 */
-                    table.sheet0 tr:nth-child(n+59) {
-                        display: none;
-                    }
-                </style>
-                ';
-                
-                $htmlContent = str_replace('</head>', $customStyle . '</head>', $htmlContent);
 
                 return response()->json([
                     'status' => 'success',
