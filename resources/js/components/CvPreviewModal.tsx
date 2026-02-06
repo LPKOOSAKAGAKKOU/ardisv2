@@ -48,15 +48,9 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                     html, body {
                         margin: 0;
                         padding: 0;
-                        height: 130%;
-                        overflow: hidden;
+                        height: 100%;
+                        overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
                         background: white;
-                    }
-
-                    /* spacer atas & bawah */
-                    .spacer {
-                        height: 24px;
-                        width: 100%;
                     }
 
                     table {
@@ -64,11 +58,9 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                         margin: 0 auto !important;
                     }
                 </style>
-
-                <div class="spacer"></div>
                 ${response.data.html}
-                <div class="spacer"></div>
                 `;
+
                 setHtmlContent(styledHtml);
             }
         } catch (error) {
