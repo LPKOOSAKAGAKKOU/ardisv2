@@ -240,45 +240,27 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (PERBAIKAN FINAL) ---
+            // --- BAGIAN PREVIEW (PALING MUDAH) ---
             if ($request->query('preview') === 'true') {
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
-
-                // Inject custom CSS - HANYA hilangkan gridlines, BIARKAN border asli Excel
+                
+                // Tambahkan CSS untuk hide kolom & baris di luar range
                 $customStyle = '
                 <style>
-                    /* Hilangkan gridlines default */
-                    table.sheet0 {
-                        border-collapse: collapse;
-                        background: white;
+                    /* Sembunyikan kolom setelah AP (kolom ke-42) */
+                    table.sheet0 td:nth-child(n+43),
+                    table.sheet0 th:nth-child(n+43) {
+                        display: none;
                     }
                     
-                    /* Cell tanpa border = transparan */
-                    table.sheet0 td, 
-                    table.sheet0 th { 
-                        border-color: transparent !important;
+                    /* Sembunyikan baris setelah 58 */
+                    table.sheet0 tr:nth-child(n+59) {
+                        display: none;
                     }
-                    
-                    /* Cell DENGAN border inline style = tampilkan */
-                    table.sheet0 td[style*="border-top"],
-                    table.sheet0 td[style*="border-right"],
-                    table.sheet0 td[style*="border-bottom"],
-                    table.sheet0 td[style*="border-left"],
-                    table.sheet0 th[style*="border"] {
-                        border-color: inherit !important;
-                    }
-                    
-                    /* Font untuk karakter Jepang */
-                    body {
-                        font-family: "MS Gothic", "Yu Gothic", "Meiryo", sans-serif;
-                    }
-                    
-                    /* Hilangkan header kolom A-Z */
-                    .column { display: none; }
                 </style>
                 ';
                 
