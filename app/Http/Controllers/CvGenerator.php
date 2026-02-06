@@ -248,14 +248,12 @@ class CvGenerator extends Controller
                 // Opsional: Remove kolom & baris di luar range
                 $highestColumn = $sheet->getHighestColumn();
                 $highestRow = $sheet->getHighestRow();
-                
-                // Hapus Kolom A
-                $sheet->removeColumnByIndex(
-                    1,
-                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn) - 1
-                );
-                // Hapus Baris 1
-                $sheet->removeRow(1, $highestRow - 1);
+
+                // 🔥 HAPUS KOLOM A (karena kosong)
+                $sheet->removeColumn('A', 1);
+
+                // 🔥 HAPUS BARIS 1 (karena kosong)
+                $sheet->removeRow(1, 1);
 
                 // Hapus kolom setelah AP
                 if ($highestColumn > 'AP') {
