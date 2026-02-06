@@ -241,12 +241,35 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
             // --- BAGIAN PREVIEW (DI SINI PERBAIKANNYA) ---
+            // --- BAGIAN PREVIEW (PERBAIKAN) ---
             if ($request->query('preview') === 'true') {
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
+
+                // Hapus border default dari semua cell
+                $htmlContent = preg_replace(
+                    '/<style[^>]*>.*?<\/style>/is',
+                    '<style>
+                        table { border-collapse: collapse; background: white; }
+                        td, th { 
+                            border: none !important; 
+                            padding: 8px;
+                            font-family: "MS Gothic", "Yu Gothic", sans-serif;
+                        }
+                        /* Hanya tampilkan border yang explicitly diset dari Excel */
+                        td[style*="border"], th[style*="border"] {
+                            border: inherit !important;
+                        }
+                        /* Hilangkan gridlines */
+                        .gridlines { display: none; }
+                        table.sheet { background: transparent; }
+                    </style>',
+                    $htmlContent,
+                    1
+                );
 
                 return response()->json([
                     'status' => 'success',
