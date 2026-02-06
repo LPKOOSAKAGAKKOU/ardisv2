@@ -243,7 +243,7 @@ class CvGenerator extends Controller
             // --- BAGIAN PREVIEW (DARI AWAL) ---
             if ($request->query('preview') === 'true') {
                 // Set Print Area agar hanya render A1:AP58
-                $sheet->getPageSetup()->setPrintArea('A1:AP58');
+                $sheet->getPageSetup()->setPrintArea('B2:AP58');
                 
                 // Opsional: Remove kolom & baris di luar range
                 $highestColumn = $sheet->getHighestColumn();
@@ -267,36 +267,6 @@ class CvGenerator extends Controller
                 ob_start();
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
-
-                // Hilangkan gridlines, tampilkan hanya border aktif
-                $customStyle = '
-                <style>
-                    /* Hilangkan semua border default */
-                    table.sheet0 {
-                        border-collapse: collapse;
-                        background: white;
-                    }
-                    
-                    table.sheet0 td,
-                    table.sheet0 th {
-                        border: none !important;
-                        padding: 4px;
-                    }
-                    
-                    /* Tampilkan HANYA border yang ada di inline style */
-                    table.sheet0 td[style*="border"],
-                    table.sheet0 th[style*="border"] {
-                        border: revert !important;
-                    }
-                    
-                    /* Font Jepang */
-                    body {
-                        font-family: "MS Gothic", "Yu Gothic", "Meiryo", sans-serif;
-                    }
-                </style>
-                ';
-                
-                $htmlContent = str_replace('</head>', $customStyle . '</head>', $htmlContent);
 
                 return response()->json([
                     'status' => 'success',
