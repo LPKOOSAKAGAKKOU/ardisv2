@@ -57,7 +57,7 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        padding: 40px 0; 
+                        padding: 100px 0; 
                         box-sizing: border-box;
                     }
 
