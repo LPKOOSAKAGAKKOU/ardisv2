@@ -49,27 +49,22 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                         margin: 0;
                         padding: 0;
                         width: 100%;
-                        height: 100vh; /* Paksa tinggi body sama dengan tinggi iframe */
                         background-color: white !important;
-                        overflow: hidden; /* Mencegah scroll double di level paling luar */
+                        /* Hapus overflow hidden/auto di sini agar konten memanjang secara alami */
                     }
 
                     body {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        /* Inilah yang akan menangani scroll */
-                        overflow-y: auto; 
-                        padding: 60px 0; /* Margin atas bawah yang lebih besar */
+                        padding: 40px 0; 
                         box-sizing: border-box;
                     }
 
-                    /* Container tambahan untuk memastikan tabel tidak terpotong */
                     #inner-content {
                         display: flex;
                         justify-content: center;
                         width: 100%;
-                        min-height: min-content;
                     }
 
                     table {
@@ -77,17 +72,6 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                         margin: 0 auto !important;
                         background-color: white;
                         box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                        /* Memastikan tabel tidak gepeng */
-                        flex-shrink: 0; 
-                    }
-
-                    /* Menghilangkan scrollbar agar terlihat bersih (opsional) */
-                    body::-webkit-scrollbar {
-                        width: 8px;
-                    }
-                    body::-webkit-scrollbar-thumb {
-                        background: #ccc;
-                        border-radius: 4px;
                     }
                 </style>
                 <div id="inner-content">
@@ -149,19 +133,25 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                 </div>
 
                 <div className="flex-1 bg-neutral-200 dark:bg-zinc-900 p-4 md:p-8 flex justify-center overflow-y-auto">
-                    <div className="w-full max-w-5xl bg-white shadow-xl rounded-sm relative min-h-full">
+                    <div className="w-full max-w-5xl bg-white shadow-xl rounded-sm relative">
                         {isLoading ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-3 bg-white/80 z-20">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-3 bg-white/80 z-20 min-h-[500px]">
                                 <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
                                 <p className="text-sm font-bold uppercase tracking-widest text-blue-600">Memperbarui Pratinjau...</p>
                             </div>
                         ) : (
                             <iframe 
                                 srcDoc={htmlContent} 
-                                className="w-full h-full min-h-[1200px] border-none"
+                                className="w-full border-none" // Hapus h-full dan min-h
                                 title="CV Preview"
-                                scrolling="no" // Matikan scrollbar iframe
-                                style={{ overflow: 'hidden' }} // Tambahan proteksi CSS
+                                scrolling="no" 
+                                onLoad={(e) => {
+                                    // Script sakti: memaksa tinggi iframe mengikuti isi dalamnya
+                                    const obj = e.currentTarget;
+                                    if(obj.contentWindow) {
+                                        obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+                                    }
+                                }}
                                 sandbox="allow-same-origin allow-scripts allow-popups" 
                             />
                         )}
