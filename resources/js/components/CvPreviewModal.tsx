@@ -47,7 +47,7 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                 <style>
                     html, body {
                         margin: 0;
-                        padding: 0;
+                        padding: 24px 0; /* 🔥 ATAS–BAWAH SAJA */
                         height: 130%;
                         overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
                         background: white;
