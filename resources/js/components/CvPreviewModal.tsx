@@ -45,33 +45,39 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             if (response.data.html) {
                 const styledHtml = `
                 <style>
-                    /* 1. Menghilangkan background abu-abu dan double scroll */
+                    /* 1. Paksa scrollbar hilang di level dokumen internal */
                     html, body {
                         margin: 0;
                         padding: 0;
                         width: 100%;
-                        height: auto; 
-                        background-color: white !important; /* Memastikan background bersih putih */
-                        overflow-x: hidden; /* Menghilangkan scroll horizontal jika ada */
+                        /* Menghilangkan scrollbar internal agar hanya scrollbar parent yang muncul */
+                        overflow: hidden; 
+                        background-color: white !important;
                     }
 
-                    /* 2. Mengatur tampilan tabel agar memiliki margin besar dan rapi */
+                    /* 2. Gunakan wrapper atau padding pada body untuk margin */
+                    body {
+                        display: flex;
+                        justify-content: center;
+                        /* Padding memberikan jarak tanpa 'memotong' bayangan box-shadow */
+                        padding: 50px 0; 
+                        box-sizing: border-box;
+                        height: auto;
+                    }
+
                     table {
                         border-collapse: collapse !important;
-                        margin: 40px auto !important; /* Menambah margin atas & bawah menjadi 40px */
+                        margin: 0 auto !important; /* Margin atas bawah diatur oleh padding body */
                         background-color: white;
-                        /* Opsional: bayangan halus agar tabel terlihat seperti kertas di atas latar putih */
-                        box-shadow: 0 0 15px rgba(0,0,0,0.05); 
-                    }
-
-                    /* Memastikan gambar atau elemen lain tidak melebihi lebar layar */
-                    img, table {
-                        max-width: 95%;
+                        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                        /* Supaya tabel tidak menempel ke pinggir layar pada mobile */
+                        max-width: fit-content; 
                     }
                 </style>
-                ${response.data.html}
+                <div id="inner-content">
+                    ${response.data.html}
+                </div>
                 `;
-
                 setHtmlContent(styledHtml);
             }
         } catch (error) {
