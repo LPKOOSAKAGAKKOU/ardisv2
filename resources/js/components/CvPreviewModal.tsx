@@ -48,14 +48,18 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                     html, body {
                         margin: 0;
                         padding: 0;
-                        height: 100%;
-                        overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
-                        background: white;
+                        height: auto; /* Biarkan tinggi menyesuaikan konten */
+                        background: #f0f0f0; /* Opsional: warna background luar agar kertas terlihat jelas */
+                        display: flex;
+                        justify-content: center;
+                        align-items: flex-start; /* Mulai dari atas */
                     }
 
                     table {
                         border-collapse: collapse !important;
-                        margin: 0 auto !important;
+                        background: white;
+                        margin: 20px auto !important; /* Memberikan margin 20px di ATAS dan BAWAH */
+                        box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Opsional: agar tampilan seperti kertas */
                     }
                 </style>
                 ${response.data.html}
