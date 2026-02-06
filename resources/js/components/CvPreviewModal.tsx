@@ -44,23 +44,30 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             
             if (response.data.html) {
                 const styledHtml = `
-                    <style>
-                        /* Menghilangkan margin default body iframe */
-                        body { 
-                            background-color: white; 
-                            margin: 0; 
-                            padding: 20px; 
-                            display: flex; 
-                            justify-content: center; 
-                        }
-                        /* Memastikan tabel rapi di tengah */
-                        table { 
-                            border-collapse: collapse !important; 
-                            margin: 0 auto !important; 
-                        }
-                    </style>
-                    ${response.data.html}
+                <style>
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: #f5f5f5;
+                    }
+
+                    /* Simulasi kertas A4 */
+                    .a4-page {
+                        width: 210mm;
+                        min-height: 297mm;
+                        margin: 16px auto;
+                        background: white;
+                        box-shadow: 0 0 10px rgba(0,0,0,.15);
+                    }
+
+                    table {
+                        border-collapse: collapse !important;
+                        margin: 0 auto !important;
+                    }
+                </style>
+                ${response.data.html}
                 `;
+
                 setHtmlContent(styledHtml);
             }
         } catch (error) {
@@ -123,12 +130,11 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                                 <p className="text-sm font-bold uppercase tracking-widest text-blue-600">Memperbarui Pratinjau...</p>
                             </div>
                         ) : (
-                            <iframe
-                                srcDoc={htmlContent}
+                            <iframe 
+                                srcDoc={htmlContent} 
                                 className="w-full h-full min-h-[1200px] border-none"
                                 title="CV Preview"
-                                scrolling="no"   // 🔥 PAKSA NON-SCROLL
-                                sandbox="allow-same-origin allow-scripts allow-popups"
+                                sandbox="allow-same-origin allow-scripts allow-popups" 
                             />
                         )}
                     </div>
