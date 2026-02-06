@@ -240,7 +240,7 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (PERBAIKAN) ---
+            // --- BAGIAN PREVIEW (PERBAIKAN FINAL) ---
             if ($request->query('preview') === 'true') {
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
@@ -248,29 +248,40 @@ class CvGenerator extends Controller
                 $writer->save('php://output');
                 $htmlContent = ob_get_clean();
 
-                // Inject custom CSS SETELAH style bawaan (agar override)
+                // Inject custom CSS - HANYA hilangkan gridlines, BIARKAN border asli Excel
                 $customStyle = '
                 <style>
-                    /* Override border default */
-                    table.sheet0 td, 
-                    table.sheet0 th { 
-                        border: none !important;
-                    }
-                    
-                    /* Hilangkan gridlines */
+                    /* Hilangkan gridlines default */
                     table.sheet0 {
                         border-collapse: collapse;
                         background: white;
+                    }
+                    
+                    /* Cell tanpa border = transparan */
+                    table.sheet0 td, 
+                    table.sheet0 th { 
+                        border-color: transparent !important;
+                    }
+                    
+                    /* Cell DENGAN border inline style = tampilkan */
+                    table.sheet0 td[style*="border-top"],
+                    table.sheet0 td[style*="border-right"],
+                    table.sheet0 td[style*="border-bottom"],
+                    table.sheet0 td[style*="border-left"],
+                    table.sheet0 th[style*="border"] {
+                        border-color: inherit !important;
                     }
                     
                     /* Font untuk karakter Jepang */
                     body {
                         font-family: "MS Gothic", "Yu Gothic", "Meiryo", sans-serif;
                     }
+                    
+                    /* Hilangkan header kolom A-Z */
+                    .column { display: none; }
                 </style>
                 ';
                 
-                // Sisipkan sebelum </head>
                 $htmlContent = str_replace('</head>', $customStyle . '</head>', $htmlContent);
 
                 return response()->json([
