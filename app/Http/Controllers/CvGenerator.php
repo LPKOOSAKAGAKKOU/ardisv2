@@ -271,6 +271,8 @@ class CvGenerator extends Controller
                 }
 
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
+                $writer = new \PhpOffice\PhpSpreadsheet\Writer\Html($spreadsheet);
+                $writer->setEmbedImages(true);
 
                 ob_start();
                 $writer->save('php://output');
