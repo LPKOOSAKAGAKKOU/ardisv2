@@ -45,21 +45,28 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
             if (response.data.html) {
                 const styledHtml = `
                 <style>
+                    /* 1. Menghilangkan background abu-abu dan double scroll */
                     html, body {
                         margin: 0;
                         padding: 0;
-                        height: auto; /* Biarkan tinggi menyesuaikan konten */
-                        background: #f0f0f0; /* Opsional: warna background luar agar kertas terlihat jelas */
-                        display: flex;
-                        justify-content: center;
-                        align-items: flex-start; /* Mulai dari atas */
+                        width: 100%;
+                        height: auto; 
+                        background-color: white !important; /* Memastikan background bersih putih */
+                        overflow-x: hidden; /* Menghilangkan scroll horizontal jika ada */
                     }
 
+                    /* 2. Mengatur tampilan tabel agar memiliki margin besar dan rapi */
                     table {
                         border-collapse: collapse !important;
-                        background: white;
-                        margin: 20px auto !important; /* Memberikan margin 20px di ATAS dan BAWAH */
-                        box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Opsional: agar tampilan seperti kertas */
+                        margin: 40px auto !important; /* Menambah margin atas & bawah menjadi 40px */
+                        background-color: white;
+                        /* Opsional: bayangan halus agar tabel terlihat seperti kertas di atas latar putih */
+                        box-shadow: 0 0 15px rgba(0,0,0,0.05); 
+                    }
+
+                    /* Memastikan gambar atau elemen lain tidak melebihi lebar layar */
+                    img, table {
+                        max-width: 95%;
                     }
                 </style>
                 ${response.data.html}
