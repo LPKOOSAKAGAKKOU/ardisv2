@@ -240,8 +240,28 @@ class CvGenerator extends Controller
             $sheet->setCellValue('AI57', $profile->savings_target ?? '-');
             $sheet->setCellValue('AI58', $profile->savings_reason ?? '-');
 
-            // --- BAGIAN PREVIEW (DI SINI PERBAIKANNYA) ---
+            // --- BAGIAN PREVIEW (DARI AWAL) ---
             if ($request->query('preview') === 'true') {
+                // Set Print Area agar hanya render A1:AP58
+                $sheet->getPageSetup()->setPrintArea('A1:AP58');
+                
+                // Opsional: Remove kolom & baris di luar range
+                $highestColumn = $sheet->getHighestColumn();
+                $highestRow = $sheet->getHighestRow();
+                
+                // Hapus kolom setelah AP
+                if ($highestColumn > 'AP') {
+                    $sheet->removeColumnByIndex(
+                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString('AQ'),
+                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn) - 42
+                    );
+                }
+                
+                // Hapus baris setelah 58
+                if ($highestRow > 58) {
+                    $sheet->removeRow(59, $highestRow - 58);
+                }
+                
                 $writer = IOFactory::createWriter($spreadsheet, 'Html');
                 
                 ob_start();
