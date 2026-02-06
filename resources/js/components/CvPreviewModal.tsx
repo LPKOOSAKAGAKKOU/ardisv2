@@ -48,16 +48,9 @@ export default function CvPreviewModal({ isOpen, onClose, userId, interviewId, u
                     html, body {
                         margin: 0;
                         padding: 0;
-                        background: #f5f5f5;
-                    }
-
-                    /* Simulasi kertas A4 */
-                    .a4-page {
-                        width: 210mm;
-                        min-height: 297mm;
-                        margin: 16px auto;
+                        height: 130%;
+                        overflow: hidden; /* 🔥 MATIKAN SCROLL DI IFRAME */
                         background: white;
-                        box-shadow: 0 0 10px rgba(0,0,0,.15);
                     }
 
                     table {
