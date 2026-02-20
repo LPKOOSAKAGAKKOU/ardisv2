@@ -79,20 +79,20 @@ const GINOU_DOCS = [
     { label: "Form 1-21", field: "ginou_jisshuu_1-21_document_yunerva_uuid", typeKey: "ginou_1-21" },
     { label: "Form 1-39", field: "ginou_jisshuu_1-39_document_yunerva_uuid", typeKey: "ginou_1-39" },
     { label: "Agreement Letter", field: "ginou_jisshuu_aggreement_document_yunerva_uuid", typeKey: "ginou_agreement" },
-    { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
-    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid", typeKey: "japanese_language_certificate" },
-    { label: "Photo Studio", field: "photo_yunerva_uuid", typeKey: "photo_studio" },
-    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid", typeKey: "photo_with_suit" },
-    { label: "ID Card", field: "id_card_yunerva_uuid", typeKey: "id_card" },
-    { label: "Family Card", field: "family_card_yunerva_uuid", typeKey: "family_card" },
-    { label: "Birth Certificate", field: "birth_certificate_yunerva_uuid", typeKey: "birth_certificate" },
-    { label: "Diploma", field: "diploma_yunerva_uuid", typeKey: "diploma" },
-    { label: "Transcript", field: "transcript_yunerva_uuid", typeKey: "transcript" },
-    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid", typeKey: "1st_medical_checkup" },
-    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid", typeKey: "2nd_medical_checkup" },
-    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid", typeKey: "3rd_medical_checkup" },
-    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid", typeKey: "passport_photo_page" },
-    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid", typeKey: "parents_consent_letter" },
+    { label: "Work Contract", field: "work_contract_yunerva_uuid" },
+    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid" },
+    { label: "Photo Studio", field: "photo_yunerva_uuid" },
+    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid" },
+    { label: "ID Card", field: "id_card_yunerva_uuid" },
+    { label: "Family Card", field: "family_card_yunerva_uuid" },
+    { label: "Birth Certificate", field: "birth_certificate_yunerva_uuid" },
+    { label: "Diploma", field: "diploma_yunerva_uuid" },
+    { label: "Transcript", field: "transcript_yunerva_uuid" },
+    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid" },
+    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid" },
+    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid" },
+    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid" },
+    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid" },
 ];
 
 const TOKUTEI_DOCS = [
@@ -102,17 +102,17 @@ const TOKUTEI_DOCS = [
     { label: "Form 1-16", field: "tokutei_ginou_1-16_document_yunerva_uuid", typeKey: "tg_1-16" },
     { label: "Form 1-17", field: "tokutei_ginou_1-17_document_yunerva_uuid", typeKey: "tg_1-17" },
     { label: "Power of Attorney", field: "power_of_attorney_letter_yunerva_uuid", typeKey: "power_attorney" },
-    { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid", typeKey: "ssw_result" },
-    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid", typeKey: "japanese_language_certificate" },
-    { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
-    { label: "Photo Studio", field: "photo_yunerva_uuid", typeKey: "photo_studio" },
-    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid", typeKey: "photo_with_suit" },
-    { label: "ID Card", field: "id_card_yunerva_uuid", typeKey: "id_card" },
-    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid", typeKey: "1st_medical_checkup" },
-    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid", typeKey: "2nd_medical_checkup" },
-    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid", typeKey: "3rd_medical_checkup" },
-    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid", typeKey: "passport_photo_page" },
-    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid", typeKey: "parents_consent_letter" },
+    { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid" },
+    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid" },
+    { label: "Work Contract", field: "work_contract_yunerva_uuid" },
+    { label: "Photo Studio", field: "photo_yunerva_uuid" },
+    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid" },
+    { label: "ID Card", field: "id_card_yunerva_uuid" },
+    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid" },
+    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid" },
+    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid" },
+    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid" },
+    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid" },
     
 ];
 
@@ -1163,13 +1163,15 @@ export default function InterviewShow({
                                 <div key={doc.field} className="flex items-center justify-between p-3 border rounded-xl hover:bg-neutral-50 transition-colors">
                                     <span className="text-sm font-medium pr-4">{doc.label}</span>
                                     <div className="flex gap-2 items-center shrink-0">
-                                        <Button 
-                                            size="sm" variant="secondary" 
-                                            title="Generate Word"
-                                            onClick={() => handleAdminGenerate(doc.typeKey, selectedStudentForDoc.user_id)}
-                                        >
-                                            <Download size={14} />
-                                        </Button>
+                                        {doc.typeKey && (
+                                            <Button 
+                                                size="sm" variant="secondary" 
+                                                title="Generate Word"
+                                                onClick={() => handleAdminGenerate(doc.typeKey, selectedStudentForDoc.user_id)}
+                                            >
+                                                <Download size={14} />
+                                            </Button>
+                                        )}
 
                                         {currentUuid && (
                                             <>
