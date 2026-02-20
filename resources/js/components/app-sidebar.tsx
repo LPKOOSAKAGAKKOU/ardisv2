@@ -35,7 +35,7 @@ import { route } from 'ziggy-js'
 const adminNavItems = (): NavItem[] => [
     { title: 'Dashboard', href: route('admin.dashboard'), icon: LayoutGrid },
     { title: 'Data Siswa', href: route('admin.students.index'), icon: Users },
-    { title: 'Data Kelas', href: '#', icon: School },
+    { title: 'Data Kelas', href: route('admin.classrooms.index'), icon: School },
     { title: 'Data Guru', href: route('admin.teachers.index'), icon: GraduationCap },
     { title: 'Data Wawancara', href: route('admin.interviews.index'), icon: MessageSquare },
     { title: 'Data Perusahaan', href: route('admin.companies.index'), icon: Building2 },

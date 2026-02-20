@@ -13,6 +13,7 @@ use App\Http\Controllers\AdminController\InterviewController;
 use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
+use App\Http\Controllers\AdminController\AdminClassroomController;
 use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
@@ -117,6 +118,15 @@ Route::middleware([
     Route::resource('organizations', AcceptingOrganizationController::class);
     // --- MANAJEMEN PERUSAHAAN ---
     Route::resource('companies', CompanyController::class);
+
+    // Resource Classrooms
+    Route::resource('classrooms', AdminClassroomController::class);
+
+    // Custom Route untuk Management Siswa di dalam Kelas oleh Admin
+    Route::prefix('classrooms/{classroom}')->group(function () {
+        Route::post('students', [AdminClassroomController::class, 'addStudent'])->name('classrooms.students.add');
+        Route::patch('students/{student}', [AdminClassroomController::class, 'removeStudent'])->name('classrooms.students.remove');
+    });
 
 });
 
