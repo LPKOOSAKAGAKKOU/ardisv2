@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Province;
 use App\Models\JobSector;
 use App\Models\Major;
+use App\Models\Recruitment;
 use App\Services\YunervaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -340,6 +341,7 @@ class InterviewController extends Controller
         $provinces = Province::all(); // Contoh tabel provinsi
         $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
         $majors = Major::all(); // Contoh tabel jurusan
+        $recruitments = Recruitment::where('is_active', true)->orderBy('date', 'desc')->get(); // TAMBAHKAN INI
 
         // 4. Return ke Inertia
         return Inertia::render('admin/interview/Show', [
@@ -350,6 +352,7 @@ class InterviewController extends Controller
             'provinces' => $provinces,
             'jobSectors' => $jobSectors,
             'majors' => $majors,
+            'recruitments' => $recruitments, // TAMBAHKAN INI
         ]);
     }
 
