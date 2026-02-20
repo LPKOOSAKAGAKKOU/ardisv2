@@ -106,6 +106,8 @@ Route::middleware([
     Route::post('/interviews/{id}/store-report', [InterviewController::class, 'storeReport'])->name('interviews.store-report');
     Route::post('/interviews/{id}/preview-report', [InterviewController::class, 'previewReport'])
         ->name('interviews.preview-report');
+    Route::delete('interviews/{id}/delete-report', [InterviewController::class, 'deleteReport'])
+        ->name('interviews.delete-report');
     
     Route::post('/interviews/{id}/assign', [InterviewController::class, 'assignStudent']);
     Route::delete('/interview-details/{id}', [InterviewController::class, 'removeStudent']);

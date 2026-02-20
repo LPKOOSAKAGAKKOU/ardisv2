@@ -490,6 +490,38 @@ class InterviewController extends Controller
     }
 
     /**
+     * Menghapus laporan kolektif wawancara (Admin Only)
+     */
+    public function deleteReport(Request $request, $id)
+    {
+        $interview = Interview::findOrFail($id);
+        $fieldName = $request->field_name; // Nama kolom, misal: 'ginou_1_34_uuid'
+
+        // 1. Ambil UUID dari kolom tersebut
+        $uuid = $interview->$fieldName;
+
+        if (!$uuid) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Laporan tidak ditemukan'
+            ], 404);
+        }
+
+        // 2. Hapus file fisik di server Yunerva
+        $this->yunerva->deleteFile($uuid);
+
+        // 3. Kosongkan kolom di database tabel interviews
+        $interview->update([
+            $fieldName => null
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Laporan kolektif berhasil dihapus'
+        ]);
+    }
+    
+    /**
      * Fitur Siswa: Mendaftarkan diri ke wawancara
      */
     public function apply(Request $request, $interviewId)

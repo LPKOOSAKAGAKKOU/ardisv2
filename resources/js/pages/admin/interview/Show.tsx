@@ -278,6 +278,24 @@ export default function InterviewShow({
         '1_29_third_training_item': interview['1_29_third_training_item'] || '',
     });
 
+    const handleAdminDeleteReport = async (fieldName, label) => {
+        if (!confirm(`Hapus laporan "${label}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        setIsLoadingId(fieldName);
+        try {
+            await axios.delete(route('admin.interviews.delete-report', interview.id), {
+                data: { field_name: fieldName }
+            });
+
+            // Gunakan router.reload agar data interview di props ter-update (UUID jadi null)
+            router.reload({ preserveScroll: true });
+        } catch (err) {
+            alert("Gagal menghapus laporan.");
+        } finally {
+            setIsLoadingId(null);
+        }
+    };
+
     const ginouReports = useMemo(() => {
         // 1. Daftar Dokumen Dasar (Selalu Ada)
         const baseReports = [
@@ -896,6 +914,22 @@ export default function InterviewShow({
                                                         {currentUuid && (
                                                             <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => handleInterviewReportPreview(currentUuid)}>
                                                                 <Eye size={12}/>
+                                                            </Button>
+                                                        )}
+                                                        {currentUuid && (
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                title="Hapus Laporan"
+                                                                onClick={() => handleAdminDeleteReport(report.field, report.label)}
+                                                                disabled={isLoadingId === report.field}
+                                                            >
+                                                                {isLoadingId === report.field ? (
+                                                                    <Loader2 size={12} className="animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 size={12} />
+                                                                )}
                                                             </Button>
                                                         )}
                                                         <label className="cursor-pointer">
