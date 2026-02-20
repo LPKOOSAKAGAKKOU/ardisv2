@@ -7,6 +7,7 @@ use App\Models\StudentProfile;
 use App\Models\Province;
 use App\Models\JobSector;
 use App\Models\Major;
+use App\Models\Recruitment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,7 @@ class ProfileController extends Controller
                 'student_status' => 'pelatihan',
                 'program_expert' => 'BAHASA JEPANG',
                 'class_level' => 'SISWA BARU',
+                'recruitments_id' => null, // Inisialisasi untuk data baru
             ];
         }
 
@@ -43,6 +45,9 @@ class ProfileController extends Controller
             'provinces' => Province::all(),
             'jobSectors' => JobSector::all(),
             'majors' => Major::all(),
+            'recruitments' => Recruitment::where('is_active', true)
+                            ->orderBy('date', 'desc')
+                            ->get(),
         ]);
     }
 
@@ -55,6 +60,7 @@ class ProfileController extends Controller
             'nik' => 'required|string|max:20|unique:student_profiles,nik,' . ($profile->id ?? 'NULL'),
             'full_name' => 'required|string|max:255',
             'dob' => 'required|date',
+            'recruitments_id' => 'nullable|exists:recruitments,id',
         ]);
 
         // Fungsi pembantu (helper) untuk kapitalisasi string non-Jepang

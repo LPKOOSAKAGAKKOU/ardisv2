@@ -23,9 +23,10 @@ interface Props {
     provinces: { id: number; name: string }[];
     jobSectors: { id: number; name: string; code: string }[];
     majors: { id: number; name: string }[]; // Tambahkan baris ini
+    recruitments: { id: number; name: string; date: string; type: string }[];
 }
 
-export default function StudentForm({ student, provinces, jobSectors, majors }: Props) {
+export default function StudentForm({ student, provinces, jobSectors, majors, recruitments }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
     const validateStep = (currentStep: number) => {
@@ -107,6 +108,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
         savings_target: student?.savings_target || '',
         savings_reason: student?.savings_reason || '',
         student_status: student?.student_status || 'pelatihan',
+        recruitments_id: student?.recruitments_id || '',
 
         // Arrays
         educations: student?.educations || [],
@@ -842,7 +844,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
 
                                         {/* FIELD YANG HARUS DIISI (EDITABLE) */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-x-4 sm:gap-x-6 gap-y-4 sm:gap-y-6">
-                                            <FormItem label="Tgl Masuk LPK" required>
+                                            {/* TANGGAL MASUK LPK */}
+                                            <FormItem label="Tgl Mulai Belajar Bahasa Jepang (atau Tgl Masuk LPK untuk yang masih belum bisa bahasa jepang)" required>
                                                 <Input 
                                                     type="date" 
                                                     value={data.entry_date_lpk} 
@@ -850,6 +853,32 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                     className="bg-background font-bold text-sm cursor-pointer" 
                                                     placeholder="YYYY-MM-DD"
                                                 />
+                                            </FormItem>
+                                            {/* SELEKSI ANGKATAN PEREKRUTAN (BARU) */}
+                                            <FormItem label="Angkatan Perekrutan" required error={errors.recruitments_id}>
+                                                <Select 
+                                                    value={data.recruitments_id?.toString()} 
+                                                    onValueChange={v => setData('recruitments_id', v)}
+                                                >
+                                                    <SelectTrigger className="text-sm bg-white font-bold">
+                                                        <SelectValue placeholder="Pilih Gelombang Rekrutmen" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {recruitments.map((rec: any) => (
+                                                            <SelectItem key={rec.id} value={rec.id.toString()} className="text-sm">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold">{rec.name}</span>
+                                                                    <span className="text-[10px] opacity-70 uppercase">
+                                                                        {rec.type.replace('_', ' ')} — {new Date(rec.date).toLocaleDateString('id-ID', { dateStyle: 'long' })}
+                                                                    </span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    Pilih program rekrutmen yang Anda ikuti saat ini.
+                                                </p>
                                             </FormItem>
                                             {/* KELEBIHAN (STRENGTH) */}
                                             <FormItem label="Kelebihan Diri" required error={errors.strength}>

@@ -65,6 +65,9 @@ class StudentController extends Controller
             'provinces' => Province::all(),
             'jobSectors' => JobSector::all(),
             'majors' => Major::all(),
+            'recruitments' => Recruitment::where('is_active', true)
+                            ->orderBy('date', 'desc')
+                            ->get(),
         ]);
     }
 
@@ -76,6 +79,7 @@ class StudentController extends Controller
             'nik' => 'required|unique:student_profiles,nik',
             'full_name' => 'required|string|max:255',
             'dob' => 'required|date',
+            'recruitments_id' => 'nullable|exists:recruitments,id',
         ]);
 
         // Fungsi Helper untuk Kapitalisasi (Non-Jepang)
@@ -154,6 +158,7 @@ class StudentController extends Controller
         $provinces = Province::all(); // Contoh tabel provinsi
         $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
         $majors = Major::all(); // Contoh tabel jurusan
+        $recruitments = Recruitment::where('is_active', true)->orderBy('date', 'desc')->get(); // TAMBAHKAN INI
 
 
         // Inertia akan mengirimkan objek $student sebagai PROPS ke React
@@ -162,6 +167,7 @@ class StudentController extends Controller
             'provinces' => $provinces,      // TAMBAHKAN INI
             'jobSectors' => $jobSectors,    // TAMBAHKAN INI
             'majors' => $majors,            // TAMBAHKAN INI
+            'recruitments' => $recruitments, // TAMBAHKAN INI
         ]);
     }
 
@@ -176,6 +182,7 @@ class StudentController extends Controller
             'nik'   => 'required|unique:student_profiles,nik,' . $profile->id,
             'full_name' => 'required|string|max:255',
             'dob'   => 'required|date',
+            'recruitments_id' => 'nullable|exists:recruitments,id',
         ]);
 
         // --- LOGIKA KAPITALISASI ---
