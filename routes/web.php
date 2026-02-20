@@ -123,11 +123,15 @@ Route::middleware([
     // Resource Classrooms
     Route::resource('classrooms', AdminClassroomController::class);
 
-    // Custom Route untuk Management Siswa di dalam Kelas oleh Admin
-    Route::prefix('classrooms/{classroom}')->group(function () {
-        Route::post('students', [AdminClassroomController::class, 'addStudent'])->name('classrooms.students.add');
-        Route::patch('students/{student}', [AdminClassroomController::class, 'removeStudent'])->name('classrooms.students.remove');
-    });
+    // 2. RUTE KHUSUS untuk Manajemen Siswa di dalam Kelas
+    Route::post('classrooms/{classroom}/students', [AdminClassroomController::class, 'addStudent'])->name('classrooms.add-student');
+    Route::patch('classrooms/{classroom}/students/{student}', [AdminClassroomController::class, 'removeStudent'])->name('classrooms.remove-student');
+
+    // 3. RUTE KHUSUS untuk Data Nilai (GradesSection)
+    Route::get('classrooms/{classroom}/grades-data', [AdminClassroomController::class, 'getGradesData'])->name('classrooms.grades-data');
+    
+    // 4. RUTE KHUSUS untuk Data Absensi (AttendanceSection)
+    Route::get('classrooms/{classroom}/attendance-data', [AdminClassroomController::class, 'getAttendanceData'])->name('classrooms.attendance-data');
 
     Route::resource('recruitments', RecruitmentsController::class);
 });
