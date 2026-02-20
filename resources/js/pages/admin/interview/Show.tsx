@@ -288,7 +288,7 @@ export default function InterviewShow({
             });
 
             // Gunakan router.reload agar data interview di props ter-update (UUID jadi null)
-            router.reload({ preserveScroll: true });
+            router.reload({ preserveScroll: true } as any);
         } catch (err) {
             alert("Gagal menghapus laporan.");
         } finally {
@@ -584,6 +584,36 @@ export default function InterviewShow({
             setIsLoadingId(null);
         }
     };
+
+    const handleAdminDeleteDoc = async (fieldName: string, studentProfileId: number, studentName: string) => {
+        // 1. Konfirmasi sebelum eksekusi
+        if (!confirm(`Apakah Anda yakin ingin menghapus berkas ini untuk ${studentName}?`)) return;
+
+        // 2. Gunakan state loading yang sama agar ikon berubah menjadi spinner
+        setIsLoadingId(fieldName);
+        try {
+            // 3. Tembak ke route admin.documents.delete (sesuai struktur web.php kita)
+            // Menggunakan method delete dengan payload di dalam properti 'data'
+            await axios.delete(route('admin.documents.delete', studentProfileId), {
+                data: { 
+                    field_name: fieldName 
+                }
+            });
+
+            // 4. Berikan feedback sukses semirip mungkin
+            alert(`Berhasil menghapus dokumen untuk ${studentName}`);
+            
+            // 5. Refresh data agar UI terupdate (Status TERSIMPAN hilang)
+            router.reload({ preserveScroll: true });
+        } catch (err: any) {
+            console.error(err);
+            alert("Gagal menghapus berkas.");
+        } finally {
+            // 6. Reset state loading
+            setIsLoadingId(null);
+        }
+    };
+    
 
     const handleAdminPreviewDoc = async (fieldName: string, uuid: string, studentProfileId: number) => {
         setIsLoadingId(fieldName);
@@ -1142,13 +1172,27 @@ export default function InterviewShow({
                                         </Button>
 
                                         {currentUuid && (
-                                            <Button 
-                                                size="sm" variant="outline" 
-                                                title="Preview File"
-                                                onClick={() => handleAdminPreviewDoc(doc.field, currentUuid, profile.id)}
-                                            >
-                                                {isLoadingId === doc.field ? <Loader2 className="animate-spin size-4" /> : <Eye size={14} />}
-                                            </Button>
+                                            <>
+                                                <Button 
+                                                    size="sm" variant="outline" 
+                                                    title="Preview File"
+                                                    onClick={() => handleAdminPreviewDoc(doc.field, currentUuid, profile.id)}
+                                                >
+                                                    {isLoadingId === doc.field ? <Loader2 className="animate-spin size-4" /> : <Eye size={14} />}
+                                                </Button>
+
+                                                {/* --- TOMBOL DELETE --- */}
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="ghost" 
+                                                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                                    title="Hapus Dokumen"
+                                                    onClick={() => handleAdminDeleteDoc(doc.field, profile.id, profile.full_name)}
+                                                    disabled={isLoadingId !== null}
+                                                >
+                                                    {isLoadingId === doc.field ? <Loader2 className="animate-spin size-4" /> : <Trash2 size={14} />}
+                                                </Button>
+                                            </>
                                         )}
                                         
                                         <label className="cursor-pointer">
