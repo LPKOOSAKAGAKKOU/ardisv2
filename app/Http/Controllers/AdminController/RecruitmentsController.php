@@ -21,7 +21,8 @@ class RecruitmentsController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $recruitments = $query->latest()
+        // Mengurutkan berdasarkan kolom 'date' secara descending (terbaru ke terlama)
+        $recruitments = $query->orderBy('date', 'desc')
             ->paginate(10)
             ->withQueryString();
 
