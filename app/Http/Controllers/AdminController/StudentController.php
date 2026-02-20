@@ -12,6 +12,7 @@ use App\Services\YunervaService;
 use Inertia\Inertia;
 use App\Models\Province;
 use App\Models\JobSector;
+use App\Models\Recruitment;
 use Illuminate\Support\Str;
 use App\Models\Major;
 
