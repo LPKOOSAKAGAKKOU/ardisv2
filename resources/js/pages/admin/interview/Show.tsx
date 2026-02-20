@@ -70,6 +70,7 @@ interface Props {
     provinces?: any[];
     jobSectors?: any[];
     majors?: any[];
+    recruitments?: any[];
 }
 
 const GINOU_DOCS = [
@@ -222,7 +223,9 @@ export default function InterviewShow({
         availableStudents = [], 
         provinces = [], 
         jobSectors = [], 
-        majors = [] 
+        majors = [], 
+        recruitments = []
+        
     }: Props) {
     const [isUploading, setIsUploading] = useState(false);
     const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
@@ -1444,6 +1447,7 @@ export default function InterviewShow({
                             provinces={provinces}
                             jobSectors={jobSectors}
                             majors={majors}
+                            recruitments={recruitments} // <-- JANGAN LUPA PASSING PROPS RECRUITMENTS
                             isModal={true} // <-- KUNCINYA DISINI
                             onSuccess={() => {
                                 setIsEditStudentOpen(false);
