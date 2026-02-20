@@ -201,4 +201,57 @@ class AdminClassroomController extends Controller
         return back()->with('success', 'Status siswa berhasil diperbarui oleh Admin.');
     }
 
+    /**
+     * MONITORING NILAI (ADMIN)
+     */
+    public function getGradesData($classroomId)
+    {
+        // Logic sama dengan Sensei agar komponen UI bisa di-reuse
+        $grades = \App\Models\ClassroomGrade::where('classroom_id', $classroomId)
+            ->with('student:id,full_name,nik')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $assignments = $grades->groupBy(function($item) {
+            return $item->type . ' - ' . $item->title;
+        })->map(function($items) {
+            return [
+                'type' => $items->first()->type,
+                'title' => $items->first()->title,
+                'avg' => round($items->avg('score'), 1)
+            ];
+        })->values();
+
+        return response()->json([
+            'grades' => $grades,
+            'assignments' => $assignments
+        ]);
+    }
+
+    /**
+     * MONITORING ABSENSI (ADMIN)
+     */
+    public function getAttendanceData(Request $request, $classroomId)
+    {
+        $request->validate([
+            'mode' => 'required|in:day,month',
+            'date' => 'required_if:mode,day|date',
+            'month' => 'required_if:mode,month|date_format:Y-m',
+        ]);
+
+        $query = \App\Models\ClassroomAttendance::where('classroom_id', $classroomId);
+
+        if ($request->mode === 'day') {
+            $data = $query->whereDate('date', $request->date)->get();
+        } else {
+            $parts = explode('-', $request->month);
+            $data = $query->whereYear('date', $parts[0])
+                          ->whereMonth('date', $parts[1])
+                          ->orderBy('date', 'asc')
+                          ->get();
+        }
+
+        return response()->json($data);
+    }
+
 }
