@@ -80,6 +80,19 @@ const GINOU_DOCS = [
     { label: "Form 1-39", field: "ginou_jisshuu_1-39_document_yunerva_uuid", typeKey: "ginou_1-39" },
     { label: "Agreement Letter", field: "ginou_jisshuu_aggreement_document_yunerva_uuid", typeKey: "ginou_agreement" },
     { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
+    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid", typeKey: "japanese_language_certificate" },
+    { label: "Photo Studio", field: "photo_yunerva_uuid", typeKey: "photo_studio" },
+    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid", typeKey: "photo_with_suit" },
+    { label: "ID Card", field: "id_card_yunerva_uuid", typeKey: "id_card" },
+    { label: "Family Card", field: "family_card_yunerva_uuid", typeKey: "family_card" },
+    { label: "Birth Certificate", field: "birth_certificate_yunerva_uuid", typeKey: "birth_certificate" },
+    { label: "Diploma", field: "diploma_yunerva_uuid", typeKey: "diploma" },
+    { label: "Transcript", field: "transcript_yunerva_uuid", typeKey: "transcript" },
+    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid", typeKey: "1st_medical_checkup" },
+    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid", typeKey: "2nd_medical_checkup" },
+    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid", typeKey: "3rd_medical_checkup" },
+    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid", typeKey: "passport_photo_page" },
+    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid", typeKey: "parents_consent_letter" },
 ];
 
 const TOKUTEI_DOCS = [
@@ -90,26 +103,21 @@ const TOKUTEI_DOCS = [
     { label: "Form 1-17", field: "tokutei_ginou_1-17_document_yunerva_uuid", typeKey: "tg_1-17" },
     { label: "Power of Attorney", field: "power_of_attorney_letter_yunerva_uuid", typeKey: "power_attorney" },
     { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid", typeKey: "ssw_result" },
+    { label: "Japanese Language Certificate", field: "japanese_language_certificate_yunerva_uuid", typeKey: "japanese_language_certificate" },
     { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
-];
-
-const INTERVIEW_GINOU_REPORTS = [
-    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
-    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1-10", field: "ginou_1_10_uuid" },
-    { label: "Rekom Pemberangkatan (1-23)", typeKey: "ginou_1-23", field: "ginou_1_23_uuid" },
-    { label: "Surat Pengajuan Rekom (1-23)", typeKey: "ginou_1-23_req", field: "ginou_1_23_req_uuid" },
-    { label: "Profile LPK (1-13)", typeKey: "ginou_1-13", field: "ginou_1_13_uuid" },
-    { label: "Pernyataan Pelatihan Pra Pemberangkatan (1-29)", typeKey: "ginou_1-29", field: "ginou_1_29_uuid" },
-    { label: "Jadwal Pelatihan Pra-Pemberangkatan (4-8)", typeKey: "ginou_4-8", field: "ginou_4_8_uuid" },
-    { label: "Pernyataan Pengajar Bahasa Jepang", typeKey: "stmt_jp_teacher", field: "stmt_jp_teacher_uuid" },
-    { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher", field: "stmt_kg_teacher_uuid" },
-    { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher", field: "cv_jp_teacher_uuid" },
-    { label: "CV Pengajar Keterampilan Kaigo", typeKey: "cv_kg_teacher", field: "cv_kg_teacher_uuid" },
-    { label: "Jadwal Perincian Pelatihan", typeKey: "schedule_detail", field: "schedule_detail_uuid" },
+    { label: "Photo Studio", field: "photo_yunerva_uuid", typeKey: "photo_studio" },
+    { label: "Photo With Suit", field: "photo_with_suit_yunerva_uuid", typeKey: "photo_with_suit" },
+    { label: "ID Card", field: "id_card_yunerva_uuid", typeKey: "id_card" },
+    { label: "1st Medical Checkup", field: "1st_medical_checkup_yunerva_uuid", typeKey: "1st_medical_checkup" },
+    { label: "2nd Medical Checkup", field: "2nd_medical_checkup_yunerva_uuid", typeKey: "2nd_medical_checkup" },
+    { label: "3rd Medical Checkup", field: "3rd_medical_checkup_yunerva_uuid", typeKey: "3rd_medical_checkup" },
+    { label: "Passport Photo Page", field: "passport_photo_page_yunerva_uuid", typeKey: "passport_photo_page" },
+    { label: "Parents Consent Letter", field: "parents_consent_letter_yunerva_uuid", typeKey: "parents_consent_letter" },
+    
 ];
 
 const INTERVIEW_TOKUTEI_REPORTS = [
-    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
+    null
 ];
 
 
@@ -271,6 +279,33 @@ export default function InterviewShow({
         '1_29_third_training_duration_hours': interview['1_29_third_training_duration_hours'] || '',
         '1_29_third_training_item': interview['1_29_third_training_item'] || '',
     });
+
+    const ginouReports = useMemo(() => {
+        // 1. Daftar Dokumen Dasar (Selalu Ada)
+        const baseReports = [
+            { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
+            { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1-10", field: "ginou_1_10_uuid" },
+            { label: "Rekom Pemberangkatan (1-23)", typeKey: "ginou_1-23", field: "ginou_1_23_uuid" },
+            { label: "Surat Pengajuan Rekom (1-23)", typeKey: "ginou_1-23_req", field: "ginou_1_23_req_uuid" },
+            { label: "Profile LPK (1-13)", typeKey: "ginou_1-13", field: "ginou_1_13_uuid" },
+            { label: "Pernyataan Pelatihan Pra Pemberangkatan (1-29)", typeKey: "ginou_1-29", field: "ginou_1_29_uuid" },
+            { label: "Jadwal Pelatihan Pra-Pemberangkatan (4-8)", typeKey: "ginou_4-8", field: "ginou_4_8_uuid" },
+        ];
+
+        // 2. Tambahkan dokumen tambahan hanya jika Industrinya adalah Kaigo (介護)
+        if (interview?.industry === '介護') {
+            return [
+                ...baseReports,
+                { label: "Pernyataan Pengajar Bahasa Jepang", typeKey: "stmt_jp_teacher", field: "stmt_jp_teacher_uuid" },
+                { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher", field: "stmt_kg_teacher_uuid" },
+                { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher", field: "cv_jp_teacher_uuid" },
+                { label: "CV Pengajar Keterampilan Kaigo", typeKey: "cv_kg_teacher", field: "cv_kg_teacher_uuid" },
+                { label: "Jadwal Perincian Pelatihan", typeKey: "schedule_detail", field: "schedule_detail_uuid" },
+            ];
+        }
+
+        return baseReports;
+    }, [interview?.industry]); // Re-run jika industry berubah
 
     // Filter siswa yang LULUS untuk bagian Berkas Per Siswa
     const passedStudents = useMemo(() => {
@@ -464,9 +499,9 @@ export default function InterviewShow({
     // Logika untuk menentukan daftar dokumen yang muncul di Tab Documents
     const currentReports = useMemo(() => {
         return interview.type === 'ginoujisshuu' 
-            ? INTERVIEW_GINOU_REPORTS 
+            ? ginouReports // Menggunakan hasil useMemo di atas
             : INTERVIEW_TOKUTEI_REPORTS;
-    }, [interview.type]);
+    }, [interview.type, ginouReports]); // Tambahkan ginouReports di dependency
 
     const handleManageDocs = (detail: any) => {
         setSelectedStudentForDoc(detail);
