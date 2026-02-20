@@ -77,6 +77,8 @@ Route::middleware([
     Route::prefix('students')->group(function () {
         Route::post('{id}/documents-store', [StudentDocumentController::class, 'storeDocument'])->name('documents.store');
         Route::post('{id}/preview-file', [StudentDocumentController::class, 'previewDocument'])->name('documents.preview');
+        // TAMBAHKAN INI:
+        Route::delete('{id}/documents-delete', [StudentDocumentController::class, 'deleteDocument'])->name('documents.delete');
     });
 
     // --- MANAJEMEN SISWA (Cukup satu baris ini) ---

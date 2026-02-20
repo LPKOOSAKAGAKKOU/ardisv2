@@ -63,6 +63,35 @@ class StudentDocumentController extends Controller
         return response()->json(['message' => 'Gagal verifikasi berkas'], 400);
     }
 
+    public function deleteDocument(Request $request, $id)
+    {
+        $student = StudentProfile::findOrFail($id);
+        $fieldName = $request->field_name; // Nama kolom, misal: 'photo_yunerva_uuid'
+
+        // 1. Ambil UUID dari kolom tersebut
+        $uuid = $student->$fieldName;
+
+        if (!$uuid) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Dokumen tidak ditemukan di database'
+            ], 404);
+        }
+
+        // 2. Hapus file fisik di server Yunerva melalui Service
+        $response = $this->yunerva->deleteFile($uuid);
+
+        // 3. Update database: Set kolom menjadi null
+        $student->update([
+            $fieldName => null
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dokumen berhasil dihapus'
+        ]);
+    }
+
     // Preview: Ambil View URL (berlaku 15 detik)
     public function previewDocument(Request $request, $id)
     {

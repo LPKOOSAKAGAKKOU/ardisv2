@@ -7,7 +7,8 @@ import {
     Ruler, Weight, Heart, Shield, GraduationCap, 
     Briefcase, Users, ArrowLeft, Edit, Phone, 
     Target, Award, BookOpen, PlaneTakeoff,
-    Eye, Beer, Flame, Anchor, CreditCard, Info, File, Download, CheckCircle2, UploadCloud, Loader2, X
+    Eye, Beer, Flame, Anchor, CreditCard, Info, File, Download, CheckCircle2, UploadCloud, Loader2, X,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +55,31 @@ export default function StudentShow({ student }: Props) {
             alert("Gagal memuat pratinjau.");
         } finally {
             setLoadingPreview(null); // Reset setelah selesai
+        }
+    };
+
+    const [loadingDelete, setLoadingDelete] = useState(null);
+
+    const handleDelete = async (fieldName, label) => {
+        // 1. Konfirmasi ke user
+        if (!confirm(`Apakah Anda yakin ingin menghapus file "${label}"?`)) return;
+
+        setLoadingDelete(fieldName); // Set loading state berdasarkan nama field
+        try {
+            // 2. Kirim request delete ke server
+            const res = await axios.delete(`/admin/students/${student.id}/documents-delete`, {
+                data: { field_name: fieldName } // Kirim field_name di body (standar Axios untuk DELETE)
+            });
+
+            if (res.data.status === 'success') {
+                // 3. Gunakan Inertia router.reload untuk refresh data tanpa reload halaman
+                router.reload({ preserveScroll: true });
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Gagal menghapus berkas.");
+        } finally {
+            setLoadingDelete(null); // Reset loading state
         }
     };
 
@@ -311,26 +337,43 @@ export default function StudentShow({ student }: Props) {
                                                 <div className="flex gap-1">
                                                     {student[doc.field] && (
                                                         <>
-                                                                <Button 
-                                                                    size="icon" 
-                                                                    variant="ghost" 
-                                                                    className="h-7 w-7" 
-                                                                    // TAMBAHKAN field ke dalam parameter fungsi
-                                                                    onClick={() => handlePreview(student[doc.field], doc.field)}
-                                                                    // CEK apakah field ini yang sedang loading
-                                                                    disabled={loadingPreview !== null}
-                                                                >
-                                                                    {loadingPreview === doc.field ? (
-                                                                        <Loader2 size={12} className="animate-spin" />
-                                                                    ) : (
-                                                                        <Eye size={14} />
-                                                                    )}
-                                                                </Button>
+                                                            {/* Tombol Preview (Milikmu) */}
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7" 
+                                                                onClick={() => handlePreview(student[doc.field], doc.field)}
+                                                                disabled={loadingPreview !== null || loadingDelete !== null}
+                                                            >
+                                                                {loadingPreview === doc.field ? (
+                                                                    <Loader2 size={12} className="animate-spin" />
+                                                                ) : (
+                                                                    <Eye size={14} />
+                                                                )}
+                                                            </Button>
+                                                            
+                                                            {/* Tombol Download */}
                                                             <a href={`https://yunerva.com/f/${student[doc.field]}`} target="_blank">
                                                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600">
                                                                     <Download size={14} />
                                                                 </Button>
                                                             </a>
+
+                                                            {/* TOMBOL DELETE (BARU) */}
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                onClick={() => handleDelete(doc.field, doc.label)}
+                                                                // Jangan biarkan klik jika sedang loading preview atau sedang hapus field lain
+                                                                disabled={loadingPreview !== null || loadingDelete !== null}
+                                                            >
+                                                                {loadingDelete === doc.field ? (
+                                                                    <Loader2 size={12} className="animate-spin" />
+                                                                ) : (
+                                                                    <Trash2 size={14} />
+                                                                )}
+                                                            </Button>
                                                         </>
                                                     )}
                                                 </div>
