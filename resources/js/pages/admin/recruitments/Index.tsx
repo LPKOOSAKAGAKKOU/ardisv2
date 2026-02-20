@@ -45,7 +45,7 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/admin/dashboard' },
-        { title: 'Manajemen Rekrutmen', href: '/admin/recruitments' },
+        { title: 'Perekrutan', href: '/admin/recruitments' },
     ];
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
@@ -109,7 +109,7 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
             <Head title="Manajemen Rekrutmen" />
 
             <div className="flex h-full flex-1 flex-col gap-4 p-4">
-                {/* Dashboard Stats */}
+                {/* Stats Section */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <StatCard title="Total Program" value={recruitments.total} icon={<ClipboardList className="size-4" />} />
                     <StatCard title="Status Aktif" value={recruitments.data.filter((r: any) => r.is_active).length} icon={<CheckCircle2 className="size-4 text-emerald-500" />} />
@@ -117,7 +117,7 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                 </div>
 
                 <div className="flex-1 rounded-xl border border-sidebar-border/70 bg-card p-6 dark:border-sidebar-border">
-                    {/* Toolbar Pencarian & Tambah */}
+                    {/* Toolbar */}
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
                         <form onSubmit={handleSearch} className="relative w-full md:w-96">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -129,78 +129,72 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                             />
                         </form>
 
-                        <Button onClick={() => openModal()} className="font-bold">
-                            <Plus className="mr-2 size-4" /> TAMBAH REKRUTMEN
+                        <Button onClick={() => openModal()} className="w-full md:w-auto">
+                            <Plus className="mr-2 size-4" /> Tambah Rekrutmen
                         </Button>
                     </div>
 
-                    {/* Tabel Data */}
+                    {/* Table */}
                     <div className="rounded-md border">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-muted/50">
-                                    <TableHead className="font-bold">NAMA REKRUTMEN</TableHead>
-                                    <TableHead className="font-bold">TANGGAL</TableHead>
-                                    <TableHead className="font-bold">TIPE</TableHead>
-                                    <TableHead className="font-bold">STATUS</TableHead>
-                                    <TableHead className="text-right font-bold">AKSI</TableHead>
+                                <TableRow>
+                                    <TableHead>Nama Rekrutmen</TableHead>
+                                    <TableHead>Tanggal</TableHead>
+                                    <TableHead>Tipe</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Aksi</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {recruitments.data.length > 0 ? (
                                     recruitments.data.map((item: any) => (
-                                        <TableRow key={item.id} className="group">
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-bold">{item.name}</TableCell>
+                                            <TableCell>{new Date(item.date).toLocaleDateString('id-ID', { dateStyle: 'long' })}</TableCell>
                                             <TableCell>
-                                                <button 
-                                                    onClick={() => router.get(`/admin/recruitments/${item.id}`)}
-                                                    className="text-left font-bold uppercase hover:text-emerald-600 hover:underline underline-offset-4 transition-all"
-                                                >
-                                                    {item.name}
-                                                </button>
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                {new Date(item.date).toLocaleDateString('id-ID', { dateStyle: 'long' })}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="capitalize text-[10px] font-bold">
+                                                <Badge variant="outline" className="capitalize text-[10px]">
                                                     {item.type.replace('_', ' ')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 {item.is_active ? (
-                                                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[10px] font-bold">AKTIF</Badge>
+                                                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[10px]">Aktif</Badge>
                                                 ) : (
-                                                    <Badge variant="secondary" className="text-[10px] font-bold">NON-AKTIF</Badge>
+                                                    <Badge variant="secondary" className="text-[10px]">Non-Aktif</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {/* Tombol Show (Lihat Detail) */}
+                                                <div className="flex justify-end gap-1">
+                                                    {/* TOMBOL SHOW (DETAIL) */}
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" 
+                                                        className="h-8 w-8 text-emerald-600" 
                                                         onClick={() => router.get(`/admin/recruitments/${item.id}`)}
+                                                        title="Lihat Detail Angkatan"
                                                     >
                                                         <Eye size={14} />
                                                     </Button>
 
-                                                    {/* Tombol Edit */}
+                                                    {/* TOMBOL EDIT */}
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-8 w-8 text-blue-600 hover:bg-blue-50" 
+                                                        className="h-8 w-8 text-blue-600" 
                                                         onClick={() => openModal(item)}
+                                                        title="Edit"
                                                     >
                                                         <Edit size={14} />
                                                     </Button>
 
-                                                    {/* Tombol Hapus */}
+                                                    {/* TOMBOL DELETE */}
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className="h-8 w-8 text-rose-600 hover:bg-rose-50" 
+                                                        className="h-8 w-8 text-rose-600" 
                                                         onClick={() => handleDelete(item.id, item.name)}
+                                                        title="Hapus"
                                                     >
                                                         <Trash2 size={14} />
                                                     </Button>
@@ -210,8 +204,8 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground uppercase text-xs font-bold">
-                                            Data rekrutmen tidak ditemukan.
+                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                            Tidak ada data rekrutmen.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -221,59 +215,56 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                 </div>
             </div>
 
-            {/* Modal Form */}
+            {/* Modal Create / Edit */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <form onSubmit={submit}>
                         <DialogHeader>
-                            <DialogTitle className="font-black uppercase tracking-tight">
-                                {editData ? 'Edit Rekrutmen' : 'Tambah Rekrutmen'}
-                            </DialogTitle>
-                            <DialogDescription className="text-xs">
-                                Masukkan detail informasi perekrutan angkatan.
+                            <DialogTitle>{editData ? 'Edit Rekrutmen' : 'Tambah Rekrutmen'}</DialogTitle>
+                            <DialogDescription>
+                                Lengkapi informasi detail perekrutan berikut ini.
                             </DialogDescription>
                         </DialogHeader>
                         
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="name" className="text-xs font-bold uppercase">Nama Rekrutmen</Label>
+                                <Label htmlFor="name">Nama Rekrutmen</Label>
                                 <Input
                                     id="name"
                                     value={data.name}
                                     onChange={(e) => setData('name', e.target.value)}
-                                    placeholder="Contoh: Rekrutmen Maret 2026"
-                                    className="uppercase font-bold"
+                                    placeholder="Contoh: Rekrutmen Reguler Maret 2026"
                                 />
-                                {errors.name && <span className="text-[10px] text-destructive font-bold">{errors.name}</span>}
+                                {errors.name && <span className="text-xs text-destructive">{errors.name}</span>}
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="date" className="text-xs font-bold uppercase">Tanggal Pelaksanaan</Label>
+                                <Label htmlFor="date">Tanggal Pelaksanaan</Label>
                                 <Input
                                     id="date"
                                     type="date"
                                     value={data.date}
                                     onChange={(e) => setData('date', e.target.value)}
                                 />
-                                {errors.date && <span className="text-[10px] text-destructive font-bold">{errors.date}</span>}
+                                {errors.date && <span className="text-xs text-destructive">{errors.date}</span>}
                             </div>
 
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase">Tipe Rekrutmen</Label>
+                                <Label>Tipe Rekrutmen</Label>
                                 <Select value={data.type} onValueChange={(val) => setData('type', val)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Pilih Tipe" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="regular">REGULER</SelectItem>
-                                        <SelectItem value="job_matching">JOB MATCHING</SelectItem>
+                                        <SelectItem value="regular">Reguler</SelectItem>
+                                        <SelectItem value="job_matching">Job Matching</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {errors.type && <span className="text-[10px] text-destructive font-bold">{errors.type}</span>}
+                                {errors.type && <span className="text-xs text-destructive">{errors.type}</span>}
                             </div>
 
                             <div className="grid gap-2">
-                                <Label className="text-xs font-bold uppercase">Status Perekrutan</Label>
+                                <Label>Status Perekrutan</Label>
                                 <Select 
                                     value={data.is_active ? "1" : "0"} 
                                     onValueChange={(val) => setData('is_active', val === "1")}
@@ -282,18 +273,18 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                                         <SelectValue placeholder="Pilih Status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">AKTIF (DIBUKA)</SelectItem>
-                                        <SelectItem value="0">NON-AKTIF (DITUTUP)</SelectItem>
+                                        <SelectItem value="1">Aktif (Dibuka)</SelectItem>
+                                        <SelectItem value="0">Non-Aktif (Ditutup)</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {errors.is_active && <span className="text-[10px] text-destructive font-bold">{errors.is_active}</span>}
+                                {errors.is_active && <span className="text-xs text-destructive">{errors.is_active}</span>}
                             </div>
                         </div>
 
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)} className="font-bold text-xs uppercase">Batal</Button>
-                            <Button type="submit" disabled={processing} className="font-bold text-xs uppercase">
-                                {editData ? 'Perbarui Data' : 'Simpan Data'}
+                            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                            <Button type="submit" disabled={processing}>
+                                {editData ? 'Perbarui' : 'Simpan'}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -310,7 +301,7 @@ function StatCard({ title, value, icon }: { title: string; value: any; icon: Rea
                 {icon}
                 <span className="text-[10px] font-bold uppercase tracking-wider">{title}</span>
             </div>
-            <div className="text-2xl font-black tracking-tighter">{value}</div>
+            <div className="text-2xl font-bold">{value}</div>
         </div>
     );
 }
