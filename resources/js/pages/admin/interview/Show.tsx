@@ -116,9 +116,7 @@ const TOKUTEI_DOCS = [
     
 ];
 
-const INTERVIEW_TOKUTEI_REPORTS = [
-    null
-];
+const INTERVIEW_TOKUTEI_REPORTS = [];
 
 
 
@@ -875,40 +873,53 @@ export default function InterviewShow({
                                     <FileText size={16} className="text-blue-600"/> Laporan Kolektif
                                 </h4>
                                 <div className="space-y-2">
-                                    {currentReports.map((report, idx) => {
-                                        const currentUuid = interview[report.field];
-                                        return (
-                                            <div key={idx} className="flex items-center justify-between p-2 bg-white dark:bg-zinc-950 border rounded-lg text-xs">
-                                                <span className="font-medium truncate mr-2">{report.label}</span>
-                                                <div className="flex gap-1 shrink-0">
-                                                    {/* Tombol GENERATE Word Kolektif */}
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="secondary" 
-                                                        className="h-9 w-9 p-0" 
-                                                        title="Generate Word"
-                                                        onClick={() => {
-                                                            const url = `/admin/interviews/${interview.id}/report/${report.typeKey}`;
-                                                            window.open(url, '_blank');
-                                                        }}
-                                                    >
-                                                        <Download size={14} />
-                                                    </Button>
-                                                    {currentUuid && <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => handleInterviewReportPreview(currentUuid)}><Eye size={12}/></Button>}
-                                                    <label className="cursor-pointer">
-                                                        <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
-                                                        <div className={`flex items-center justify-center h-7 w-7 rounded-md border ${currentUuid ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-600 text-white'}`}>
-                                                            <Upload size={12} />
-                                                        </div>
-                                                    </label>
+                                    {/* TAMBAHKAN PENGECEKAN LENGTH DI SINI */}
+                                    {currentReports && currentReports.length > 0 ? (
+                                        currentReports.map((report, idx) => {
+                                            const currentUuid = interview[report.field];
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between p-2 bg-white dark:bg-zinc-950 border rounded-lg text-xs">
+                                                    <span className="font-medium truncate mr-2">{report.label}</span>
+                                                    <div className="flex gap-1 shrink-0">
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="secondary" 
+                                                            className="h-9 w-9 p-0" 
+                                                            title="Generate Word"
+                                                            onClick={() => {
+                                                                const url = `/admin/interviews/${interview.id}/report/${report.typeKey}`;
+                                                                window.open(url, '_blank');
+                                                            }}
+                                                        >
+                                                            <Download size={14} />
+                                                        </Button>
+                                                        {currentUuid && (
+                                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => handleInterviewReportPreview(currentUuid)}>
+                                                                <Eye size={12}/>
+                                                            </Button>
+                                                        )}
+                                                        <label className="cursor-pointer">
+                                                            <Input type="file" className="hidden" onChange={(e) => handleInterviewReportUpload(e, report.field, report.label)} />
+                                                            <div className={`flex items-center justify-center h-7 w-7 rounded-md border ${currentUuid ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-600 text-white'}`}>
+                                                                <Upload size={12} />
+                                                            </div>
+                                                        </label>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })
+                                    ) : (
+                                        /* TAMPILAN JIKA KOSONG (UNTUK TOKUTEI) */
+                                        <div className="py-10 text-center">
+                                            <Info className="mx-auto h-8 w-8 text-neutral-300 mb-2" />
+                                            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">
+                                                Tidak ada laporan kolektif <br /> untuk tipe ini
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-
                         {/* KANAN: BERKAS PER SISWA (LULUS) */}
                         <div className="lg:col-span-2 space-y-4">
                             <div className="bg-white dark:bg-zinc-950 border rounded-2xl overflow-hidden shadow-sm">
