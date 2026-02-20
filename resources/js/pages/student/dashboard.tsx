@@ -10,6 +10,7 @@ import {
     MapPin, Phone, Activity, Heart, Plane, Droplet, Cigarette, Wine, Globe,
     Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff,
     FileSpreadsheet,
+    Trash2,
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -1427,10 +1428,22 @@ function PreparationCard({ icon, title, description, details }: any) {
     )
 }
 
-function DocStatus({ label, isUploaded, fieldName, onUpload, onPreview, isUploading, isLoadingPreview, uploadProgress, uuid }: any) {
+function DocStatus({ 
+    label, 
+    isUploaded, 
+    fieldName, 
+    onUpload, 
+    onPreview, 
+    onDelete, // <--- Prop Baru
+    isUploading, 
+    isLoadingPreview, 
+    isLoadingDelete, // <--- Prop Baru
+    uploadProgress, 
+    uuid 
+}: any) {
     return (
         <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-2xl border border-sidebar-border/50 bg-sidebar-accent/5 p-4 transition-all hover:bg-sidebar-accent/10">
+            <div className="flex items-center justify-between rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/5 p-4 transition-all hover:bg-sidebar-accent/10">
                 <div className="flex items-center gap-3">
                     <div className={`rounded-full p-2 ${isUploaded ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'}`}>
                         {isUploaded ? <CheckCircle2 size={16} /> : <FileText size={16} />}
@@ -1441,22 +1454,48 @@ function DocStatus({ label, isUploaded, fieldName, onUpload, onPreview, isUpload
                 <div className="flex gap-2">
                     {isUploaded && uuid && (
                         <>
+                            {/* Tombol Preview */}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-lg hover:bg-emerald-50 hover:text-emerald-600" 
                                 onClick={() => onPreview(uuid, fieldName)} 
-                                disabled={isLoadingPreview !== null}
+                                disabled={isLoadingPreview !== null || isLoadingDelete !== null}
                             >
                                 {isLoadingPreview === fieldName ? <Loader2 size={14} className="animate-spin" /> : <Eye size={16} />}
                             </Button>
+
+                            {/* Tombol Download */}
                             <a href={`https://yunerva.com/f/${uuid}`} target="_blank" rel="noreferrer">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground"><Download size={14}/></Button>
                             </a>
+
+                            {/* --- TOMBOL DELETE --- */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                onClick={() => onDelete(fieldName, label)}
+                                disabled={isLoadingPreview !== null || isLoadingDelete !== null}
+                            >
+                                {isLoadingDelete === fieldName ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                    <Trash2 size={14} />
+                                )}
+                            </Button>
                         </>
                     )}
+
+                    {/* Tombol Upload */}
                     <label className="cursor-pointer">
-                        <input type="file" className="hidden" accept=".jpg,.jpeg,.pdf" onChange={(e) => onUpload(e, fieldName)} disabled={isUploading !== null} />
+                        <input 
+                            type="file" 
+                            className="hidden" 
+                            accept=".jpg,.jpeg,.pdf" 
+                            onChange={(e) => onUpload(e, fieldName)} 
+                            disabled={isUploading !== null || isLoadingDelete !== null} 
+                        />
                         <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${isUploaded ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700'}`}>
                             {isUploading === fieldName ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={16} />}
                         </div>
@@ -1464,6 +1503,7 @@ function DocStatus({ label, isUploaded, fieldName, onUpload, onPreview, isUpload
                 </div>
             </div>
             
+            {/* Progress Bar Upload */}
             {isUploading === fieldName && (
                 <div className="px-2 space-y-1.5">
                     <div className="flex justify-between text-[8px] font-black uppercase text-blue-600 tracking-widest">

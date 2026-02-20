@@ -247,6 +247,9 @@ Route::middleware([
             // Ganti name agar sinkron dengan route('student.profile.preview-file')
             Route::post('{id}/preview', [StudentDocumentController::class, 'previewDocument'])
                 ->name('profile.preview-file');
+            // TAMBAHKAN RUTE INI:
+            Route::delete('{id}/delete', [StudentDocumentController::class, 'deleteDocument'])
+                ->name('profile.documents-delete');
         });
     });
 require __DIR__.'/settings.php';
