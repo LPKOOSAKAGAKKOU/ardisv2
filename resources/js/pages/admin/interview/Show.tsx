@@ -79,6 +79,7 @@ const GINOU_DOCS = [
     { label: "Form 1-21", field: "ginou_jisshuu_1-21_document_yunerva_uuid", typeKey: "ginou_1-21" },
     { label: "Form 1-39", field: "ginou_jisshuu_1-39_document_yunerva_uuid", typeKey: "ginou_1-39" },
     { label: "Agreement Letter", field: "ginou_jisshuu_aggreement_document_yunerva_uuid", typeKey: "ginou_agreement" },
+    { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
 ];
 
 const TOKUTEI_DOCS = [
@@ -89,6 +90,7 @@ const TOKUTEI_DOCS = [
     { label: "Form 1-17", field: "tokutei_ginou_1-17_document_yunerva_uuid", typeKey: "tg_1-17" },
     { label: "Power of Attorney", field: "power_of_attorney_letter_yunerva_uuid", typeKey: "power_attorney" },
     { label: "SSW Test Result", field: "ssw_test_result_yunerva_uuid", typeKey: "ssw_result" },
+    { label: "Work Contract", field: "work_contract_yunerva_uuid", typeKey: "work_contract" },
 ];
 
 const INTERVIEW_GINOU_REPORTS = [
@@ -107,12 +109,7 @@ const INTERVIEW_GINOU_REPORTS = [
 ];
 
 const INTERVIEW_TOKUTEI_REPORTS = [
-    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34" },
-    { label: "Surat Perjanjian Sertifikasi Pelatihan (1-10)", typeKey: "ginou_1-10" },
-    { label: "Pernyataan Pengajar Keterampilan Kaigo", typeKey: "stmt_kg_teacher" },
-    { label: "CV Pengajar Bahasa Jepang", typeKey: "cv_jp_teacher" },
-    { label: "CV Pengajar Keterampilan Kaigo", typeKey: "cv_kg_teacher" },
-    { label: "Jadwal Perincian Pelatihan", typeKey: "schedule_detail" },
+    { label: "Surat Bukti Pelatihan Teknis (1-34)", typeKey: "ginou_1-34", field: "ginou_1_34_uuid" },
 ];
 
 
