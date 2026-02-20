@@ -40,6 +40,7 @@ const adminNavItems = (): NavItem[] => [
     { title: 'Data Wawancara', href: route('admin.interviews.index'), icon: MessageSquare },
     { title: 'Data Perusahaan', href: route('admin.companies.index'), icon: Building2 },
     { title: 'Data Organisasi Penerima', href: route('admin.organizations.index'), icon: Network },
+    { title: 'Data Rekrutmen', href: route('admin.recruitments.index'), icon: Folder },
     { title: 'Data Pembayaran', href: '#', icon: CreditCard },
 ]
 

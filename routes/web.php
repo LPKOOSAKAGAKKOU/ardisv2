@@ -128,6 +128,7 @@ Route::middleware([
         Route::patch('students/{student}', [AdminClassroomController::class, 'removeStudent'])->name('classrooms.students.remove');
     });
 
+    Route::resource('recruitments', RecruitmentsController::class);
 });
 
 /*

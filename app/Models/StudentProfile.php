@@ -84,4 +84,10 @@ class StudentProfile extends Model
         // Key-nya menggunakan APP_KEY dari .env agar aman dan unik per aplikasi
         return hash_hmac('sha256', $this->nik, config('app.key'));
     }
+
+    // Di dalam class StudentProfile
+    public function recruitment()
+    {
+        return $this->belongsTo(Recruitment::class, 'recruitments_id');
+    }
 }
