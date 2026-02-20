@@ -1028,19 +1028,22 @@ export default function InterviewShow({
             </Dialog>
 
             <Dialog open={isDocModalOpen} onOpenChange={setIsDocModalOpen}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
+                {/* 1. Tambahkan h-[90vh] agar modal tidak melebihi layar dan flex-col untuk struktur */}
+                <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="px-6 pt-6 pb-4 border-b">
                         <DialogTitle>Kelola Dokumen: {selectedStudentForDoc?.user?.student_profile?.full_name}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 mt-4">
+
+                    {/* 2. Tambahkan overflow-y-auto dan flex-1 di sini */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         {(interview.type === 'ginoujisshuu' ? GINOU_DOCS : TOKUTEI_DOCS).map((doc) => {
                             const profile = selectedStudentForDoc?.user?.student_profile;
                             const currentUuid = profile?.[doc.field];
                             
                             return (
-                                <div key={doc.field} className="flex items-center justify-between p-3 border rounded-xl">
-                                    <span className="text-sm font-medium">{doc.label}</span>
-                                    <div className="flex gap-2">
+                                <div key={doc.field} className="flex items-center justify-between p-3 border rounded-xl hover:bg-neutral-50 transition-colors">
+                                    <span className="text-sm font-medium pr-4">{doc.label}</span>
+                                    <div className="flex gap-2 items-center shrink-0">
                                         <Button 
                                             size="sm" variant="secondary" 
                                             title="Generate Word"
@@ -1076,6 +1079,11 @@ export default function InterviewShow({
                                 </div>
                             );
                         })}
+                    </div>
+
+                    {/* 3. Footer opsional agar terlihat lebih rapi */}
+                    <div className="p-4 border-t bg-neutral-50 text-right">
+                        <Button variant="ghost" onClick={() => setIsDocModalOpen(false)}>Tutup</Button>
                     </div>
                 </DialogContent>
             </Dialog>
