@@ -5,7 +5,7 @@ namespace App\Http\Controllers\AdminController;
 use App\Http\Controllers\Controller;
 use App\Models\Classroom;
 use App\Models\StudentProfile;
-use App\Models\TeacherProfile; // Tambahkan model TeacherProfile
+use App\Models\Teacher; // <--- UBAH INI (Bukan TeacherProfile)
 use App\Models\ClassroomLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,9 +19,9 @@ class AdminClassroomController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Classroom::with(['teacher.user', 'students']); // Load relasi guru & siswa
+        // Gunakan relasi 'teacher' (yang mengarah ke model Teacher)
+        $query = Classroom::with(['teacher.user']); 
 
-        // Filter Pencarian Berdasarkan Nama Kelas atau Nama Guru
         if ($request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
                   ->orWhereHas('teacher', function($q) use ($request) {
@@ -37,24 +37,24 @@ class AdminClassroomController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Admin butuh daftar semua Guru untuk dropdown "Buka Kelas Baru"
-        $teachers = TeacherProfile::orderBy('name', 'asc')->get();
+        // UBAH DISINI: Panggil model Teacher
+        $teachers = Teacher::where('is_active', true)->orderBy('name', 'asc')->get();
 
         return Inertia::render('admin/classrooms/Index', [
             'classrooms' => $classrooms,
-            'teachers' => $teachers, // Dikirim agar Admin bisa pilih guru saat buat kelas
+            'teachers' => $teachers,
             'filters' => $request->only(['search'])
         ]);
     }
 
     /**
-     * SIMPAN KELAS BARU (ADMIN VERSION)
+     * SIMPAN KELAS BARU
      */
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string',
-            'teacher_id' => 'required|exists:teacher_profiles,id', // Admin wajib pilih Guru
+            'teacher_id' => 'required|exists:teachers,id', // <--- Pastikan tabelnya 'teachers'
             'level' => [
                 'required', 
                 'in:ATARASHII,N5,N4,N3,N2,N1,Pra-Pemberangkatan,Pra-Pemberangkatan Kaigo'
@@ -63,13 +63,11 @@ class AdminClassroomController extends Controller
 
         DB::beginTransaction();
         try {
-            // A. Nonaktifkan kelas lama milik Guru yang dipilih (Optional, tergantung kebijakan LPK)
-            // Jika satu guru hanya boleh mengajar satu kelas aktif di level yang sama:
+            // Nonaktifkan kelas lama milik guru tersebut
             Classroom::where('teacher_id', $request->teacher_id)
                 ->where('status', 'active')
                 ->update(['status' => 'finished', 'end_date' => now()]);
 
-            // B. Buat Kelas Baru
             $classroom = Classroom::create([
                 'teacher_id' => $request->teacher_id,
                 'name' => $request->name,
@@ -78,20 +76,19 @@ class AdminClassroomController extends Controller
                 'start_date' => now(),
             ]);
 
-            // C. Log Aktifitas Admin
             ClassroomLog::create([
                 'classroom_id' => $classroom->id,
                 'user_id' => Auth::id(),
                 'action' => 'created_by_admin',
-                'description' => "Admin membuat kelas {$request->name} dan ditugaskan kepada Sensei ID: {$request->teacher_id}."
+                'description' => "Admin membuat kelas {$request->name} untuk Sensei {$classroom->teacher->name}."
             ]);
 
             DB::commit();
-            return back()->with('success', 'Kelas baru berhasil dibuat dan ditugaskan!');
+            return back()->with('success', 'Kelas baru berhasil dibuka!');
             
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => 'Gagal: ' . $e->getMessage()]);
         }
     }
 
