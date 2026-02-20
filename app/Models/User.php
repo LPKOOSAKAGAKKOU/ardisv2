@@ -63,4 +63,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(Teacher::class);
     }
+    // app/Models/User.php
+    
+    public function hasManyInterviewDetails()
+    {
+        return $this->hasMany(InterviewDetail::class, 'user_id');
+    }
 }
