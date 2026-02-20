@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminController\AcceptingOrganizationController;
 use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\AdminController\AdminClassroomController;
+use App\Http\Controllers\AdminController\RecruitmentsController;
 use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
