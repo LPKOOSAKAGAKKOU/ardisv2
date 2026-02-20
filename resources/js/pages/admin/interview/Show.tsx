@@ -307,6 +307,23 @@ export default function InterviewShow({
         return baseReports;
     }, [interview?.industry]); // Re-run jika industry berubah
 
+    // Di dalam export default function InterviewShow
+    const getStudentDocProgress = (studentProfile) => {
+        if (!studentProfile) return { uploaded: 0, total: 0 };
+
+        // Tentukan list dokumen mana yang mau dicek
+        const docList = interview.type === 'ginoujisshuu' ? GINOU_DOCS : TOKUTEI_DOCS;
+        
+        // Hitung berapa field yang tidak null/kosong
+        const uploadedCount = docList.filter(doc => !!studentProfile[doc.field]).length;
+        
+        return {
+            uploaded: uploadedCount,
+            total: docList.length,
+            percentage: Math.round((uploadedCount / docList.length) * 100)
+        };
+    };
+
     // Filter siswa yang LULUS untuk bagian Berkas Per Siswa
     const passedStudents = useMemo(() => {
         return localDetails.filter((d: any) => d.result === 'passed');
@@ -916,9 +933,36 @@ export default function InterviewShow({
                                             
                                             <div className="flex items-center gap-4">
                                                 {/* Status Checklist (Indikator Dokumen Lengkap) */}
-                                                <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-neutral-400 uppercase">
-                                                    <CheckCircle size={12} className={detail.user?.student_profile?.ginou_jisshuu_1_3_document_yunerva_uuid ? "text-emerald-500" : "text-neutral-200"} />
-                                                    Resume
+                                                <div className="hidden sm:flex flex-col items-end gap-1 min-w-[100px]">
+                                                    {(() => {
+                                                        const stats = getStudentDocProgress(detail.user?.student_profile);
+                                                        const isComplete = stats.uploaded === stats.total;
+                                                        
+                                                        return (
+                                                            <>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {isComplete ? (
+                                                                        <CheckCircle2 size={14} className="text-emerald-500" />
+                                                                    ) : (
+                                                                        <div className="text-[10px] font-bold text-neutral-500">
+                                                                            {stats.uploaded} / {stats.total} <span className="text-neutral-400">BERKAS</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <span className={`text-[10px] font-black uppercase tracking-tight ${isComplete ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                                                                        {isComplete ? 'Lengkap' : 'Progress'}
+                                                                    </span>
+                                                                </div>
+                                                                
+                                                                {/* Progress Bar Mini */}
+                                                                <div className="w-full bg-neutral-100 dark:bg-zinc-800 h-1 rounded-full overflow-hidden">
+                                                                    <div 
+                                                                        className={`h-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                                                                        style={{ width: `${stats.percentage}%` }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 
                                                 <Button 
