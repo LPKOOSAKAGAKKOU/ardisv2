@@ -86,6 +86,29 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
         }
     };
 
+    // Tambahkan di bagian state (dekat state lainnya)
+    const [loadingDelete, setLoadingDelete] = useState<string | null>(null);
+
+    const handleDelete = async (fieldName: string, label: string) => {
+        if (!confirm(`Apakah Anda yakin ingin menghapus file "${label}"?`)) return;
+
+        setLoadingDelete(fieldName);
+        try {
+            const res = await axios.delete(route('student.profile.documents-delete', student.id), {
+                data: { field_name: fieldName }
+            });
+
+            if (res.data.status === 'success') {
+                router.reload({ preserveScroll: true, only: ['student'] });
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Gagal menghapus berkas.");
+        } finally {
+            setLoadingDelete(null);
+        }
+    };
+
     // 4. Logic: Upload File
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
         const file = e.target.files?.[0];
@@ -1166,13 +1189,12 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                     {/* --- SIDEBAR COLUMN (RIGHT) --- */}
                     <div className="lg:col-span-4 space-y-8">
                         {student && (
-                            <div className="rounded-[2rem] border bg-card p-8 shadow-sm space-y-6">
+                            <div className="rounded-[2rem] border bg-card p-6 shadow-sm space-y-6">
                                 <h3 className="flex items-center gap-3 text-sm font-black uppercase tracking-widest text-muted-foreground border-b pb-4">
                                     <FileText className="size-5" /> Berkas Digital
                                 </h3>
                                 
-                                {/* Menggunakan scroll area jika daftar dokumen sangat panjang agar dashboard tidak timpang */}
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted">
+                                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
                                     {[
                                         { label: "Foto Studio", field: "photo_yunerva_uuid" },
                                         { label: "Foto Setelan Jas", field: "photo_with_suit_yunerva_uuid" },
@@ -1189,46 +1211,90 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                         { label: "Sertifikat Bahasa Jepang", field: "japanese_language_certificate_yunerva_uuid" },
                                         { label: "Kontrak Kerja", field: "work_contract_yunerva_uuid" },
                                     ].map((doc) => (
-                                        <DocStatus 
-                                            key={doc.field}
-                                            label={doc.label} 
-                                            fieldName={doc.field}
-                                            isUploaded={!!student?.[doc.field]} 
-                                            uuid={student?.[doc.field]}
-                                            onUpload={onFileChange}
-                                            onPreview={handlePreview}
-                                            isUploading={uploadingField}
-                                            isLoadingPreview={loadingPreview}
-                                            uploadProgress={uploadProgress}
-                                        />
+                                        <div key={doc.field} className="group relative flex flex-col p-4 rounded-xl border border-sidebar-border/50 bg-sidebar-accent/5 hover:bg-sidebar-accent/10 transition-all">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className={`p-2 rounded-lg ${student[doc.field] ? 'bg-emerald-500/10 text-emerald-600' : 'bg-orange-500/10 text-orange-600'}`}>
+                                                    {student[doc.field] ? <CheckCircle2 size={18} /> : <UploadCloud size={18} />}
+                                                </div>
+                                                
+                                                <div className="flex gap-1">
+                                                    {student[doc.field] && (
+                                                        <>
+                                                            {/* Preview */}
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7" 
+                                                                onClick={() => handlePreview(student[doc.field], doc.field)}
+                                                                disabled={loadingPreview !== null || uploadingField !== null}
+                                                            >
+                                                                {loadingPreview === doc.field ? <Loader2 size={12} className="animate-spin" /> : <Eye size={14} />}
+                                                            </Button>
+                                                            
+                                                            {/* Download */}
+                                                            <a href={`https://yunerva.com/f/${student[doc.field]}`} target="_blank" rel="noreferrer">
+                                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600">
+                                                                    <Download size={14} />
+                                                                </Button>
+                                                            </a>
+
+                                                            {/* Delete */}
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                                                onClick={() => handleDelete(doc.field, doc.label)}
+                                                                disabled={loadingDelete !== null || uploadingField !== null}
+                                                            >
+                                                                {loadingDelete === doc.field ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={14} />}
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            <p className="text-[11px] font-black text-foreground uppercase mb-2">{doc.label}</p>
+                                            
+                                            {uploadingField === doc.field ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-[9px] font-black uppercase">
+                                                        <span className="text-blue-600 animate-pulse">{uploadStatus}</span>
+                                                        <span className="text-muted-foreground">{uploadProgress}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-sidebar-accent rounded-full overflow-hidden">
+                                                        <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <label className="mt-auto">
+                                                    <input 
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept=".jpg,.jpeg,.pdf"
+                                                        onChange={(e) => onFileChange(e, doc.field)} 
+                                                        disabled={!!uploadingField || !!loadingDelete} 
+                                                    />
+                                                    <div className="w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-wider text-center cursor-pointer transition-all bg-foreground text-background hover:opacity-90 active:scale-95">
+                                                        {student[doc.field] ? 'Ganti Berkas' : 'Unggah Sekarang'}
+                                                    </div>
+                                                </label>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
 
-                                {/* Hint Password */}
-                                <div className="mt-8 rounded-2xl bg-blue-600 p-5 text-white shadow-xl shadow-blue-100">
+                                {/* Hint Password Tetap Ada */}
+                                <div className="mt-4 rounded-2xl bg-blue-600 p-5 text-white shadow-xl shadow-blue-100">
                                     <div className="flex items-center gap-3 mb-2">
                                         <ShieldCheck className="size-5 opacity-80" />
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Enkripsi Berkas</span>
                                     </div>
-                                    <p className="text-[10px] font-medium leading-relaxed opacity-80 mb-4">
-                                        Gunakan password ini jika dokumen meminta kunci saat dibuka.
-                                    </p>
                                     <div className="bg-white/20 backdrop-blur-md rounded-xl p-3 text-center border border-white/30">
                                         <span className="text-xs font-black font-mono tracking-widest">{student.yunerva_file_password}</span>
                                     </div>
                                 </div>
                             </div>
                         )}
-
-                        {/* Bantuan Box */}
-                        <div className="rounded-[2rem] border border-orange-200 bg-orange-50/50 p-8 dark:bg-orange-950/10 dark:border-orange-900/30">
-                            <h3 className="flex items-center gap-3 text-sm font-black text-orange-800 dark:text-orange-300">
-                                <Info className="size-5" /> PANDUAN
-                            </h3>
-                            <p className="mt-2 text-[11px] text-orange-800/80 font-bold leading-relaxed">
-                                Format file harus **JPG** atau **PDF**. Pastikan hasil scan terlihat jelas agar proses verifikasi admin lebih cepat.
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>
