@@ -659,7 +659,7 @@ class InterviewController extends Controller
                     "Status: *$statusLabel*\n\n" .
                     "$statusMessage\n\n" .
                     "Catatan Admin: $remarks\n\n" .
-                    "Silakan cek dashboard Anda untuk informasi lebih lanjut.";
+                    "Silakan cek dashboard Anda di https://ardisv2.oosakagakkou.co.id untuk informasi lebih lanjut.";
 
         $this->sendWhatsApp($formattedPhone, $waMessage);
 
