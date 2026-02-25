@@ -45,4 +45,9 @@ return [
         'key' => env('GEMINI_API_KEY'),
     ],
 
+    'waha' => [
+        'url' => env('WAHA_SERVER_URL'),
+        'key' => env('WAHA_API_KEY'),
+    ],
+
 ];

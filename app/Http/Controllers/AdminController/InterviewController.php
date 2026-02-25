@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 class InterviewController extends Controller
 {
@@ -565,9 +567,112 @@ class InterviewController extends Controller
             'remarks' => 'nullable|string'
         ]);
 
-        $detail = InterviewDetail::findOrFail($detailId);
+        $detail = InterviewDetail::with(['user.studentProfile', 'interview'])->findOrFail($detailId);
         $detail->update($request->only(['result', 'remarks']));
 
-        return redirect()->back()->with('success', 'Hasil wawancara berhasil diperbarui.');
+        $studentName = $detail->user->studentProfile->full_name;
+        $status = $detail->result;
+        $interviewTitle = $detail->interview->title;
+        $remarks = $request->remarks ?? '-';
+
+        // --- 1. Logika Pesan Berdasarkan Status ---
+        $statusLabel = '';
+        $statusMessage = '';
+
+        switch ($status) {
+            case 'passed':
+                $statusLabel = 'LULUS';
+                $statusMessage = "Selamat! Anda dinyatakan *LULUS* seleksi wawancara. Mohon segera persiapkan dokumen lanjutan sesuai instruksi di dashboard.";
+                break;
+            case 'failed':
+                $statusLabel = 'GAGAL';
+                $statusMessage = "Mohon maaf, Anda dinyatakan *BELUM LULUS* seleksi wawancara kali ini. Jangan berkecil hati dan tetap semangat untuk mencoba program lainnya.";
+                break;
+            case 'reserved':
+                $statusLabel = 'BERKAS TERSELEKSI';
+                $statusMessage = "Berkas Anda telah *DISELEKSI*. Dengan ini Anda sudah terdaftar secara resmi dan *TIDAK DAPAT* mengundurkan diri dari proses wawancara ini.";
+                break;
+            default:
+                $statusLabel = 'MENUNGGU';
+                $statusMessage = "Status wawancara Anda saat ini masih dalam proses peninjauan.";
+                break;
+        }
+
+        // --- 2. Kirim Email (Tetap menggunakan Mail Laravel) ---
+        try {
+            $emailData = [
+                'name' => $studentName,
+                'status' => $statusLabel,
+                'interview' => $interviewTitle,
+                'remarks' => $remarks,
+                'custom_message' => $statusMessage
+            ];
+
+            Mail::send('emails.interview_result', $emailData, function($message) use ($detail, $statusLabel) {
+                $message->to($detail->user->email)
+                        ->subject("Update Hasil Wawancara [$statusLabel] - " . $detail->interview->title);
+            });
+        } catch (\Exception $e) {
+            \Log::error("Email Error: " . $e->getMessage());
+        }
+
+        // --- 3. Kirim WhatsApp (Meniru pola CURL Anda) ---
+        $phoneNumber = $detail->user->studentProfile->phone_student;
+        $formattedPhone = $this->formatPhoneNumber($phoneNumber);
+
+        $waMessage = "*UPDATE HASIL WAWANCARA*\n\n" .
+                    "Nama: $studentName\n" .
+                    "Program: $interviewTitle\n" .
+                    "Status: *$statusLabel*\n\n" .
+                    "$statusMessage\n\n" .
+                    "Catatan Admin: $remarks\n\n" .
+                    "Silakan cek dashboard Anda untuk informasi lebih lanjut.";
+
+        $this->sendWhatsApp($formattedPhone, $waMessage);
+
+        return redirect()->back()->with('success', 'Hasil wawancara berhasil diperbarui dan notifikasi telah dikirim.');
+    }
+
+    /**
+     * Normalisasi nomor HP agar murni angka
+     */
+    private function formatPhoneNumber($phone)
+    {
+        // Hapus spasi, strip, dan karakter non-digit lainnya
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        // Ubah 08xxx menjadi 628xxx
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        return $phone;
+    }
+
+    /**
+     * Kirim WhatsApp meniru metode CURL yang Anda miliki
+     */
+    private function sendWhatsApp($phone, $message)
+    {
+        $data = [
+            "phone"   => $phone,
+            "message" => $message
+        ];
+
+        // Ambil data dari config, bukan env langsung
+        $baseUrl = config('services.waha.url');
+        $apiKey  = config('services.waha.key');
+
+        try {
+            $response = Http::withHeaders([
+                "Content-Type" => "application/json",
+                "Authorization" => "Basic " . base64_encode($apiKey)
+            ])->post($baseUrl . "/send/message", $data);
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            \Log::error("WhatsApp Error: " . $e->getMessage());
+            return false;
+        }
     }
 }

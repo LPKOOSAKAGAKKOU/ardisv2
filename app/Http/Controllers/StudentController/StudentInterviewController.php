@@ -107,7 +107,20 @@ class StudentInterviewController extends Controller
     {
         $user = Auth::user();
 
-        // Cek Profile
+        // 1. Ambil data Interview & Cek batas waktu pendaftaran
+        // Menggunakan findOrFail agar otomatis 404 jika ID tidak ditemukan
+        $interview = \App\Models\Interview::findOrFail($id);
+
+        // Bandingkan dengan waktu sekarang
+        // Menggunakan now() langsung lebih akurat jika deadline melibatkan jam
+        if ($interview->interview_registration_deadline < now()) {
+            return response()->json([
+                'status' => 'error', 
+                'message' => 'Maaf, batas waktu pendaftaran untuk wawancara ini sudah berakhir.'
+            ], 422);
+        }
+
+        // 2. Cek Profile
         $profileExists = StudentProfile::where('user_id', $user->id)->exists();
 
         if (!$profileExists) {
@@ -118,7 +131,7 @@ class StudentInterviewController extends Controller
             ], 403); 
         }
         
-        // Cek Double
+        // 3. Cek Double Registration
         $exists = \App\Models\InterviewDetail::where('interview_id', $id)
             ->where('user_id', $user->id)
             ->exists();
@@ -127,16 +140,15 @@ class StudentInterviewController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Anda sudah terdaftar.'], 422);
         }
 
-        // --- TAMBAHAN LOGIKA NOMOR URUT ---
-        // Ambil nomor urut tertinggi saat ini untuk wawancara ini
+        // 4. Ambil nomor urut tertinggi
         $lastOrder = \App\Models\InterviewDetail::where('interview_id', $id)
             ->max('order_number') ?? 0;
 
-        // Simpan dengan nomor urut baru
+        // 5. Simpan data
         \App\Models\InterviewDetail::create([
             'interview_id' => $id,
             'user_id'      => $user->id,
-            'order_number' => $lastOrder + 1, // <--- Masukkan ke sini
+            'order_number' => $lastOrder + 1,
             'result'       => 'waiting',
         ]);
 
