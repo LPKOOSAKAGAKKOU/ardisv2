@@ -1434,10 +1434,10 @@ function DocStatus({
     fieldName, 
     onUpload, 
     onPreview, 
-    onDelete, // <--- Prop Baru
+    onDelete, 
     isUploading, 
     isLoadingPreview, 
-    isLoadingDelete, // <--- Prop Baru
+    isLoadingDelete, 
     uploadProgress, 
     uuid 
 }: any) {
@@ -1451,9 +1451,10 @@ function DocStatus({
                     <span className="text-[11px] font-black uppercase tracking-tight text-foreground/80">{label}</span>
                 </div>
                 
-                <div className="flex gap-2">
+                {/* CONTAINER ACTION - SEKARANG TERPISAH DARI LABEL */}
+                <div className="flex items-center gap-2">
                     {isUploaded && uuid && (
-                        <>
+                        <div className="flex items-center gap-1.5"> {/* Bungkus action buttons */}
                             {/* Tombol Preview */}
                             <Button 
                                 variant="ghost" 
@@ -1467,10 +1468,12 @@ function DocStatus({
 
                             {/* Tombol Download */}
                             <a href={`https://yunerva.com/f/${uuid}`} target="_blank" rel="noreferrer">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground"><Download size={14}/></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground">
+                                    <Download size={14}/>
+                                </Button>
                             </a>
 
-                            {/* --- TOMBOL DELETE --- */}
+                            {/* Tombol Delete */}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -1484,22 +1487,34 @@ function DocStatus({
                                     <Trash2 size={14} />
                                 )}
                             </Button>
-                        </>
+                        </div>
                     )}
 
-                    {/* Tombol Upload */}
-                    <label className="cursor-pointer">
+                    {/* Tombol Upload - Label HANYA membungkus icon upload saja */}
+                    <div className="relative">
                         <input 
+                            id={`file-upload-${fieldName}`}
                             type="file" 
                             className="hidden" 
                             accept=".jpg,.jpeg,.pdf" 
                             onChange={(e) => onUpload(e, fieldName)} 
                             disabled={isUploading !== null || isLoadingDelete !== null} 
                         />
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${isUploaded ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700'}`}>
-                            {isUploading === fieldName ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={16} />}
-                        </div>
-                    </label>
+                        <label 
+                            htmlFor={`file-upload-${fieldName}`}
+                            className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-all ${
+                                isUploaded 
+                                ? 'bg-muted text-muted-foreground hover:bg-muted/80' 
+                                : 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700'
+                            } ${(isUploading !== null || isLoadingDelete !== null) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            {isUploading === fieldName ? (
+                                <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                                <UploadCloud size={16} />
+                            )}
+                        </label>
+                    </div>
                 </div>
             </div>
             
