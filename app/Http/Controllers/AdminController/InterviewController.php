@@ -605,7 +605,7 @@ class InterviewController extends Controller
 
         $studentName = $detail->user->student_profile->full_name;
         $status = $detail->result;
-        $interviewTitle = $detail->interview->title;
+        $interviewTitle = $detail->interview->interviewer_title;
         $remarks = $request->remarks ?? '-';
 
         // --- 1. Logika Pesan Berdasarkan Status ---
