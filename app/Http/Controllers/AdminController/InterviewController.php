@@ -156,9 +156,42 @@ class InterviewController extends Controller
 
         \App\Models\Interview::create($data);
 
+    // --- LOGIKA NOTIFIKASI MASSAL ---
+        
+        // 1. Cari siswa yang: 
+        // - Punya profil (sudah melengkapi biodata)
+        // - BELUM PERNAH lulus di wawancara manapun
+        $eligibleStudents = \App\Models\User::whereHas('student_profile') 
+            ->whereDoesntHave('interviewDetails', function($query) {
+                $query->where('result', 'passed');
+            })
+            ->get();
+
+        $interviewDate = \Carbon\Carbon::parse($interview->interview_date)->format('d-m-Y');
+
+        foreach ($eligibleStudents as $student) {
+            // --- Kirim Email ---
+            try {
+                $emailData = [
+                    'name' => $student->student_profile->full_name,
+                    'title' => $interview->interviewer_title,
+                    'date' => $interviewDate,
+                    'description' => $interview->description,
+                ];
+
+                \Mail::send('emails.new_interview_announcement', $emailData, function($message) use ($student, $interview) {
+                    $message->to($student->email)
+                            ->subject('Lowongan Wawancara Baru: ' . $interview->interviewer_title);
+                });
+            } catch (\Exception $e) {
+                \Log::error("Gagal kirim email pengumuman ke {$student->email}: " . $e->getMessage());
+            }
+        }
+
         return redirect()->route('admin.interviews.index')
-            ->with('success', 'Jadwal berhasil dibuat. Tanggal sudah dipastikan pas dengan jumlah jam kerja.');
+            ->with('success', 'Jadwal berhasil dibuat dan notifikasi telah dikirim ke ' . $eligibleStudents->count() . ' siswa yang memenuhi kriteria.');
     }
+
     /**
      * Tampilkan Form Edit
      */

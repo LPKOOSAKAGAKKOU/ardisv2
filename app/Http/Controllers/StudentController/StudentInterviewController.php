@@ -108,11 +108,8 @@ class StudentInterviewController extends Controller
         $user = Auth::user();
 
         // 1. Ambil data Interview & Cek batas waktu pendaftaran
-        // Menggunakan findOrFail agar otomatis 404 jika ID tidak ditemukan
         $interview = \App\Models\Interview::findOrFail($id);
 
-        // Bandingkan dengan waktu sekarang
-        // Menggunakan now() langsung lebih akurat jika deadline melibatkan jam
         if ($interview->interview_registration_deadline < now()) {
             return response()->json([
                 'status' => 'error', 
@@ -120,10 +117,10 @@ class StudentInterviewController extends Controller
             ], 422);
         }
 
-        // 2. Cek Profile
-        $profileExists = StudentProfile::where('user_id', $user->id)->exists();
+        // 2. Cek Profile (Menggunakan relasi student_profile)
+        $profile = \App\Models\StudentProfile::where('user_id', $user->id)->first();
 
-        if (!$profileExists) {
+        if (!$profile) {
             return response()->json([
                 'status' => 'need_profile', 
                 'message' => 'Mohon lengkapi biodata Anda terlebih dahulu sebelum mendaftar.',
@@ -144,7 +141,7 @@ class StudentInterviewController extends Controller
         $lastOrder = \App\Models\InterviewDetail::where('interview_id', $id)
             ->max('order_number') ?? 0;
 
-        // 5. Simpan data
+        // 5. Simpan data ke database
         \App\Models\InterviewDetail::create([
             'interview_id' => $id,
             'user_id'      => $user->id,
@@ -152,7 +149,77 @@ class StudentInterviewController extends Controller
             'result'       => 'waiting',
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Berhasil mendaftar!']);
+        // Data untuk Notifikasi
+        $studentName = $profile->full_name;
+        $interviewDate = \Carbon\Carbon::parse($interview->interview_date)->format('d-m-Y');
+        $groupLink = $interview->group_chat_link ?? 'Hubungi admin untuk link grup.';
+
+        // --- 6. KIRIM EMAIL ---
+        try {
+            $emailData = [
+                'name' => $studentName,
+                'interview' => $interview->interviewer_title,
+                'date' => $interviewDate,
+                'group_link' => $groupLink
+            ];
+
+            \Illuminate\Support\Facades\Mail::send('emails.interview_apply_confirmation', $emailData, function($message) use ($user, $interview) {
+                $message->to($user->email)
+                        ->subject('Konfirmasi Pendaftaran Wawancara: ' . $interview->interviewer_title);
+            });
+        } catch (\Exception $e) {
+            \Log::error("Email Apply Error: " . $e->getMessage());
+        }
+
+        // --- 7. KIRIM WHATSAPP ---
+        $phoneNumber = $this->formatPhoneNumber($profile->phone_student);
+        $waMessage = "*KONFIRMASI PENDAFTARAN WAWANCARA*\n\n" .
+                    "Halo *{$studentName}*,\n" .
+                    "Pendaftaran Anda berhasil diterima:\n" .
+                    "Program: *{$interview->interviewer_title}*\n" .
+                    "Tanggal: {$interviewDate}\n\n" .
+                    "*PERINGATAN PENTING:*\n" .
+                    "Jika status sudah menjadi *RESERVED* (Terseleksi), Anda *TIDAK BISA* mengundurkan diri lagi.\n\n" .
+                    "Link Grup WhatsApp:\n" .
+                    "{$groupLink}\n\n" .
+                    "Terima kasih.";
+
+        $this->sendWhatsApp($phoneNumber, $waMessage);
+
+        return response()->json([
+            'status' => 'success', 
+            'message' => 'Berhasil mendaftar! Konfirmasi telah dikirim ke Email dan WhatsApp Anda.'
+        ]);
+    }
+
+    private function formatPhoneNumber($phone)
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+        return $phone;
+    }
+
+    private function sendWhatsApp($phone, $message)
+    {
+        $data = [
+            "phone"   => $phone,
+            "message" => $message
+        ];
+
+        try {
+            $baseUrl = config('services.waha.url');
+            $apiKey  = config('services.waha.key');
+
+            \Illuminate\Support\Facades\Http::withHeaders([
+                "Content-Type" => "application/json",
+                "Authorization" => "Basic " . base64_encode($apiKey)
+            ])->post($baseUrl . "/send/message", $data);
+            
+        } catch (\Exception $e) {
+            \Log::error("WhatsApp Error saat Apply: " . $e->getMessage());
+        }
     }
 
     public function participants($id)
