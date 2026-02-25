@@ -567,10 +567,10 @@ class InterviewController extends Controller
             'remarks' => 'nullable|string'
         ]);
 
-        $detail = InterviewDetail::with(['user.studentProfile', 'interview'])->findOrFail($detailId);
+        $detail = InterviewDetail::with(['user.student_profile', 'interview'])->findOrFail($detailId);
         $detail->update($request->only(['result', 'remarks']));
 
-        $studentName = $detail->user->studentProfile->full_name;
+        $studentName = $detail->user->student_profile->full_name;
         $status = $detail->result;
         $interviewTitle = $detail->interview->title;
         $remarks = $request->remarks ?? '-';
@@ -617,7 +617,7 @@ class InterviewController extends Controller
         }
 
         // --- 3. Kirim WhatsApp (Meniru pola CURL Anda) ---
-        $phoneNumber = $detail->user->studentProfile->phone_student;
+        $phoneNumber = $detail->user->student_profile->phone_student;
         $formattedPhone = $this->formatPhoneNumber($phoneNumber);
 
         $waMessage = "*UPDATE HASIL WAWANCARA*\n\n" .
