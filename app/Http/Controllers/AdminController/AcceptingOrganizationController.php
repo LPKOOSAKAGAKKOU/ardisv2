@@ -7,7 +7,7 @@ use App\Models\AcceptingOrganization;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-class AcceptingOrganizationController extends Controller
+class AcceptingOrganizationController extends Controller 
 {
     public function index(Request $request)
     {
