@@ -48,6 +48,7 @@ return [
     'waha' => [
         'url' => env('WAHA_SERVER_URL'),
         'key' => env('WAHA_API_KEY'),
+        'secret' => env('WHATSAPP_WEBHOOK_SECRET'),
     ],
 
 ];

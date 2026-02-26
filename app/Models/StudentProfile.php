@@ -90,4 +90,10 @@ class StudentProfile extends Model
     {
         return $this->belongsTo(Recruitment::class, 'recruitments_id');
     }
+
+    public function chat()
+    {
+        // Relasi ke model Chat menggunakan foreign key student_profile_id
+        return $this->hasOne(Chat::class, 'student_profile_id');
+    }
 }

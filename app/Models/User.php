@@ -69,4 +69,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(InterviewDetail::class, 'user_id');
     }
+    // Tambahkan di dalam class User jika ingin akses langsung
+    public function chat()
+    {
+        return $this->hasOneThrough(
+            Chat::class, 
+            StudentProfile::class, 
+            'user_id',            // Foreign key di student_profiles
+            'student_profile_id', // Foreign key di chats
+            'id',                 // Local key di users
+            'id'                  // Local key di student_profiles
+        );
+    }
 }

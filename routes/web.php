@@ -25,15 +25,22 @@ use App\Http\Controllers\StudentController\StudentInterviewController;
 use App\Http\Controllers\GinouJisshuuDocumentController;
 use App\Http\Controllers\TokuteiGinouDocumentController;
 
+use App\Http\Controllers\AdminController\WhatsAppChatController;
 
 
+Route::post('/whatsapp/webhook', [WhatsAppChatController::class, 'handleWebhook'])->name('whatsapp.webhook');
 
 Route::get('/', function () {
-    if (! Auth::check()) {
+    $user = Auth::user();
+
+    if (! $user) {
         return redirect()->route('login');
     }
 
-    return match (Auth::user()->role) {
+    // Gunakan pengecekan yang lebih aman
+    $role = $user->role ?? 'login'; 
+
+    return match ($role) {
         'admin'   => redirect()->route('admin.dashboard'),
         'sensei'  => redirect()->route('sensei.dashboard'),
         'student' => redirect()->route('student.dashboard'),
@@ -72,6 +79,16 @@ Route::middleware([
 
     // Dashboard
     Route::get('dashboard', fn () => Inertia::render('admin/dashboard'))->name('dashboard');
+
+    // --- MANAJEMEN WHATSAPP CHAT (ADMIN DASHBOARD) ---
+    Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+        // API untuk Widget React (Sidebar & Chat Box)
+        Route::get('/chats', [WhatsAppChatController::class, 'getChatList'])->name('list');
+        Route::get('/chats/{chatId}/messages', [WhatsAppChatController::class, 'getMessages'])->name('messages');
+        
+        // Endpoint Kirim Pesan (Outbound)
+        Route::post('/send', [WhatsAppChatController::class, 'sendMessage'])->name('send');
+    });
 
     // --- MANAJEMEN DOKUMEN SISWA ---
     Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])->name('documents.request');
