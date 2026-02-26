@@ -3,6 +3,7 @@ import AppHeaderLayout from '@/layouts/app/app-header-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type ReactNode } from 'react';
 import { usePage } from '@inertiajs/react';
+import WhatsappWidget from '@/components/WhatsAppWidget';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -26,6 +27,7 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs} {...props}>
             {children}
+                <WhatsappWidget />
         </AppSidebarLayout>
     );
 };

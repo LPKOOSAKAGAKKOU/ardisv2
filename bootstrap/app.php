@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // 1. Tambahkan pengecualian CSRF di sini
+        $middleware->validateCsrfTokens(except: [
+            'whatsapp/webhook', // Sesuaikan dengan path rute Anda
+        ]);
+
         // TAMBAHKAN BARIS INI
         $middleware->redirectTo(
             guests: '/login',
