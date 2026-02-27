@@ -204,8 +204,8 @@ export default function WhatsAppWidget() {
            lg:relative memaksanya mengambil space di desktop.
            fixed di mobile agar tetap overlay.
         */
-        <div className="fixed lg:relative top-0 right-0 h-screen w-full lg:w-[450px] shrink-0 bg-background border-l border-border z-[50] flex flex-col overflow-hidden shadow-xl lg:shadow-none transition-all duration-300">
-            
+       // Cuplikan bagian luar WhatsAppWidget.tsx
+        <div className="fixed lg:relative top-0 right-0 h-full w-full lg:w-[450px] shrink-0 bg-background border-l border-border z-[50] flex flex-col overflow-hidden shadow-xl lg:shadow-none transition-all duration-300">
             {/* Header - Sticky di atas area sidebar */}
             <div className="h-16 bg-background text-foreground border-b border-border p-4 flex justify-between items-center shadow-sm shrink-0 z-20">
                 <h3 className="font-bold text-lg truncate pr-2">
