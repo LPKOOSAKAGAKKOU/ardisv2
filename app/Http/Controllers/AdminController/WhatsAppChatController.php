@@ -108,13 +108,25 @@ class WhatsAppChatController extends Controller
         // Sesuai log: data utama ada di dalam 'payload'
         $payload = $data['payload'] ?? [];
         
-        // 3. IDENTIFIKASI DATA (Mapping sesuai log Anda)
+        // --- 3. IDENTIFIKASI DATA & FILTER GRUP ---
+        $payload = $data['payload'] ?? [];
         $isFromMe = $payload['is_from_me'] ?? false;
         
-        // Jika dari saya, ambil chat_id. Jika dari orang lain, ambil 'from'.
-        $rawTargetJid = $isFromMe ? ($payload['chat_id'] ?? '') : ($payload['from'] ?? '');
+        // JID 'from' adalah pengirim pesan
+        // JID 'chat_id' adalah lokasi chat (bisa individu atau grup)
+        $fromJid = $payload['from'] ?? '';
+        $chatIdJid = $payload['chat_id'] ?? '';
+
+        // BUG FIX: Jika chat_id mengandung '@g.us', berarti ini adalah pesan grup.
+        // Kita harus mengabaikannya agar tidak salah mendeteksi member grup sebagai chat pribadi.
+        if (str_contains($chatIdJid, '@g.us')) {
+            return response()->json(['status' => 'ignored_group_message']);
+        }
+
+        // Tentukan JID lawan bicara
+        $rawTargetJid = $isFromMe ? $chatIdJid : $fromJid;
         
-        // Ekstrak angka saja (6281386102803)
+        // Ekstrak angka saja
         $studentPhone = $this->extractPhoneNumber($rawTargetJid);
         $formattedStudentPhone = $this->formatPhoneNumber($studentPhone);
 

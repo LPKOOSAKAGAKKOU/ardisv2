@@ -1,0 +1,4 @@
+[27-Feb-2026 01:05:55 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Illuminate\Database\Migrations\Migration" not found in /home/oose4596/public_html/ardisv2/database/migrations/2025_08_26_100418_add_two_factor_columns_to_users_table.php:7
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/database/migrations/2025_08_26_100418_add_two_factor_columns_to_users_table.php on line 7
