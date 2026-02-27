@@ -12,14 +12,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class ProcessWhatsAppWebhook implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $data;
-
-    // Otomatis coba lagi hingga 3 kali jika terjadi error database
     public $tries = 3;
 
     public function __construct($data)
@@ -50,59 +50,63 @@ class ProcessWhatsAppWebhook implements ShouldQueue
         }
 
         $pushName = $student->full_name ?? $payload['from_name'] ?? 'Unknown';
-        $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
         $waMsgId = $payload['id'] ?? null;
         $msgTimestamp = isset($payload['timestamp']) ? date('Y-m-d H:i:s', strtotime($payload['timestamp'])) : now();
         $senderType = $isFromMe ? 'admin' : 'student';
 
-        // DETEKSI TIPE PESAN MEDIA DARI GOWA
+        // 1. IDENTIFIKASI TIPE PESAN
         $waType = $payload['type'] ?? 'chat'; 
+        $mediaTypes = ['image', 'video', 'document', 'audio', 'sticker'];
         
+        $latitude = $payload['location']['latitude'] ?? null;
+        $longitude = $payload['location']['longitude'] ?? null;
+        $messageType = in_array($waType, $mediaTypes) ? $waType : (isset($latitude) ? 'location' : 'chat');
+
         $mediaUrl = null;
         $fileName = null;
         $mimeType = null;
-        $latitude = $payload['location']['latitude'] ?? null;
-        $longitude = $payload['location']['longitude'] ?? null;
+        
+        // Ambil caption/body teks
+        $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
 
-        $mediaTypes = ['image', 'video', 'document', 'audio', 'sticker'];
-        $messageType = in_array($waType, $mediaTypes) ? $waType : (isset($latitude) ? 'location' : 'chat');
-
-        // PROSES DOWNLOAD MEDIA JIKA ADA
-        if (in_array($messageType, $mediaTypes) && $waMsgId) {
+        // 2. PROSES DOWNLOAD MEDIA (JIKA PESAN ADALAH MEDIA)
+        if (in_array($messageType, $mediaTypes) && $waMsgId && !$isFromMe) {
             try {
                 $baseUrl = config('services.waha.url');
                 $apiKey  = config('services.waha.key');
                 
-                // Panggil Endpoint Download Media GOWA
-                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                $response = Http::withHeaders([
                     "Authorization" => "Basic " . base64_encode($apiKey)
-                ])->timeout(30)->get("{$baseUrl}/message/{$waMsgId}/download");
+                ])->timeout(60)->get("{$baseUrl}/message/{$waMsgId}/download");
 
                 if ($response->successful()) {
                     $fileContent = $response->body();
                     $mimeType = $response->header('Content-Type') ?? 'application/octet-stream';
                     
-                    // Tebak ekstensi file dari MimeType
-                    $extension = explode('/', $mimeType)[1] ?? 'bin';
-                    if (str_contains($extension, ';')) $extension = explode(';', $extension)[0];
+                    // Tentukan ekstensi
+                    $extension = $this->getExtensionFromMime($mimeType);
+                    $fileName = "incoming_" . time() . "_" . $waMsgId . "." . $extension;
                     
-                    $fileName = "wa_{$waMsgId}.{$extension}";
-                    $path = "public/chat_media/{$fileName}";
+                    // SIMPAN KE DISK PUBLIC
+                    $savePath = "chat_media/" . $fileName;
+                    Storage::disk('public')->put($savePath, $fileContent);
                     
-                    // Simpan ke storage lokal
-                    \Illuminate\Support\Facades\Storage::put($path, $fileContent);
-                    $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+                    // URL ASSET UNTUK FRONTEND
+                    $mediaUrl = asset('storage/' . $savePath);
+                } else {
+                    Log::error("GOWA Download Gagal: " . $response->body());
                 }
             } catch (\Exception $e) {
                 Log::error("Gagal mendownload media Webhook: " . $e->getMessage());
             }
         }
 
+        // Set teks fallback jika pesan hanya berisi media tanpa caption
         if (empty($messageText)) {
             $messageText = $mediaUrl ? "[$messageType diterima]" : ($latitude ? "[Lokasi diterima]" : '');
         }
 
-        // SIMPAN KE DB
+        // 3. SIMPAN KE DB
         DB::transaction(function () use ($formattedStudentPhone, $student, $pushName, $messageText, $waMsgId, $msgTimestamp, $senderType, $isFromMe, $messageType, $mediaUrl, $fileName, $mimeType, $latitude, $longitude) {
             
             $chat = Chat::updateOrCreate(
@@ -136,6 +140,21 @@ class ProcessWhatsAppWebhook implements ShouldQueue
                 ]
             );
         });
+    }
+
+    private function getExtensionFromMime($mimeType)
+    {
+        $mimes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'video/mp4' => 'mp4',
+            'application/pdf' => 'pdf',
+            'audio/mpeg' => 'mp3',
+            'audio/ogg' => 'ogg',
+            'audio/mp4' => 'm4a',
+        ];
+        return $mimes[$mimeType] ?? 'bin';
     }
 
     private function extractPhoneNumber($jid)
