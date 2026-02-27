@@ -17,18 +17,32 @@ class WhatsAppChatController extends Controller
     /**
      * API: Ambil Daftar Chat (Untuk Sidebar Widget)
      */
+    // Fungsi untuk merapikan format nomor WA
+    private function formatPhoneNumber($phone)
+    {
+        if (!$phone) return ''; // Jaga-jaga jika ada data kosong di DB
+        
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+        return $phone;
+    }
+
     public function getChatList()
     {
+        // 1. Ambil daftar percakapan (Chat) yang sudah ada
         $chats = Chat::with('student')
             ->orderByDesc('last_message_at')
             ->get();
 
-        $data = $chats->map(function ($chat) {
+        $chatData = $chats->map(function ($chat) {
             return [
                 'id'            => $chat->id,
                 'student_id'    => $chat->student_profile_id,
                 'name'          => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
-                'phone'         => $chat->phone_number,
+                // FORMAT NOMOR DI SINI
+                'phone'         => $this->formatPhoneNumber($chat->phone_number), 
                 'avatar_url'    => null,
                 'last_message'  => \Illuminate\Support\Str::limit($chat->last_message, 30),
                 'time_ago'      => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : '',
@@ -36,7 +50,20 @@ class WhatsAppChatController extends Controller
             ];
         });
 
-        return response()->json($data);
+        // 2. Ambil semua siswa dari DB untuk opsi "New Chat"
+        $students = \App\Models\Student::select('id', 'full_name', 'phone_number')->get()->map(function($student) {
+            return [
+                'id'    => $student->id,
+                'name'  => $student->full_name,
+                // FORMAT NOMOR DI SINI JUGA
+                'phone' => $this->formatPhoneNumber($student->phone_number), 
+            ];
+        });
+
+        return response()->json([
+            'chats'    => $chatData,
+            'contacts' => $students
+        ]);
     }
 
     /**
@@ -197,12 +224,4 @@ class WhatsAppChatController extends Controller
         return $parts[0] ?? '';
     }
 
-    private function formatPhoneNumber($phone)
-    {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
-        }
-        return $phone;
-    }
 }
