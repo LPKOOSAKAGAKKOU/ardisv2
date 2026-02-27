@@ -14,37 +14,22 @@ use Illuminate\Support\Facades\Http;
 
 class WhatsAppChatController extends Controller
 {   
-    /**
-     * API: Ambil Daftar Chat (Untuk Sidebar Widget)
-     */
-    // Fungsi untuk merapikan format nomor WA
-    private function formatPhoneNumber($phone)
-    {
-        if (!$phone) return ''; // Jaga-jaga jika ada data kosong di DB
-        
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
-        }
-        return $phone;
-    }
 
     /**
      * API: Ambil Daftar Chat (Untuk Sidebar Widget)
      */
     public function getChatList()
     {
-        // 1. Ambil daftar percakapan (Chat) yang sudah ada (LOGIKA ASLI ANDA)
         $chats = Chat::with('student')
             ->orderByDesc('last_message_at')
             ->get();
 
-        $chatData = $chats->map(function ($chat) {
+        $data = $chats->map(function ($chat) {
             return [
                 'id'            => $chat->id,
                 'student_id'    => $chat->student_profile_id,
                 'name'          => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
-                'phone'         => $this->formatPhoneNumber($chat->phone_number),
+                'phone'         => $chat->phone_number,
                 'avatar_url'    => null,
                 'last_message'  => \Illuminate\Support\Str::limit($chat->last_message, 30),
                 'time_ago'      => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : '',
@@ -52,26 +37,11 @@ class WhatsAppChatController extends Controller
             ];
         });
 
-        // 2. Ambil semua kontak siswa (MENGGUNAKAN StudentProfile)
-        $students = \App\Models\StudentProfile::select('id', 'full_name', 'phone_number')
-            ->get()
-            ->map(function($student) {
-                return [
-                    'id'    => $student->id,
-                    'name'  => $student->full_name,
-                    'phone' => $this->formatPhoneNumber($student->phone_number), 
-                ];
-            });
-
-        // 3. Kembalikan data dalam format Object yang bisa dibaca React
-        return response()->json([
-            'chats'    => $chatData,
-            'contacts' => $students
-        ]);
+        return response()->json($data);
     }
 
     /**
-     * API: Ambil Detail Pesan (Biarkan murni seperti asli punya Anda)
+     * API: Ambil Detail Pesan
      */
     public function getMessages($chatId)
     {
@@ -106,9 +76,8 @@ class WhatsAppChatController extends Controller
         ]);
     }
 
-
-    /**
-     * Webhook Handler (Sangat Cepat & Responsif)
+   /**
+     * Webhook Handler untuk GOWA / WAHA (Versi Sinkron dengan Payload Asli)
      */
     public function handleWebhook(Request $request)
     {
@@ -126,6 +95,7 @@ class WhatsAppChatController extends Controller
             }
         }
 
+        // 2. PARSING PAYLOAD
         $data = $request->all();
         
         // Log untuk monitoring
@@ -135,19 +105,107 @@ class WhatsAppChatController extends Controller
             return response()->json(['status' => 'ignored_event']);
         }
 
+        // Sesuai log: data utama ada di dalam 'payload'
         $payload = $data['payload'] ?? [];
+        
+        // --- 3. IDENTIFIKASI DATA & FILTER GRUP ---
+        $payload = $data['payload'] ?? [];
+        $isFromMe = $payload['is_from_me'] ?? false;
+        
+        // JID 'from' adalah pengirim pesan
+        // JID 'chat_id' adalah lokasi chat (bisa individu atau grup)
+        $fromJid = $payload['from'] ?? '';
         $chatIdJid = $payload['chat_id'] ?? '';
 
-        // Abaikan jika ini pesan grup
+        // BUG FIX: Jika chat_id mengandung '@g.us', berarti ini adalah pesan grup.
+        // Kita harus mengabaikannya agar tidak salah mendeteksi member grup sebagai chat pribadi.
         if (str_contains($chatIdJid, '@g.us')) {
             return response()->json(['status' => 'ignored_group_message']);
         }
 
-        // 2. LEMPAR TUGAS KE QUEUE LALU TINGGALKAN
-        \App\Jobs\ProcessWhatsAppWebhook::dispatch($data);
+        // Tentukan JID lawan bicara
+        $rawTargetJid = $isFromMe ? $chatIdJid : $fromJid;
+        
+        // Ekstrak angka saja
+        $studentPhone = $this->extractPhoneNumber($rawTargetJid);
+        $formattedStudentPhone = $this->formatPhoneNumber($studentPhone);
 
-        // 3. RESPON GOWA INSTAN DALAM HITUNGAN MILIDETIK
-        return response()->json(['status' => 'queued_successfully'], 200);
+        Log::info("WhatsApp Webhook Terdeteksi", [
+            'nomor_raw' => $rawTargetJid,
+            'nomor_bersih' => $formattedStudentPhone,
+            'is_from_me' => $isFromMe
+        ]);
+
+        // 4. FILTER SISWA TERDAFTAR (Gunakan REPLACE untuk membersihkan karakter di DB)
+        $student = StudentProfile::where(function($query) use ($formattedStudentPhone) {
+            // Kita hapus semua karakter non-digit di kolom phone_student saat pencarian
+            $query->whereRaw("REGEXP_REPLACE(phone_student, '[^0-9]', '') LIKE ?", ["%{$formattedStudentPhone}%"])
+                  // Jika nomor di DB diawali 0, kita coba cocokkan juga dengan versi 62-nya
+                  ->orWhereRaw("CONCAT('62', SUBSTRING(REGEXP_REPLACE(phone_student, '[^0-9]', ''), 2)) = ?", [$formattedStudentPhone]);
+        })->first();
+        
+        if (!$student) {
+            Log::info("WhatsApp Webhook: Nomor tetap tidak ditemukan meski sudah dibersihkan.", ['nomor' => $formattedStudentPhone]);
+            return response()->json(['status' => 'skipped_unregistered_number']);
+        }
+
+        // 5. PREPARASI DATA
+        // PRIORITAS: 1. Nama dari Database ($student->full_name), 2. Nama dari WA ($payload['from_name'])
+        $pushName = $student->full_name ?? $payload['from_name'] ?? 'Unknown';
+        
+        $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
+        $waMsgId = $payload['id'] ?? null;
+        
+        // Parsing timestamp ISO 8601 ke format MySQL
+        $msgTimestamp = isset($payload['timestamp']) 
+            ? date('Y-m-d H:i:s', strtotime($payload['timestamp'])) 
+            : now();
+
+        if (empty($messageText)) {
+            $messageText = '[File/Media]';
+        }
+
+        $senderType = $isFromMe ? 'admin' : 'student';
+
+        try {
+            DB::transaction(function () use ($formattedStudentPhone, $student, $pushName, $messageText, $waMsgId, $msgTimestamp, $senderType, $isFromMe) {
+                
+                // A. Update Room Chat
+                $chat = Chat::updateOrCreate(
+                    ['phone_number' => $formattedStudentPhone],
+                    [
+                        'student_profile_id' => $student->id,
+                        'incoming_name' => $pushName,
+                        'last_message' => $messageText,
+                        'last_message_at' => $msgTimestamp,
+                    ]
+                );
+
+                // Increment unread jika pesan datang dari siswa
+                if (!$isFromMe) {
+                    $chat->increment('unread_count');
+                }
+
+                // B. Simpan Detail Pesan
+                ChatMessage::firstOrCreate(
+                    ['wa_message_id' => $waMsgId], 
+                    [
+                        'chat_id'       => $chat->id,
+                        'sender_type'   => $senderType,
+                        'message_body'  => $messageText,
+                        'message_type'  => 'chat',
+                        'read_at'       => $isFromMe ? now() : null,
+                        'created_at'    => $msgTimestamp,
+                    ]
+                );
+            });
+
+            return response()->json(['status' => 'success_saved']);
+
+        } catch (\Exception $e) {
+            Log::error("WhatsApp Webhook Error: " . $e->getMessage());
+            return response()->json(['status' => 'error'], 500);
+        }
     }
 
     /**
@@ -166,38 +224,11 @@ class WhatsAppChatController extends Controller
         $baseUrl = config('services.waha.url');
         $apiKey  = config('services.waha.key');
 
-        // 1. SIMPAN KE DB DULU (Dashboard langsung update)
-        $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText) {
-            $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
-                      ->orWhere('phone_student', $destinationPhone)
-                      ->first();
-
-            $chat = Chat::updateOrCreate(
-                ['phone_number' => $destinationPhone],
-                [
-                    'student_profile_id' => $student ? $student->id : null,
-                    'last_message'      => $messageText,
-                    'last_message_at'   => now(),
-                ]
-            );
-
-            return ChatMessage::create([
-                'chat_id'       => $chat->id,
-                'sender_type'   => 'admin',
-                'message_body'  => $messageText,
-                'message_type'  => 'chat',
-                'read_at'       => now(),
-                'created_at'    => now(),
-            ]);
-        });
-
-        // 2. PROSES PENGIRIMAN KE GOWA
         try {
             $response = Http::withHeaders([
                 "Content-Type"  => "application/json",
                 "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->timeout(30) // Set ke 30 detik agar tangguh menghadapi koneksi lambat
-              ->post($baseUrl . "/send/message", [
+            ])->post($baseUrl . "/send/message", [
                 "phone"   => $destinationPhone,
                 "message" => $messageText
             ]);
@@ -205,11 +236,32 @@ class WhatsAppChatController extends Controller
             if ($response->successful()) {
                 $responseBody = $response->json();
                 $waMsgId = $responseBody['id'] ?? $responseBody['data']['id'] ?? null;
-                
-                if ($waMsgId) {
-                    $chatMessage->update(['wa_message_id' => $waMsgId]);
-                }
-                
+
+                DB::transaction(function () use ($destinationPhone, $messageText, $waMsgId) {
+                    $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
+                              ->orWhere('phone_student', $destinationPhone)
+                              ->first();
+
+                    $chat = Chat::updateOrCreate(
+                        ['phone_number' => $destinationPhone],
+                        [
+                            'student_profile_id' => $student ? $student->id : null,
+                            'last_message'      => $messageText,
+                            'last_message_at'   => now(),
+                        ]
+                    );
+
+                    ChatMessage::create([
+                        'chat_id'       => $chat->id,
+                        'wa_message_id' => $waMsgId,
+                        'sender_type'   => 'admin',
+                        'message_body'  => $messageText,
+                        'message_type'  => 'chat',
+                        'read_at'       => now(),
+                        'created_at'    => now(),
+                    ]);
+                });
+
                 return response()->json(['status' => 'success', 'data' => $responseBody]);
             }
 
@@ -217,8 +269,7 @@ class WhatsAppChatController extends Controller
 
         } catch (\Exception $e) {
             Log::error("WhatsApp Exception: " . $e->getMessage());
-            // Tetap berikan respons positif agar UI tidak crash, karena pesan sudah di DB
-            return response()->json(['status' => 'partial_success', 'message' => 'Tersimpan di DB, tapi ada jeda pengiriman ke GOWA'], 200);
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -229,5 +280,12 @@ class WhatsAppChatController extends Controller
         return $parts[0] ?? '';
     }
 
-
+    private function formatPhoneNumber($phone)
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+        return $phone;
+    }
 }
