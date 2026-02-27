@@ -3,6 +3,7 @@ import axios from 'axios';
 import { usePage } from '@inertiajs/react';
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern'; // Sesuaikan path
 
+// --- Tipe Data ---
 interface ChatItem {
     id: number;
     name: string;
@@ -28,65 +29,52 @@ interface MessageItem {
 
 export default function WhatsAppWidget() {
     const { auth } = usePage().props as any; 
-    const userRole = auth?.user?.role || 'admin';
+    const userRole = auth?.user?.role || 'admin'; 
     const basePath = `/${userRole}/whatsapp`; 
 
     const [isOpen, setIsOpen] = useState(false);
+    
+    // STATE BARU: Untuk pindah tampilan tanpa merusak logic routing
     const [viewMode, setViewMode] = useState<'list' | 'chat' | 'new_chat'>('list');
-    
-    const [chatList, setChatList] = useState<ChatItem[]>([]);
     const [contactList, setContactList] = useState<ContactItem[]>([]);
-    const [messages, setMessages] = useState<MessageItem[]>([]);
-    
+
     const [activeChat, setActiveChat] = useState<number | null>(null);
-    const [chatInfo, setChatInfo] = useState<any>(null); // Menyimpan info lawan bicara saat ini
+    const [chatList, setChatList] = useState<ChatItem[]>([]);
+    const [messages, setMessages] = useState<MessageItem[]>([]);
+    const [chatInfo, setChatInfo] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
-    
     const [loading, setLoading] = useState(false);
-    const [isSending, setIsSending] = useState(false);
+    const [isSending, setIsSending] = useState(false); // Cegah double klik
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // --- FETCH DATA ---
-    const fetchChatData = async () => {
+    // 1. Fetch Daftar Chat (Logic dipertahankan, ditambah deteksi format backend)
+    const fetchChatList = async () => {
         try {
             const response = await axios.get(`${basePath}/chats`); 
-            setChatList(response.data.chats);
-            setContactList(response.data.contacts);
+            
+            // Pengaman: Cek apakah backend ngirim Object {chats, contacts} atau Array langsung
+            if (response.data && response.data.chats) {
+                setChatList(response.data.chats);
+                setContactList(response.data.contacts || []);
+            } else {
+                setChatList(Array.isArray(response.data) ? response.data : []);
+            }
         } catch (error) {
-            console.error("Gagal memuat data chat", error);
+            console.error("Gagal memuat chat", error);
         }
     };
 
     useEffect(() => {
-        fetchChatData();
-        
-        // Polling diubah menjadi 10 menit (600.000 ms)
-        const interval = setInterval(fetchChatData, 600000); 
-
-        // INTEGRASI LARAVEL ECHO (REALTIME)
-        // Jika Anda menggunakan Pusher/Reverb, aktifkan blok di bawah ini:
-        /*
-        if (window.Echo) {
-            window.Echo.channel('whatsapp-events')
-                .listen('WhatsAppMessageReceived', (e: any) => {
-                    // Update pesan jika chat sedang dibuka
-                    if (activeChat && e.chat_id === activeChat) {
-                        fetchMessages(activeChat);
-                    }
-                    // Selalu refresh list untuk update unread count / last message
-                    fetchChatData();
-                });
-        }
-        */
-
+        fetchChatList();
+        const interval = setInterval(fetchChatList, 60000); // Polling 1 Menit
         return () => clearInterval(interval);
-    }, [activeChat]);
+    }, []);
 
-    // --- ACTIONS ---
-    const openExistingChat = async (chatId: number) => {
+    // 2. Buka Detail Chat (Logic Murni Anda)
+    const openChat = async (chatId: number) => {
         setActiveChat(chatId);
-        setViewMode('chat');
+        setViewMode('chat'); // Pindah ke layar chat
         setLoading(true);
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages`);
@@ -100,20 +88,26 @@ export default function WhatsAppWidget() {
         }
     };
 
+    // 3. Mulai Chat Baru (Hanya logic UI)
     const startNewChat = (contact: ContactItem) => {
-        // Cek apakah chat dengan nomor ini sudah ada di history
         const existingChat = chatList.find(c => c.phone === contact.phone);
         if (existingChat) {
-            openExistingChat(existingChat.id);
+            // Kalau sudah pernah chat, buka chat lama
+            openChat(existingChat.id);
         } else {
-            // Mode chat baru (belum ada ID chat dari DB)
+            // Kalau belum, siapkan layar chat kosong
             setActiveChat(null);
             setMessages([]);
-            setChatInfo({ name: contact.name, phone: contact.phone, isNew: true });
+            setChatInfo({ name: contact.name, phone: contact.phone });
             setViewMode('chat');
         }
     };
 
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, viewMode]);
+
+    // 4. Kirim Pesan (Logic Murni Anda + cegah double klik)
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newMessage.trim() || !chatInfo || isSending) return;
@@ -131,32 +125,27 @@ export default function WhatsAppWidget() {
         setNewMessage('');
 
         try {
-            const response = await axios.post(`${basePath}/send`, {
+            await axios.post(`${basePath}/send`, {
                 phone_number: chatInfo.phone,
                 message: tempMsg.text
             });
             
-            // Jika ini chat baru, respons server harus mengembalikan ID chat yang baru dibuat
-            if (chatInfo.isNew && response.data.chat_id) {
-                await openExistingChat(response.data.chat_id);
-            } else if (activeChat) {
-                await openExistingChat(activeChat); 
+            // Panggil openChat lagi jika chat sudah ada ID-nya (chat lama)
+            if (activeChat || chatInfo.id) {
+                openChat(activeChat || chatInfo.id); 
             }
-            fetchChatData(); 
+            fetchChatList(); 
         } catch (error) {
             alert('Gagal mengirim pesan');
-            setMessages(prev => prev.filter(msg => msg.id !== tempMsg.id));
+            console.error(error);
         } finally {
             setIsSending(false);
         }
     };
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, viewMode]);
+    // --- RENDER UI (Diperbarui dengan Shadcn Colors & Placeholder) ---
 
-
-    // --- RENDER UI ---
+    // A. Tombol Floating
     if (!isOpen) {
         const totalUnread = chatList.reduce((sum, item) => sum + item.unread_count, 0);
         return (
@@ -173,10 +162,11 @@ export default function WhatsAppWidget() {
         );
     }
 
+    // B. Sidebar Panel
     return (
         <div className="fixed top-0 right-0 bottom-0 w-full sm:w-96 bg-background shadow-2xl border-l border-border z-50 flex flex-col transform transition-transform">
             
-            {/* Header */}
+            {/* Header Sidebar */}
             <div className="bg-background text-foreground border-b border-border p-4 flex justify-between items-center shadow-sm shrink-0">
                 <h3 className="font-bold text-lg">
                     {viewMode === 'chat' ? chatInfo?.name : viewMode === 'new_chat' ? 'Pilih Kontak' : 'Daftar Chat'}
@@ -196,7 +186,7 @@ export default function WhatsAppWidget() {
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto bg-muted/10 relative">
                 
-                {/* LIST CHAT */}
+                {/* MODE LIST: Tampilkan Daftar Chat */}
                 {viewMode === 'list' && (
                     <div className="divide-y divide-border">
                         <div className="p-3">
@@ -208,10 +198,16 @@ export default function WhatsAppWidget() {
                                 Chat Baru
                             </button>
                         </div>
-                        {chatList.length === 0 && <div className="p-4 text-center text-muted-foreground text-sm">Belum ada percakapan.</div>}
+                        {chatList.length === 0 && (
+                            <div className="p-4 text-center text-muted-foreground text-sm">Belum ada percakapan.</div>
+                        )}
                         {chatList.map((chat) => (
-                            <div key={chat.id} onClick={() => openExistingChat(chat.id)} className="p-3 hover:bg-accent cursor-pointer transition-colors flex items-start gap-3">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0">
+                            <div 
+                                key={chat.id} 
+                                onClick={() => openChat(chat.id)}
+                                className="p-3 hover:bg-accent cursor-pointer transition-colors flex items-start gap-3 bg-background"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border">
                                     {chat.name.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -231,12 +227,15 @@ export default function WhatsAppWidget() {
                     </div>
                 )}
 
-                {/* NEW CHAT (DAFTAR KONTAK) */}
+                {/* MODE NEW CHAT: Daftar Kontak Siswa */}
                 {viewMode === 'new_chat' && (
                     <div className="divide-y divide-border">
+                        {contactList.length === 0 && (
+                            <div className="p-4 text-center text-muted-foreground text-sm">Data siswa belum tersedia.</div>
+                        )}
                         {contactList.map((contact) => (
-                            <div key={contact.id} onClick={() => startNewChat(contact)} className="p-3 hover:bg-accent cursor-pointer transition-colors flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0">
+                            <div key={contact.id} onClick={() => startNewChat(contact)} className="p-3 hover:bg-accent cursor-pointer transition-colors flex items-center gap-3 bg-background">
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border">
                                     {contact.name.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -248,24 +247,24 @@ export default function WhatsAppWidget() {
                     </div>
                 )}
 
-                {/* CHAT AREA */}
+                {/* MODE CHAT: Tampilkan Isi Pesan */}
                 {viewMode === 'chat' && (
-                    <div className="relative flex flex-col h-full">
-                        {/* Pattern Background dari Shadcn */}
+                    <div className="relative flex flex-col min-h-full">
+                        {/* Placeholder Pattern Shadcn UI */}
                         <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/10 dark:stroke-neutral-100/10 z-0" />
-                        
-                        <div className="relative z-10 flex-1 p-4 space-y-4 overflow-y-auto">
+
+                        <div className="relative z-10 flex-1 p-3 space-y-3">
                             {loading && <div className="text-center text-xs text-muted-foreground">Memuat pesan...</div>}
                             
                             {messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-lg p-3 text-sm shadow-sm ${
+                                    <div className={`max-w-[80%] rounded-lg p-2 text-sm shadow-sm ${
                                         msg.is_admin 
                                             ? 'bg-primary text-primary-foreground rounded-tr-none' 
                                             : 'bg-card text-card-foreground border border-border rounded-tl-none'
                                     }`}>
-                                        <div className="leading-relaxed">{msg.text}</div>
-                                        <div className={`text-[10px] mt-1.5 text-right ${msg.is_admin ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                        <div>{msg.text}</div>
+                                        <div className={`text-[10px] text-right mt-1 ${msg.is_admin ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                                             {msg.time}
                                         </div>
                                     </div>
@@ -273,30 +272,32 @@ export default function WhatsAppWidget() {
                             ))}
                             <div ref={messagesEndRef} />
                         </div>
-
-                        {/* Footer Input */}
-                        <div className="relative z-10 p-3 bg-background border-t border-border shrink-0">
-                            <form onSubmit={sendMessage} className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    disabled={isSending}
-                                    placeholder="Ketik pesan..."
-                                    className="flex-1 text-sm bg-muted text-foreground border border-transparent rounded-full focus:border-primary focus:ring-1 focus:ring-primary px-4 py-2.5 outline-none transition-all"
-                                />
-                                <button 
-                                    type="submit" 
-                                    disabled={!newMessage.trim() || isSending}
-                                    className="bg-primary text-primary-foreground p-2.5 rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0"
-                                >
-                                    <svg className="w-5 h-5 -rotate-45 ml-1 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
-                                </button>
-                            </form>
-                        </div>
                     </div>
                 )}
             </div>
+
+            {/* Footer Input (Hanya di Mode Chat) */}
+            {viewMode === 'chat' && (
+                <div className="relative z-10 p-3 bg-background border-t border-border shrink-0">
+                    <form onSubmit={sendMessage} className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            disabled={isSending}
+                            placeholder="Ketik pesan..."
+                            className="flex-1 text-sm bg-background text-foreground border border-input rounded-full focus:border-primary focus:ring-1 focus:ring-primary px-4 py-2 outline-none transition-all"
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={!newMessage.trim() || isSending}
+                            className="bg-primary text-primary-foreground p-2 rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0"
+                        >
+                            <svg className="w-5 h-5 rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                        </button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 }
