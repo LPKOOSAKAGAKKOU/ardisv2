@@ -247,13 +247,14 @@ export default function WhatsAppWidget() {
                             
                             {messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-lg p-2 text-sm shadow-sm ${
+                                    {/* Warnanya diubah di bagian ini */}
+                                    <div className={`max-w-[80%] rounded-lg p-2.5 text-sm shadow-sm border ${
                                         msg.is_admin 
-                                            ? 'bg-primary text-primary-foreground rounded-tr-none' 
-                                            : 'bg-card text-card-foreground border border-border rounded-tl-none'
+                                            ? 'bg-slate-100 text-slate-800 border-slate-200 rounded-tr-none dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700' 
+                                            : 'bg-white text-gray-800 border-gray-200 rounded-tl-none dark:bg-zinc-900 dark:text-gray-100 dark:border-zinc-800'
                                     }`}>
-                                        <div>{msg.text}</div>
-                                        <div className={`text-[10px] text-right mt-1 ${msg.is_admin ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                        <div className="leading-relaxed break-words whitespace-pre-wrap">{msg.text}</div>
+                                        <div className="text-[10px] text-right mt-1 text-gray-400 dark:text-gray-500">
                                             {msg.time}
                                         </div>
                                     </div>
