@@ -29,9 +29,12 @@ class WhatsAppChatController extends Controller
         return $phone;
     }
 
+    /**
+     * API: Ambil Daftar Chat (Untuk Sidebar Widget)
+     */
     public function getChatList()
     {
-        // 1. Ambil daftar percakapan (Chat) yang sudah ada
+        // 1. Ambil daftar percakapan (Chat) yang sudah ada (LOGIKA ASLI ANDA)
         $chats = Chat::with('student')
             ->orderByDesc('last_message_at')
             ->get();
@@ -41,8 +44,7 @@ class WhatsAppChatController extends Controller
                 'id'            => $chat->id,
                 'student_id'    => $chat->student_profile_id,
                 'name'          => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
-                // FORMAT NOMOR DI SINI
-                'phone'         => $this->formatPhoneNumber($chat->phone_number), 
+                'phone'         => $this->formatPhoneNumber($chat->phone_number),
                 'avatar_url'    => null,
                 'last_message'  => \Illuminate\Support\Str::limit($chat->last_message, 30),
                 'time_ago'      => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : '',
@@ -50,16 +52,18 @@ class WhatsAppChatController extends Controller
             ];
         });
 
-        // 2. Ambil semua siswa dari DB untuk opsi "New Chat"
-        $students = \App\Models\Student::select('id', 'full_name', 'phone_number')->get()->map(function($student) {
-            return [
-                'id'    => $student->id,
-                'name'  => $student->full_name,
-                // FORMAT NOMOR DI SINI JUGA
-                'phone' => $this->formatPhoneNumber($student->phone_number), 
-            ];
-        });
+        // 2. Ambil semua kontak siswa (MENGGUNAKAN StudentProfile)
+        $students = \App\Models\StudentProfile::select('id', 'full_name', 'phone_number')
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id'    => $student->id,
+                    'name'  => $student->full_name,
+                    'phone' => $this->formatPhoneNumber($student->phone_number), 
+                ];
+            });
 
+        // 3. Kembalikan data dalam format Object yang bisa dibaca React
         return response()->json([
             'chats'    => $chatData,
             'contacts' => $students
@@ -67,7 +71,7 @@ class WhatsAppChatController extends Controller
     }
 
     /**
-     * API: Ambil Detail Pesan
+     * API: Ambil Detail Pesan (Biarkan murni seperti asli punya Anda)
      */
     public function getMessages($chatId)
     {
@@ -101,6 +105,7 @@ class WhatsAppChatController extends Controller
             'messages' => $messages
         ]);
     }
+
 
     /**
      * Webhook Handler (Sangat Cepat & Responsif)
@@ -223,5 +228,6 @@ class WhatsAppChatController extends Controller
         $parts = explode('@', $jid);
         return $parts[0] ?? '';
     }
+
 
 }
