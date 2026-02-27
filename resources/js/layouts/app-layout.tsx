@@ -26,8 +26,15 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
     // Selain student (admin, staff, dll), gunakan AppSidebarLayout
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs} {...props}>
-            {children}
+            <div className="flex flex-row h-full overflow-hidden">
+                {/* Konten Utama Halaman akan mengambil sisa space */}
+                <div className="flex-1 overflow-y-auto">
+                    {children}
+                </div>
+
+                {/* Sidebar WhatsApp di Kanan - Mengambil space murni */}
                 <WhatsappWidget />
+            </div>
         </AppSidebarLayout>
     );
 };
