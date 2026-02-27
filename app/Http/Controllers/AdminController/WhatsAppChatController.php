@@ -17,45 +17,66 @@ class WhatsAppChatController extends Controller
     /**
      * API: Ambil Daftar Chat (Untuk Sidebar Widget)
      */
-    public function getChatList()
+    public function getChatList(Request $request)
     {
-        // 1. Ambil daftar percakapan (Chat) yang sudah ada
-        $chats = Chat::with('student')
-            ->orderByDesc('last_message_at')
-            ->get();
+        // 1. Tangkap kata kunci pencarian
+        $search = $request->query('search');
 
-        $chatData = $chats->map(function ($chat) {
+        // 2. Ambil daftar percakapan (Chat) dengan Pagination & Search
+        $chatsQuery = Chat::with('student')
+            ->when($search, function ($query) use ($search) {
+                // Cari berdasarkan nama siswa di tabel student_profiles atau phone_number/incoming_name di tabel chats
+                $query->whereHas('student', function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%");
+                })
+                ->orWhere('phone_number', 'like', "%{$search}%")
+                ->orWhere('incoming_name', 'like', "%{$search}%");
+            })
+            ->orderByDesc('last_message_at');
+
+        // Gunakan paginate() untuk mendukung scroll di frontend (default 15 chat per load)
+        $chats = $chatsQuery->paginate(15);
+
+        // Transformasi data untuk response JSON
+        $chatData = collect($chats->items())->map(function ($chat) {
             return [
-                'id'            => $chat->id,
-                'student_id'    => $chat->student_profile_id,
-                'name'          => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
-                // Format nomor HP
-                'phone'         => $chat->phone_number,
-                'avatar_url'    => null,
-                'last_message'  => \Illuminate\Support\Str::limit($chat->last_message, 30),
-                'time_ago'      => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : '',
-                'unread_count'  => $chat->unread_count,
+                'id'             => $chat->id,
+                'student_id'     => $chat->student_profile_id,
+                'name'           => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
+                'phone'          => $chat->phone_number,
+                'avatar_url'     => null,
+                'last_message'   => \Illuminate\Support\Str::limit($chat->last_message, 30),
+                'time_ago'       => $chat->last_message_at ? $chat->last_message_at->diffForHumans() : '',
+                'unread_count'   => $chat->unread_count,
             ];
         });
 
-        // 2. Ambil semua siswa dari DB untuk opsi "New Chat"
-        // PENTING: Gunakan model StudentProfile dan kolom phone_student!
-        $students = StudentProfile::select('id', 'full_name', 'phone_student')->get()->map(function($student) {
-            return [
-                'id'    => $student->id,
-                'name'  => $student->full_name,
-                // Format nomor HP dari phone_student
-                'phone' => $this->formatPhoneNumber($student->phone_student), 
-            ];
-        });
+        // 3. Ambil semua siswa dari DB untuk opsi "New Chat" (Filter jika perlu)
+        $students = StudentProfile::select('id', 'full_name', 'phone_student')
+            ->when($search, function($query) use ($search) {
+                $query->where('full_name', 'like', "%{$search}%");
+            })
+            ->limit(20) // Batasi 20 saja untuk performa pencarian kontak
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id'    => $student->id,
+                    'name'  => $student->full_name,
+                    'phone' => $this->formatPhoneNumber($student->phone_student), 
+                ];
+            });
 
-        // 3. Return gabungan
+        // 4. Return gabungan dengan metadata pagination
         return response()->json([
             'chats'    => $chatData,
-            'contacts' => $students
+            'contacts' => $students,
+            'pagination' => [
+                'current_page' => $chats->currentPage(),
+                'last_page'    => $chats->lastPage(),
+                'has_more'     => $chats->hasMorePages(),
+            ]
         ]);
     }
-
     /**
      * API: Ambil Detail Pesan (Dengan Pagination & Media)
      */
