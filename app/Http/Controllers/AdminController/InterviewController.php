@@ -649,63 +649,7 @@ class InterviewController extends Controller
             \Log::error("Email Error: " . $e->getMessage());
         }
 
-        // --- 3. Kirim WhatsApp (Meniru pola CURL Anda) ---
-        $phoneNumber = $detail->user->student_profile->phone_student;
-        $formattedPhone = $this->formatPhoneNumber($phoneNumber);
-
-        $waMessage = "*UPDATE HASIL WAWANCARA*\n\n" .
-                    "Nama: $studentName\n" .
-                    "Program: $interviewTitle\n" .
-                    "Status: *$statusLabel*\n\n" .
-                    "$statusMessage\n\n" .
-                    "Catatan Admin: $remarks\n\n" .
-                    "Silakan cek dashboard Anda di https://ardisv2.oosakagakkou.co.id untuk informasi lebih lanjut.";
-
-        $this->sendWhatsApp($formattedPhone, $waMessage);
-
         return redirect()->back()->with('success', 'Hasil wawancara berhasil diperbarui dan notifikasi telah dikirim.');
     }
 
-    /**
-     * Normalisasi nomor HP agar murni angka
-     */
-    private function formatPhoneNumber($phone)
-    {
-        // Hapus spasi, strip, dan karakter non-digit lainnya
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-
-        // Ubah 08xxx menjadi 628xxx
-        if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
-        }
-
-        return $phone;
-    }
-
-    /**
-     * Kirim WhatsApp meniru metode CURL yang Anda miliki
-     */
-    private function sendWhatsApp($phone, $message)
-    {
-        $data = [
-            "phone"   => $phone,
-            "message" => $message
-        ];
-
-        // Ambil data dari config, bukan env langsung
-        $baseUrl = config('services.waha.url');
-        $apiKey  = config('services.waha.key');
-
-        try {
-            $response = Http::withHeaders([
-                "Content-Type" => "application/json",
-                "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->post($baseUrl . "/send/message", $data);
-
-            return $response->successful();
-        } catch (\Exception $e) {
-            \Log::error("WhatsApp Error: " . $e->getMessage());
-            return false;
-        }
-    }
 }
