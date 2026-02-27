@@ -45,25 +45,65 @@ class ProcessWhatsAppWebhook implements ShouldQueue
         })->first();
         
         if (!$student) {
-            Log::info("WhatsApp Webhook (Job): Nomor tidak terdaftar.", ['nomor' => $formattedStudentPhone]);
-            return; // Hentikan job jika siswa tidak ada
+            Log::info("WhatsApp Webhook: Nomor tidak terdaftar.", ['nomor' => $formattedStudentPhone]);
+            return; 
         }
 
         $pushName = $student->full_name ?? $payload['from_name'] ?? 'Unknown';
         $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
         $waMsgId = $payload['id'] ?? null;
-        
-        $msgTimestamp = isset($payload['timestamp']) 
-            ? date('Y-m-d H:i:s', strtotime($payload['timestamp'])) 
-            : now();
-
-        if (empty($messageText)) {
-            $messageText = '[File/Media]';
-        }
-
+        $msgTimestamp = isset($payload['timestamp']) ? date('Y-m-d H:i:s', strtotime($payload['timestamp'])) : now();
         $senderType = $isFromMe ? 'admin' : 'student';
 
-        DB::transaction(function () use ($formattedStudentPhone, $student, $pushName, $messageText, $waMsgId, $msgTimestamp, $senderType, $isFromMe) {
+        // DETEKSI TIPE PESAN MEDIA DARI GOWA
+        $waType = $payload['type'] ?? 'chat'; 
+        
+        $mediaUrl = null;
+        $fileName = null;
+        $mimeType = null;
+        $latitude = $payload['location']['latitude'] ?? null;
+        $longitude = $payload['location']['longitude'] ?? null;
+
+        $mediaTypes = ['image', 'video', 'document', 'audio', 'sticker'];
+        $messageType = in_array($waType, $mediaTypes) ? $waType : (isset($latitude) ? 'location' : 'chat');
+
+        // PROSES DOWNLOAD MEDIA JIKA ADA
+        if (in_array($messageType, $mediaTypes) && $waMsgId) {
+            try {
+                $baseUrl = config('services.waha.url');
+                $apiKey  = config('services.waha.key');
+                
+                // Panggil Endpoint Download Media GOWA
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    "Authorization" => "Basic " . base64_encode($apiKey)
+                ])->timeout(30)->get("{$baseUrl}/message/{$waMsgId}/download");
+
+                if ($response->successful()) {
+                    $fileContent = $response->body();
+                    $mimeType = $response->header('Content-Type') ?? 'application/octet-stream';
+                    
+                    // Tebak ekstensi file dari MimeType
+                    $extension = explode('/', $mimeType)[1] ?? 'bin';
+                    if (str_contains($extension, ';')) $extension = explode(';', $extension)[0];
+                    
+                    $fileName = "wa_{$waMsgId}.{$extension}";
+                    $path = "public/chat_media/{$fileName}";
+                    
+                    // Simpan ke storage lokal
+                    \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+                    $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal mendownload media Webhook: " . $e->getMessage());
+            }
+        }
+
+        if (empty($messageText)) {
+            $messageText = $mediaUrl ? "[$messageType diterima]" : ($latitude ? "[Lokasi diterima]" : '');
+        }
+
+        // SIMPAN KE DB
+        DB::transaction(function () use ($formattedStudentPhone, $student, $pushName, $messageText, $waMsgId, $msgTimestamp, $senderType, $isFromMe, $messageType, $mediaUrl, $fileName, $mimeType, $latitude, $longitude) {
             
             $chat = Chat::updateOrCreate(
                 ['phone_number' => $formattedStudentPhone],
@@ -85,7 +125,12 @@ class ProcessWhatsAppWebhook implements ShouldQueue
                     'chat_id'       => $chat->id,
                     'sender_type'   => $senderType,
                     'message_body'  => $messageText,
-                    'message_type'  => 'chat',
+                    'message_type'  => $messageType,
+                    'media_url'     => $mediaUrl,
+                    'file_name'     => $fileName,
+                    'mime_type'     => $mimeType,
+                    'latitude'      => $latitude,
+                    'longitude'     => $longitude,
                     'read_at'       => $isFromMe ? now() : null,
                     'created_at'    => $msgTimestamp,
                 ]

@@ -57,9 +57,9 @@ class WhatsAppChatController extends Controller
     }
 
     /**
-     * API: Ambil Detail Pesan
+     * API: Ambil Detail Pesan (Dengan Pagination & Media)
      */
-    public function getMessages($chatId)
+    public function getMessages(Request $request, $chatId)
     {
         $chat = Chat::with('student')->findOrFail($chatId);
 
@@ -67,20 +67,30 @@ class WhatsAppChatController extends Controller
             $chat->update(['unread_count' => 0]);
         }
 
-        $messages = ChatMessage::where('chat_id', $chat->id)
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($msg) {
-                return [
-                    'id'           => $msg->id,
-                    'direction'    => $msg->sender_type === 'admin' ? 'outbound' : 'inbound',
-                    'text'         => $msg->message_body,
-                    'status'       => 'read',
-                    'time'         => $msg->created_at->format('H:i'),
-                    'full_date'    => $msg->created_at->translatedFormat('d F Y'),
-                    'is_admin'     => $msg->sender_type === 'admin',
-                ];
-            });
+        // Ambil 20 pesan per halaman. Diurutkan desc agar yang terbaru ada di halaman 1
+        $perPage = 20;
+        $paginator = ChatMessage::where('chat_id', $chat->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        // Kita reverse koleksinya agar urutan di UI React tetap kronologis (atas ke bawah)
+        $messages = collect($paginator->items())->map(function ($msg) {
+            return [
+                'id'           => $msg->id,
+                'direction'    => $msg->sender_type === 'admin' ? 'outbound' : 'inbound',
+                'text'         => $msg->message_body,
+                'message_type' => $msg->message_type ?? 'chat',
+                'media_url'    => $msg->media_url,
+                'file_name'    => $msg->file_name,
+                'mime_type'    => $msg->mime_type,
+                'latitude'     => $msg->latitude,
+                'longitude'    => $msg->longitude,
+                'status'       => 'read',
+                'time'         => $msg->created_at->format('H:i'),
+                'full_date'    => $msg->created_at->translatedFormat('d F Y'),
+                'is_admin'     => $msg->sender_type === 'admin',
+            ];
+        })->reverse()->values();
 
         return response()->json([
             'chat_info' => [
@@ -88,7 +98,12 @@ class WhatsAppChatController extends Controller
                 'name'  => $chat->student->full_name ?? $chat->incoming_name,
                 'phone' => $chat->phone_number,
             ],
-            'messages' => $messages
+            'messages' => $messages,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'has_more'     => $paginator->hasMorePages()
+            ]
         ]);
     }
 
@@ -136,23 +151,73 @@ class WhatsAppChatController extends Controller
     }
 
     /**
-     * Kirim Pesan (Admin -> Siswa)
+     * Kirim Pesan (Admin -> Siswa) Mendukung Media & Lokasi
      */
     public function sendMessage(Request $request)
     {
+        // 1. Validasi dinamis (Bisa teks saja, file saja, atau lokasi saja)
         $request->validate([
             'phone_number' => 'required',
-            'message' => 'required|string',
+            'message'      => 'nullable|string',
+            'file'         => 'nullable|file|max:20480', // Maks 20MB
+            'latitude'     => 'nullable|numeric',
+            'longitude'    => 'nullable|numeric',
         ]);
 
         $destinationPhone = $this->formatPhoneNumber($request->phone_number);
-        $messageText = $request->message;
-
+        $messageText = $request->message ?? '';
+        
         $baseUrl = config('services.waha.url');
         $apiKey  = config('services.waha.key');
 
-        // 1. SIMPAN KE DB DULU (Dashboard langsung update)
-        $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText) {
+        $mediaUrl = null;
+        $fileName = null;
+        $mimeType = null;
+        $messageType = 'chat'; // Default
+        
+        $gowaEndpoint = '/send/message';
+        $gowaPayload = ['phone' => $destinationPhone];
+
+        // 2. CEK TIPE PESAN & SIAPKAN PAYLOAD UNTUK GOWA
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = $file->getClientOriginalName();
+            $mimeType = $file->getMimeType();
+            
+            // Simpan file ke storage/app/public/chat_media
+            $path = $file->storeAs('public/chat_media', time() . '_' . preg_replace('/[^A-Za-z0-9.\-]/', '_', $fileName));
+            $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+
+            if (str_starts_with($mimeType, 'image/')) {
+                $messageType = 'image';
+                $gowaEndpoint = '/send/image';
+            } elseif (str_starts_with($mimeType, 'video/')) {
+                $messageType = 'video';
+                $gowaEndpoint = '/send/video';
+            } else {
+                $messageType = 'document';
+                $gowaEndpoint = '/send/file';
+            }
+            
+            // GOWA butuh caption untuk media
+            $gowaPayload['caption'] = $messageText; 
+
+        } elseif ($request->filled('latitude') && $request->filled('longitude')) {
+            $messageType = 'location';
+            $gowaEndpoint = '/send/location';
+            $gowaPayload['latitude'] = $request->latitude;
+            $gowaPayload['longitude'] = $request->longitude;
+            $gowaPayload['name'] = 'Lokasi Dikirim Admin';
+        } else {
+            // Chat teks biasa
+            if (empty($messageText)) {
+                return response()->json(['status' => 'error', 'message' => 'Pesan tidak boleh kosong jika tidak ada file'], 400);
+            }
+            $gowaPayload['message'] = $messageText;
+        }
+
+        // 3. SIMPAN KE DB DULU
+        $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText, $mediaUrl, $fileName, $mimeType, $messageType, $request) {
             $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
                       ->orWhere('phone_student', $destinationPhone)
                       ->first();
@@ -161,7 +226,7 @@ class WhatsAppChatController extends Controller
                 ['phone_number' => $destinationPhone],
                 [
                     'student_profile_id' => $student ? $student->id : null,
-                    'last_message'      => $messageText,
+                    'last_message'      => $messageType === 'chat' ? $messageText : "[$messageType dikirim]",
                     'last_message_at'   => now(),
                 ]
             );
@@ -170,22 +235,34 @@ class WhatsAppChatController extends Controller
                 'chat_id'       => $chat->id,
                 'sender_type'   => 'admin',
                 'message_body'  => $messageText,
-                'message_type'  => 'chat',
+                'message_type'  => $messageType, // chat, image, document, location, dll
+                'media_url'     => $mediaUrl,
+                'file_name'     => $fileName,
+                'mime_type'     => $mimeType,
+                'latitude'      => $request->latitude,
+                'longitude'     => $request->longitude,
                 'read_at'       => now(),
                 'created_at'    => now(),
             ]);
         });
 
-        // 2. PROSES PENGIRIMAN KE GOWA
+        // 4. PROSES PENGIRIMAN KE GOWA
         try {
-            $response = Http::withHeaders([
-                "Content-Type"  => "application/json",
+            $httpReq = Http::withHeaders([
                 "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->timeout(30) // Set ke 30 detik agar tangguh menghadapi koneksi lambat
-              ->post($baseUrl . "/send/message", [
-                "phone"   => $destinationPhone,
-                "message" => $messageText
-            ]);
+            ])->timeout(45); // Set sedikit lebih lama untuk file besar
+
+            if ($request->hasFile('file')) {
+                // Kalo bawa file, kirim sebagai Multipart/Form-Data
+                $response = $httpReq->attach(
+                    'file', 
+                    file_get_contents($request->file('file')->getRealPath()), 
+                    $fileName
+                )->post($baseUrl . $gowaEndpoint, $gowaPayload);
+            } else {
+                // Kalo teks / lokasi biasa, kirim sebagai JSON
+                $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
+            }
 
             if ($response->successful()) {
                 $responseBody = $response->json();
@@ -202,8 +279,7 @@ class WhatsAppChatController extends Controller
 
         } catch (\Exception $e) {
             Log::error("WhatsApp Exception: " . $e->getMessage());
-            // Tetap berikan respons positif agar UI tidak crash, karena pesan sudah di DB
-            return response()->json(['status' => 'partial_success', 'message' => 'Tersimpan di DB, tapi ada jeda pengiriman ke GOWA'], 200);
+            return response()->json(['status' => 'partial_success', 'message' => 'Tersimpan di DB, tapi gagal kirim ke WA: ' . $e->getMessage()], 200);
         }
     }
 

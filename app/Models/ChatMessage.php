@@ -12,7 +12,12 @@ class ChatMessage extends Model
         'sender_type', 
         'message_body', 
         'message_type', 
-        'read_at'
+        'read_at',
+        'media_url',
+        'file_name',
+        'mime_type',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
