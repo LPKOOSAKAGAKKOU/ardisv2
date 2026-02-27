@@ -128,8 +128,6 @@ class WhatsAppChatController extends Controller
 
         $data = $request->all();
         
-        // Log untuk monitoring
-        Log::info("Payload WhatsApp Diterima:", $data);
         
         if (($data['event'] ?? '') !== 'message') {
             return response()->json(['status' => 'ignored_event']);
