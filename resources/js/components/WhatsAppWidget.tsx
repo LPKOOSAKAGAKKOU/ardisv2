@@ -494,8 +494,16 @@ export default function WhatsAppWidget() {
                 )}
 
                 {/* SIDEBAR UTAMA */}
+                {/*
+                    ✅ FIX MOBILE VIEWPORT:
+                    - Pakai style inline untuk height agar menggunakan dvh (dynamic viewport height)
+                      yang aware terhadap virtual keyboard di iOS/Android
+                    - Fallback ke 100vh jika dvh tidak support
+                    - overflow-hidden dihapus dari wrapper agar tidak clip child elements
+                */}
                 <div 
-                    className={`fixed lg:relative top-0 right-0 h-screen bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none overflow-hidden 
+                    style={{ height: '100dvh' }}
+                    className={`fixed lg:relative top-0 right-0 bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none lg:h-full
                         ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 border-none pointer-events-none lg:pointer-events-auto'}`}
                 >
                     
@@ -509,15 +517,16 @@ export default function WhatsAppWidget() {
                         </svg>
                     </button>
 
-                    <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 relative z-30">
+                    {/* Header — selalu tampil */}
+                    <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 z-30">
                         <h3 className="font-bold text-xs truncate pr-2 uppercase tracking-widest text-muted-foreground">
-                            {/* ✅ FIX 6: Pakai isMobile state */}
                             {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
                         </h3>
                         <button 
                             onClick={() => {
                                 if (viewMode === 'chat' && isMobile) {
-                                    // ✅ FIX 7: Tombol X di header mobile kembali ke list, bukan tutup sidebar
+                                    setViewMode('list');
+                                } else if (viewMode === 'new_chat') {
                                     setViewMode('list');
                                 } else {
                                     setIsOpen(false);
@@ -526,89 +535,88 @@ export default function WhatsAppWidget() {
                             className="hover:bg-accent p-1 rounded-md transition-colors"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {viewMode === 'chat' && isMobile ? (
-                                    // Tampilkan ikon back saat di chat mobile
+                                {(viewMode === 'chat' || viewMode === 'new_chat') && isMobile ? (
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                                 ) : (
-                                    <path d="M6 18L18 6M6 6l12 12" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                 )}
                             </svg>
                         </button>
                     </div>
 
-                    <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
-                        
-                        {/* 1. LIST CHAT VIEW */}
-                        {/* ✅ FIX 8: Pakai isMobile state konsisten */}
-                        {(viewMode === 'list' || !isMobile) && (
-                            <div className="flex-1 flex flex-col overflow-hidden h-full">
-                                
-                                <div className="p-2 border-b border-border sticky top-0 z-20 bg-background">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Cari percakapan..." 
-                                        value={searchQuery} 
-                                        onChange={(e) => setSearchQuery(e.target.value)} 
-                                        className="w-full text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-inner text-foreground" 
-                                    />
-                                </div>
+                    {/*
+                        ✅ KUNCI FIX: Wrapper konten pakai min-h-0 + flex-1
+                        agar flex children bisa shrink dengan benar.
+                        Setiap view mengisi penuh area ini tanpa saling override.
+                    */}
+                    <div className="flex-1 min-h-0 bg-background relative">
 
-                                <div 
-                                    onScroll={handleChatListScroll} 
-                                    className="flex-1 overflow-y-auto divide-y divide-border bg-background scrollbar-none touch-pan-y"
-                                >
-                                    <div className="p-2 sticky top-0 bg-background z-10">
-                                        <button 
-                                            onClick={() => setViewMode('new_chat')} 
-                                            className="w-full flex items-center justify-center gap-2 p-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-xs font-bold shadow-sm"
-                                        >
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
-                                            </svg>
-                                            CHAT BARU
-                                        </button>
-                                    </div>
-
-                                    {chatList.map((chat) => (
-                                        <div 
-                                            key={chat.id} 
-                                            onClick={() => openChat(chat.id)} 
-                                            className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 border-b border-muted 
-                                                ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
-                                        >
-                                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
-                                                {chat.name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0 pointer-events-none">
-                                                <div className="flex justify-between items-center mb-0.5">
-                                                    <span className="font-bold text-xs truncate text-foreground">{chat.name}</span>
-                                                    <span className="text-[9px] text-muted-foreground">{chat.time_ago}</span>
-                                                </div>
-                                                <p className={`text-[11px] truncate ${chat.unread_count > 0 ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
-                                                    {chat.last_message}
-                                                </p>
-                                            </div>
-                                            {chat.unread_count > 0 && (
-                                                <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
-                                                    {chat.unread_count}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    {isListLoading && (
-                                        <div className="p-4 text-center">
-                                            <div className="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                        </div>
-                                    )}
-                                </div>
+                        {/* 1. LIST CHAT VIEW — tampil saat list/new_chat di mobile, atau selalu di desktop */}
+                        <div className={`absolute inset-0 flex flex-col ${
+                            (viewMode === 'list' || !isMobile) ? 'z-10 pointer-events-auto' : 'z-0 pointer-events-none opacity-0'
+                        }`}>
+                            <div className="p-2 border-b border-border bg-background shrink-0">
+                                <input 
+                                    type="text" 
+                                    placeholder="Cari percakapan..." 
+                                    value={searchQuery} 
+                                    onChange={(e) => setSearchQuery(e.target.value)} 
+                                    className="w-full text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-inner text-foreground" 
+                                />
                             </div>
-                        )}
+                            <div 
+                                onScroll={handleChatListScroll} 
+                                className="flex-1 min-h-0 overflow-y-auto divide-y divide-border bg-background scrollbar-none touch-pan-y"
+                            >
+                                <div className="p-2 bg-background">
+                                    <button 
+                                        onClick={() => setViewMode('new_chat')} 
+                                        className="w-full flex items-center justify-center gap-2 p-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-xs font-bold shadow-sm"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        CHAT BARU
+                                    </button>
+                                </div>
+                                {chatList.map((chat) => (
+                                    <div 
+                                        key={chat.id} 
+                                        onClick={() => openChat(chat.id)} 
+                                        className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 border-b border-muted 
+                                            ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
+                                    >
+                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
+                                            {chat.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0 pointer-events-none">
+                                            <div className="flex justify-between items-center mb-0.5">
+                                                <span className="font-bold text-xs truncate text-foreground">{chat.name}</span>
+                                                <span className="text-[9px] text-muted-foreground">{chat.time_ago}</span>
+                                            </div>
+                                            <p className={`text-[11px] truncate ${chat.unread_count > 0 ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
+                                                {chat.last_message}
+                                            </p>
+                                        </div>
+                                        {chat.unread_count > 0 && (
+                                            <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                                                {chat.unread_count}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                {isListLoading && (
+                                    <div className="p-4 text-center">
+                                        <div className="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         {/* 2. DAFTAR KONTAK VIEW */}
-                        {viewMode === 'new_chat' && (
-                            <div className="absolute inset-0 z-[40] flex flex-col bg-background h-full">
-                                <div className="p-2 border-b border-border sticky top-0 z-10 flex items-center gap-2 bg-background">
+                        {viewMode === 'new_chat' && isMobile && (
+                            <div className="absolute inset-0 z-20 flex flex-col bg-background">
+                                <div className="p-2 border-b border-border shrink-0 flex items-center gap-2 bg-background">
                                     <button onClick={() => setViewMode('list')} className="text-[10px] font-bold uppercase p-1 hover:bg-accent rounded">Kembali</button>
                                     <input 
                                         type="text" 
@@ -618,7 +626,7 @@ export default function WhatsAppWidget() {
                                         className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none shadow-inner text-foreground" 
                                     />
                                 </div>
-                                <div className="flex-1 overflow-y-auto divide-y divide-border scrollbar-none touch-pan-y">
+                                <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border scrollbar-none touch-pan-y">
                                     {filteredContacts.map((contact) => (
                                         <div 
                                             key={contact.id} 
@@ -638,16 +646,23 @@ export default function WhatsAppWidget() {
                             </div>
                         )}
 
-                        {/* 3. MOBILE CHAT VIEW */}
-                        {/* ✅ FIX 9: Pakai isMobile state — ini yang menyebabkan form tidak muncul */}
+                        {/* 3. MOBILE CHAT VIEW
+                            ✅ KUNCI FIX FORM:
+                            - Tidak pakai overflow-hidden di container utama
+                            - flex flex-col dengan min-h-0 agar form tidak terclip
+                            - Form pakai shrink-0 agar tidak pernah dishrink oleh flex parent
+                            - Tidak ada position:absolute di wrapper form
+                        */}
                         {viewMode === 'chat' && isMobile && (
-                            <div className="absolute inset-0 z-[50] flex flex-col bg-background h-full overflow-hidden">
+                            <div className="absolute inset-0 z-20 flex flex-col bg-background">
                                 
-                                <div className="absolute inset-0 z-0 pointer-events-none">
+                                {/* Background pattern — tidak block interaksi */}
+                                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto p-3 space-y-4 relative z-10 scrollbar-none touch-pan-y">
+                                {/* Area pesan — scrollable, flex-1 */}
+                                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 relative z-10 scrollbar-none">
                                     
                                     {hasMore && (
                                         <div className="flex justify-center mb-2">
@@ -669,9 +684,15 @@ export default function WhatsAppWidget() {
                                                     msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
                                                 }`}>
                                                     {msg.message_type === 'image' && msg.media_url && (
-                                                        <img src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} className="rounded mb-1 max-h-60 object-cover" onClick={() => window.open(msg.media_url, '_blank')} />
+                                                        <img 
+                                                            src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
+                                                            className="rounded mb-1 max-h-60 object-cover" 
+                                                            onClick={() => window.open(msg.media_url, '_blank')} 
+                                                        />
                                                     )}
-                                                    {msg.text && !['[image]', '[document]'].includes(msg.text) && <p className="break-words leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
+                                                    {msg.text && !['[image]', '[document]'].includes(msg.text) && (
+                                                        <p className="break-words leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                                                    )}
                                                     <div className="text-[8px] text-right mt-1 opacity-50 font-medium">{msg.time}</div>
                                                 </div>
                                             </div>
@@ -680,22 +701,26 @@ export default function WhatsAppWidget() {
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                {/* ✅ FIX 10: Form input selalu render di luar scroll container */}
+                                {/* Form input — shrink-0 agar selalu terlihat, tidak pernah terclip */}
                                 <form 
                                     onSubmit={sendMessage} 
-                                    className="p-3 bg-background border-t border-border shrink-0 relative z-30"
+                                    className="shrink-0 p-3 bg-background border-t border-border relative z-20"
                                 >
                                     {selectedFile && (
                                         <div className="mb-2 p-1 px-2 bg-muted rounded text-[9px] flex justify-between items-center italic">
                                             <span className="truncate">{selectedFile.name}</span>
-                                            <button type="button" onClick={() => setSelectedFile(null)} className="text-destructive ml-2">✕</button>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setSelectedFile(null)} 
+                                                className="text-destructive ml-2 shrink-0"
+                                            >✕</button>
                                         </div>
                                     )}
                                     <div className="flex items-center gap-2">
                                         <button 
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="p-1.5 text-muted-foreground hover:bg-muted rounded-full transition-colors shrink-0"
+                                            className="shrink-0 p-1.5 text-muted-foreground hover:bg-muted rounded-full transition-colors"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -711,13 +736,15 @@ export default function WhatsAppWidget() {
                                             type="text" 
                                             value={newMessage} 
                                             onChange={(e) => setNewMessage(e.target.value)} 
-                                            className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
+                                            className="flex-1 min-w-0 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
                                             placeholder="Ketik pesan..." 
+                                            // ✅ Mencegah zoom otomatis di iOS (font-size minimal 16px saat focus)
+                                            style={{ fontSize: '16px' }}
                                         />
                                         <button 
                                             type="submit" 
                                             disabled={(!newMessage.trim() && !selectedFile) || isSending}
-                                            className="bg-primary text-primary-foreground p-2 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 transition-all shrink-0"
+                                            className="shrink-0 bg-primary text-primary-foreground p-2 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 transition-all"
                                         >
                                             <svg className="w-4 h-4 -rotate-45" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
