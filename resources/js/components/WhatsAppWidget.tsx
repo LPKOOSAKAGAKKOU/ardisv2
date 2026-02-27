@@ -493,29 +493,26 @@ export default function WhatsAppWidget() {
                     </div>
                 )}
 
+                {/* TOMBOL TOGGLE DESKTOP — di luar sidebar agar selalu visible */}
+                <button 
+                    onClick={() => setIsOpen(!isOpen)} 
+                    className={`fixed z-[1001] hidden lg:flex items-center justify-center bg-slate-300 hover:bg-slate-400 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg
+                        ${isOpen ? 'right-[380px]' : 'right-0'}`}
+                >
+                    <svg 
+                        className={`w-4 h-4 transition-transform duration-300 ${isOpen ? '' : 'rotate-180'}`} 
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+
                 {/* SIDEBAR UTAMA */}
-                {/*
-                    ✅ FIX MOBILE VIEWPORT:
-                    - Pakai style inline untuk height agar menggunakan dvh (dynamic viewport height)
-                      yang aware terhadap virtual keyboard di iOS/Android
-                    - Fallback ke 100vh jika dvh tidak support
-                    - overflow-hidden dihapus dari wrapper agar tidak clip child elements
-                */}
                 <div 
                     style={{ height: '100dvh' }}
                     className={`fixed lg:relative top-0 right-0 bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none lg:h-full
                         ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 border-none pointer-events-none lg:pointer-events-auto'}`}
                 >
-                    
-                    <button 
-                        onClick={() => setIsOpen(!isOpen)} 
-                        className={`fixed z-[60] hidden lg:flex items-center justify-center bg-slate-300 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto
-                            ${isOpen ? 'right-[380px] top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg' : 'hidden'}`}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
 
                     {/* Header — selalu tampil */}
                     <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 z-30">
