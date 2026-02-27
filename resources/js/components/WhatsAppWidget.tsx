@@ -25,6 +25,7 @@ interface MessageItem {
     direction: 'inbound' | 'outbound';
     time: string;
     is_admin: boolean;
+    // Tambahan Media & Lokasi
     message_type?: string;
     media_url?: string;
     file_name?: string;
@@ -50,6 +51,7 @@ function ChatWindow({
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
     
+    // Pagination internal untuk window desktop
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     
@@ -59,7 +61,9 @@ function ChatWindow({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadMessages = async (pageNum: number = 1) => {
-        if (pageNum === 1) setLoading(true);
+        if (pageNum === 1) {
+            setLoading(true);
+        }
 
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
@@ -67,6 +71,7 @@ function ChatWindow({
             if (pageNum === 1) {
                 setMessages(response.data.messages);
             } else {
+                // Prepend history lama ke atas
                 setMessages(prev => [...response.data.messages, ...prev]);
             }
             
@@ -117,9 +122,10 @@ function ChatWindow({
     };
 
     return (
-        <div className="w-80 h-[450px] bg-background border border-border shadow-2xl rounded-t-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 relative">
+        <div className="w-80 h-[450px] bg-background border border-border shadow-2xl rounded-t-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 relative pointer-events-auto">
             
-            <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0 relative z-30">
+            {/* Header Window */}
+            <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0 relative z-30 font-sans">
                 <span className="font-bold text-[11px] truncate uppercase tracking-tight text-foreground">
                     {info.name}
                 </span>
@@ -133,7 +139,8 @@ function ChatWindow({
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 relative flex flex-col min-h-0 bg-background">
+            {/* Body Window */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 relative flex flex-col min-h-0 bg-background scrollbar-none">
                 
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
@@ -144,6 +151,7 @@ function ChatWindow({
                     {hasMore && (
                         <div className="flex justify-center mb-2">
                             <button 
+                                type="button"
                                 onClick={() => loadMessages(page + 1)}
                                 className="text-[9px] font-bold py-1 px-3 bg-white border border-border rounded-full shadow-sm hover:bg-muted transition-colors uppercase text-muted-foreground"
                             >
@@ -240,7 +248,7 @@ export default function WhatsAppWidget() {
     const basePath = `/${userRole}/whatsapp`; 
     const baseGowaUrl = 'https://gowa-iynqg2oa4rc5.waha.web.id';
 
-    // ✅ FIX 1: State reaktif untuk deteksi mobile/desktop
+    // Deteksi mobile sekali saja saat mount
     const [isMobile, setIsMobile] = useState(() => 
         typeof window !== 'undefined' ? window.innerWidth < 1024 : false
     );
@@ -263,6 +271,7 @@ export default function WhatsAppWidget() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
 
+    // State Pagination Chat List (SEKARANG MANUAL BUTTON)
     const [chatListPage, setChatListPage] = useState(1);
     const [hasMoreChats, setHasMoreChats] = useState(false);
     const [isListLoading, setIsListLoading] = useState(false);
@@ -270,28 +279,16 @@ export default function WhatsAppWidget() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isSending, setIsSending] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // ✅ FIX 2: Pisahkan resize handler — HANYA update isMobile & isOpen
-    // Tidak ada logic lain di sini agar tidak konflik dengan scroll
+    // Initial Desktop State
     useEffect(() => {
-        const handleResize = () => {
-            const mobile = window.innerWidth < 1024;
-            setIsMobile(mobile);
-            if (!mobile) {
-                setIsOpen(true);
-            }
-        };
+        if (!isMobile) {
+            setIsOpen(true);
+        }
+    }, [isMobile]);
 
-        // Set initial state
-        handleResize();
-
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    // 1. Fetch Daftar Chat
+    // 1. Fetch Daftar Chat (Mendukung pagination via tombol manual)
     const fetchChatList = async (pageNum: number = 1, isLoadMore: boolean = false) => {
         if (isListLoading && pageNum > 1) return;
         setIsListLoading(true);
@@ -324,24 +321,12 @@ export default function WhatsAppWidget() {
     useEffect(() => {
         fetchChatList(1, false);
         const interval = setInterval(() => {
-            if (!searchQuery) {
+            if (!searchQuery && viewMode === 'list') {
                 fetchChatList(1, false);
             }
-        }, 5000); 
+        }, 10000); 
         return () => clearInterval(interval);
-    }, [searchQuery]);
-
-    // ✅ FIX 3: Infinite scroll — hanya panggil fetchChatList, tidak ada setIsOpen
-    const handleChatListScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const container = e.currentTarget;
-        if (
-            container.scrollHeight - container.scrollTop <= container.clientHeight + 80 &&
-            hasMoreChats &&
-            !isListLoading
-        ) {
-            fetchChatList(chatListPage + 1, true);
-        }
-    };
+    }, [searchQuery, viewMode]);
 
     // 2. Fetch Pesan Mobile
     const loadMessages = async (chatId: number, pageNum: number = 1) => {
@@ -368,7 +353,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // ✅ FIX 4: openChat pakai isMobile state, bukan window.innerWidth langsung
     const openChat = (chatId: number) => {
         const selected = chatList.find(c => c.id === chatId);
         if (!selected) return;
@@ -390,7 +374,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // ✅ FIX 5: startNewChat pakai isMobile state
     const startNewChat = (contact: ContactItem) => {
         const existingChat = chatList.find(c => c.phone === contact.phone);
         
@@ -400,8 +383,10 @@ export default function WhatsAppWidget() {
             const info = { name: contact.name, phone: contact.phone, isNew: true };
             
             if (!isMobile) {
+                // Desktop: Buka window melayang
                 setOpenWindows(prev => [{ id: Math.random(), info }, ...prev].slice(0, 2));
             } else {
+                // Mobile: Buka fullscreen
                 setMessages([]);
                 setActiveChat(null);
                 setChatInfo(info);
@@ -413,7 +398,7 @@ export default function WhatsAppWidget() {
     };
 
     useEffect(() => {
-        if (page === 1 && !loading && isMobile) {
+        if (page === 1 && !loading && isMobile && viewMode === 'chat') {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages, viewMode, page, loading, isMobile]);
@@ -457,8 +442,8 @@ export default function WhatsAppWidget() {
 
     return (
         <>
-            {/* --- AREA JENDELA CHAT DESKTOP --- */}
-            <div className="hidden lg:flex fixed bottom-0 right-[390px] z-[100] gap-4 items-end pointer-events-none pr-4">
+            {/* AREA JENDELA CHAT DESKTOP */}
+            <div className="hidden lg:flex fixed bottom-0 right-[390px] z-[100] gap-4 items-end pointer-events-none pr-4 pb-0">
                 {openWindows.map((win) => (
                     <div key={win.id} className="pointer-events-auto">
                         <ChatWindow 
@@ -472,14 +457,15 @@ export default function WhatsAppWidget() {
                 ))}
             </div>
 
-            <div className="flex flex-col h-full relative">
+            <div className="flex flex-col h-full relative font-sans">
                 
                 {/* FLOATING TRIGGER MOBILE */}
                 {!isOpen && (
                     <div className="fixed bottom-6 right-6 z-[999] lg:hidden">
                         <button 
+                            type="button"
                             onClick={() => setIsOpen(true)} 
-                            className="flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all active:scale-95"
+                            className="flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all"
                         >
                             {totalUnread > 0 && (
                                 <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold border-2 border-white text-white">
@@ -493,33 +479,30 @@ export default function WhatsAppWidget() {
                     </div>
                 )}
 
-                {/* TOMBOL TOGGLE DESKTOP — di luar sidebar agar selalu visible */}
-                <button 
-                    onClick={() => setIsOpen(!isOpen)} 
-                    className={`fixed z-[1001] hidden lg:flex items-center justify-center bg-slate-300 hover:bg-slate-400 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg
-                        ${isOpen ? 'right-[380px]' : 'right-0'}`}
-                >
-                    <svg 
-                        className={`w-4 h-4 transition-transform duration-300 ${isOpen ? '' : 'rotate-180'}`} 
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
-                    </svg>
-                </button>
-
                 {/* SIDEBAR UTAMA */}
                 <div 
-                    style={{ height: '100dvh' }}
-                    className={`fixed lg:relative top-0 right-0 bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none lg:h-full
+                    className={`fixed lg:relative top-0 right-0 h-screen bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none overflow-hidden 
                         ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 border-none pointer-events-none lg:pointer-events-auto'}`}
                 >
+                    
+                    {/* TOGGLE DESKTOP */}
+                    <button 
+                        type="button"
+                        onClick={() => setIsOpen(!isOpen)} 
+                        className={`fixed z-[60] hidden lg:flex items-center justify-center bg-slate-300 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto
+                            ${isOpen ? 'right-[380px] top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg' : 'hidden'}`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
 
-                    {/* Header — selalu tampil */}
-                    <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 z-30">
+                    <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 relative z-30">
                         <h3 className="font-bold text-xs truncate pr-2 uppercase tracking-widest text-muted-foreground">
                             {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
                         </h3>
                         <button 
+                            type="button"
                             onClick={() => {
                                 if (viewMode === 'chat' && isMobile) {
                                     setViewMode('list');
@@ -529,111 +512,121 @@ export default function WhatsAppWidget() {
                                     setIsOpen(false);
                                 }
                             }} 
-                            className="hover:bg-accent p-1 rounded-md transition-colors"
+                            className="hover:bg-accent p-1.5 rounded-md transition-colors"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {(viewMode === 'chat' || viewMode === 'new_chat') && isMobile ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {viewMode === 'chat' && isMobile ? (
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                                 ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    <path d="M6 18L18 6M6 6l12 12" />
                                 )}
                             </svg>
                         </button>
                     </div>
 
-                    {/*
-                        ✅ KUNCI FIX: Wrapper konten pakai min-h-0 + flex-1
-                        agar flex children bisa shrink dengan benar.
-                        Setiap view mengisi penuh area ini tanpa saling override.
-                    */}
-                    <div className="flex-1 min-h-0 bg-background relative">
-
-                        {/* 1. LIST CHAT VIEW — tampil saat list/new_chat di mobile, atau selalu di desktop */}
-                        <div className={`absolute inset-0 flex flex-col ${
-                            (viewMode === 'list' || !isMobile) ? 'z-10 pointer-events-auto' : 'z-0 pointer-events-none opacity-0'
-                        }`}>
-                            <div className="p-2 border-b border-border bg-background shrink-0">
-                                <input 
-                                    type="text" 
-                                    placeholder="Cari percakapan..." 
-                                    value={searchQuery} 
-                                    onChange={(e) => setSearchQuery(e.target.value)} 
-                                    className="w-full text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-inner text-foreground" 
-                                />
-                            </div>
-                            <div 
-                                onScroll={handleChatListScroll} 
-                                className="flex-1 min-h-0 overflow-y-auto divide-y divide-border bg-background scrollbar-none touch-pan-y"
-                            >
-                                <div className="p-2 bg-background">
-                                    <button 
-                                        onClick={() => setViewMode('new_chat')} 
-                                        className="w-full flex items-center justify-center gap-2 p-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-xs font-bold shadow-sm"
-                                    >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        CHAT BARU
-                                    </button>
+                    <div className="flex-1 flex flex-col overflow-hidden relative bg-background">
+                        
+                        {/* 1. LIST CHAT VIEW */}
+                        {(viewMode === 'list' || !isMobile) && (
+                            <div className="flex-1 flex flex-col overflow-hidden h-full">
+                                
+                                <div className="p-2 border-b border-border sticky top-0 z-20 bg-background">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cari percakapan..." 
+                                        value={searchQuery} 
+                                        onChange={(e) => setSearchQuery(e.target.value)} 
+                                        className="w-full text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-inner text-foreground" 
+                                    />
                                 </div>
-                                {chatList.map((chat) => (
-                                    <div 
-                                        key={chat.id} 
-                                        onClick={() => openChat(chat.id)} 
-                                        className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 border-b border-muted 
-                                            ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
-                                            {chat.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 min-w-0 pointer-events-none">
-                                            <div className="flex justify-between items-center mb-0.5">
-                                                <span className="font-bold text-xs truncate text-foreground">{chat.name}</span>
-                                                <span className="text-[9px] text-muted-foreground">{chat.time_ago}</span>
-                                            </div>
-                                            <p className={`text-[11px] truncate ${chat.unread_count > 0 ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
-                                                {chat.last_message}
-                                            </p>
-                                        </div>
-                                        {chat.unread_count > 0 && (
-                                            <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
-                                                {chat.unread_count}
-                                            </div>
-                                        )}
+
+                                <div className="flex-1 overflow-y-auto divide-y divide-border bg-background scrollbar-none touch-pan-y">
+                                    <div className="p-2 sticky top-0 bg-background z-10">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setViewMode('new_chat')} 
+                                            className="w-full flex items-center justify-center gap-2 p-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-xs font-bold shadow-sm"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            CHAT BARU
+                                        </button>
                                     </div>
-                                ))}
-                                {isListLoading && (
-                                    <div className="p-4 text-center">
-                                        <div className="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                    </div>
-                                )}
+
+                                    {chatList.map((chat) => (
+                                        <div 
+                                            key={chat.id} 
+                                            onClick={() => openChat(chat.id)} 
+                                            className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 border-b border-muted bg-background
+                                                ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
+                                                {chat.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-center mb-0.5">
+                                                    <span className="font-bold text-xs truncate text-foreground">{chat.name}</span>
+                                                    <span className="text-[9px] text-muted-foreground">{chat.time_ago}</span>
+                                                </div>
+                                                <p className="text-[11px] truncate text-muted-foreground">
+                                                    {chat.last_message}
+                                                </p>
+                                            </div>
+                                            {chat.unread_count > 0 && (
+                                                <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                                                    {chat.unread_count}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* ✅ FIX: Tombol Load More Manual Khusus Daftar Chat */}
+                                    {hasMoreChats && (
+                                        <div className="p-4 text-center">
+                                            <button 
+                                                type="button"
+                                                onClick={() => fetchChatList(chatListPage + 1, true)}
+                                                className="text-[10px] font-bold uppercase py-2 px-4 border border-border rounded-lg hover:bg-accent transition-all text-muted-foreground"
+                                            >
+                                                {isListLoading ? 'Memuat...' : 'Lihat Lebih Banyak'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {isListLoading && chatListPage === 1 && (
+                                        <div className="p-4 text-center text-xs animate-pulse font-bold uppercase text-muted-foreground tracking-widest mt-4">
+                                            Memuat Daftar...
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* 2. DAFTAR KONTAK VIEW */}
-                        {viewMode === 'new_chat' && isMobile && (
-                            <div className="absolute inset-0 z-20 flex flex-col bg-background">
-                                <div className="p-2 border-b border-border shrink-0 flex items-center gap-2 bg-background">
-                                    <button onClick={() => setViewMode('list')} className="text-[10px] font-bold uppercase p-1 hover:bg-accent rounded">Kembali</button>
+                        {viewMode === 'new_chat' && (
+                            <div className="absolute inset-0 z-[40] flex flex-col bg-background h-full overflow-hidden animate-in slide-in-from-right duration-300">
+                                <div className="p-2 border-b border-border sticky top-0 z-10 flex items-center gap-2 bg-background">
+                                    <button type="button" onClick={() => setViewMode('list')} className="text-[10px] font-bold uppercase p-1 hover:bg-accent rounded">Kembali</button>
                                     <input 
                                         type="text" 
                                         placeholder="Cari kontak..." 
                                         value={searchQuery} 
                                         onChange={(e) => setSearchQuery(e.target.value)} 
-                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none shadow-inner text-foreground" 
+                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
                                     />
                                 </div>
-                                <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border scrollbar-none touch-pan-y">
+                                <div className="flex-1 overflow-y-auto divide-y divide-border scrollbar-none touch-pan-y bg-background">
                                     {filteredContacts.map((contact) => (
                                         <div 
                                             key={contact.id} 
                                             onClick={() => startNewChat(contact)} 
-                                            className="p-2.5 hover:bg-accent cursor-pointer flex items-center gap-3 bg-background"
+                                            className="p-2.5 hover:bg-accent cursor-pointer flex items-center gap-3 bg-background border-b border-muted"
                                         >
                                             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border text-xs">
                                                 {contact.name.charAt(0)}
                                             </div>
-                                            <div className="flex-1 min-w-0 pointer-events-none">
+                                            <div className="flex-1 min-w-0">
                                                 <span className="block font-bold text-xs truncate text-foreground">{contact.name}</span>
                                                 <span className="block text-[10px] text-muted-foreground">{contact.phone}</span>
                                             </div>
@@ -643,29 +636,22 @@ export default function WhatsAppWidget() {
                             </div>
                         )}
 
-                        {/* 3. MOBILE CHAT VIEW
-                            ✅ KUNCI FIX FORM:
-                            - Tidak pakai overflow-hidden di container utama
-                            - flex flex-col dengan min-h-0 agar form tidak terclip
-                            - Form pakai shrink-0 agar tidak pernah dishrink oleh flex parent
-                            - Tidak ada position:absolute di wrapper form
-                        */}
+                        {/* 3. MOBILE CHAT VIEW */}
                         {viewMode === 'chat' && isMobile && (
-                            <div className="absolute inset-0 z-20 flex flex-col bg-background">
+                            <div className="absolute inset-0 z-[50] flex flex-col bg-background h-full overflow-hidden animate-in slide-in-from-right duration-300">
                                 
-                                {/* Background pattern — tidak block interaksi */}
-                                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-background">
                                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
                                 </div>
 
-                                {/* Area pesan — scrollable, flex-1 */}
-                                <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 relative z-10 scrollbar-none">
+                                <div className="flex-1 overflow-y-auto p-3 space-y-4 relative z-10 touch-pan-y bg-transparent scrollbar-none">
                                     
                                     {hasMore && (
-                                        <div className="flex justify-center mb-2">
+                                        <div className="flex justify-center mb-4">
                                             <button 
+                                                type="button"
                                                 onClick={() => loadMessages(activeChat!, page + 1)} 
-                                                className="text-[9px] font-bold py-1 px-3 bg-white border border-border rounded-full shadow-sm hover:bg-muted transition text-foreground uppercase tracking-widest"
+                                                className="text-[9px] font-bold py-1.5 px-4 bg-white border border-border rounded-full uppercase text-muted-foreground shadow-sm hover:bg-muted transition-colors"
                                             >
                                                 {loading ? '...' : 'Lihat pesan lama'}
                                             </button>
@@ -673,24 +659,20 @@ export default function WhatsAppWidget() {
                                     )}
 
                                     {loading && page === 1 ? (
-                                        <div className="text-center text-xs animate-pulse font-bold mt-10 uppercase text-muted-foreground tracking-widest">Memuat Chat...</div>
+                                        <div className="text-center text-[10px] font-bold uppercase mt-10 tracking-widest text-muted-foreground animate-pulse tracking-[0.2em]">Memuat Pesan...</div>
                                     ) : (
                                         messages.map((msg) => (
-                                            <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
+                                            <div key={msg.id} className={`flex mb-2 ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
                                                 <div className={`max-w-[85%] rounded-xl p-2 shadow-sm border text-xs ${
                                                     msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
                                                 }`}>
                                                     {msg.message_type === 'image' && msg.media_url && (
-                                                        <img 
-                                                            src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
-                                                            className="rounded mb-1 max-h-60 object-cover" 
-                                                            onClick={() => window.open(msg.media_url, '_blank')} 
-                                                        />
+                                                        <img src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} className="rounded mb-1 max-h-60 object-cover" onClick={() => window.open(msg.media_url, '_blank')} />
                                                     )}
                                                     {msg.text && !['[image]', '[document]'].includes(msg.text) && (
                                                         <p className="break-words leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                                     )}
-                                                    <div className="text-[8px] text-right mt-1 opacity-50 font-medium">{msg.time}</div>
+                                                    <div className="text-[8px] text-right mt-1 opacity-50 font-bold uppercase tracking-tighter">{msg.time}</div>
                                                 </div>
                                             </div>
                                         ))
@@ -698,52 +680,41 @@ export default function WhatsAppWidget() {
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                {/* Form input — shrink-0 agar selalu terlihat, tidak pernah terclip */}
+                                {/* AREA INPUT MOBILE */}
                                 <form 
                                     onSubmit={sendMessage} 
-                                    className="shrink-0 p-3 bg-background border-t border-border relative z-20"
+                                    className="p-3 bg-background border-t border-border flex flex-col gap-2 relative z-[60] shadow-2xl shrink-0"
                                 >
                                     {selectedFile && (
-                                        <div className="mb-2 p-1 px-2 bg-muted rounded text-[9px] flex justify-between items-center italic">
-                                            <span className="truncate">{selectedFile.name}</span>
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setSelectedFile(null)} 
-                                                className="text-destructive ml-2 shrink-0"
-                                            >✕</button>
+                                        <div className="bg-muted p-1.5 rounded flex justify-between items-center text-[10px] animate-in fade-in">
+                                            <span className="truncate flex-1 italic text-muted-foreground">{selectedFile.name}</span>
+                                            <button type="button" onClick={() => setSelectedFile(null)} className="text-destructive font-bold px-2">✕</button>
                                         </div>
                                     )}
                                     <div className="flex items-center gap-2">
                                         <button 
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="shrink-0 p-1.5 text-muted-foreground hover:bg-muted rounded-full transition-colors"
+                                            className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                             </svg>
                                         </button>
                                         <input 
-                                            type="file" 
-                                            ref={fileInputRef} 
-                                            className="hidden" 
-                                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-                                        />
-                                        <input 
                                             type="text" 
                                             value={newMessage} 
                                             onChange={(e) => setNewMessage(e.target.value)} 
-                                            className="flex-1 min-w-0 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
-                                            placeholder="Ketik pesan..." 
-                                            // ✅ Mencegah zoom otomatis di iOS (font-size minimal 16px saat focus)
+                                            className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2.5 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
                                             style={{ fontSize: '16px' }}
+                                            placeholder="Ketik pesan..." 
                                         />
                                         <button 
                                             type="submit" 
-                                            disabled={(!newMessage.trim() && !selectedFile) || isSending}
-                                            className="shrink-0 bg-primary text-primary-foreground p-2 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 transition-all"
+                                            disabled={isSending || (!newMessage.trim() && !selectedFile)} 
+                                            className="bg-primary text-white p-2.5 rounded-lg shadow-lg active:scale-90 disabled:opacity-50 transition-all flex items-center justify-center shrink-0"
                                         >
-                                            <svg className="w-4 h-4 -rotate-45" fill="currentColor" viewBox="0 0 20 20">
+                                            <svg className="w-5 h-5 -rotate-45" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                                             </svg>
                                         </button>

@@ -17,27 +17,28 @@ class WhatsAppChatController extends Controller
     /**
      * API: Ambil Daftar Chat (Untuk Sidebar Widget)
      */
+
     public function getChatList(Request $request)
     {
         // 1. Tangkap kata kunci pencarian
         $search = $request->query('search');
 
-        // 2. Ambil daftar percakapan (Chat) dengan Pagination & Search
+        // 2. Ambil daftar percakapan (Chat Aktif) dengan Pagination
+        // Kita pisahkan logic search agar daftar chat aktif tetap rapi
         $chatsQuery = Chat::with('student')
             ->when($search, function ($query) use ($search) {
-                // Cari berdasarkan nama siswa di tabel student_profiles atau phone_number/incoming_name di tabel chats
-                $query->whereHas('student', function ($q) use ($search) {
-                    $q->where('full_name', 'like', "%{$search}%");
-                })
-                ->orWhere('phone_number', 'like', "%{$search}%")
-                ->orWhere('incoming_name', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    $q->whereHas('student', function ($sub) use ($search) {
+                        $sub->where('full_name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('phone_number', 'like', "%{$search}%")
+                    ->orWhere('incoming_name', 'like', "%{$search}%");
+                });
             })
             ->orderByDesc('last_message_at');
 
-        // Gunakan paginate() untuk mendukung scroll di frontend (default 15 chat per load)
         $chats = $chatsQuery->paginate(15);
 
-        // Transformasi data untuk response JSON
         $chatData = collect($chats->items())->map(function ($chat) {
             return [
                 'id'             => $chat->id,
@@ -51,25 +52,28 @@ class WhatsAppChatController extends Controller
             ];
         });
 
-        // 3. Ambil semua siswa dari DB untuk opsi "New Chat" (Filter jika perlu)
+        // 3. Ambil SEMUA siswa untuk opsi "New Chat" 
+        // Tanpa Pagination agar semua daftar nomor muncul saat dicari
         $students = StudentProfile::select('id', 'full_name', 'phone_student')
             ->when($search, function($query) use ($search) {
-                $query->where('full_name', 'like', "%{$search}%");
+                $query->where('full_name', 'like', "%{$search}%")
+                      ->orWhere('phone_student', 'like', "%{$search}%");
             })
-            ->limit(20) // Batasi 20 saja untuk performa pencarian kontak
-            ->get()
+            ->orderBy('full_name', 'asc')
+            ->get() // ✅ Pakai get() agar semua kontak muncul tanpa terpotong halaman
             ->map(function($student) {
                 return [
                     'id'    => $student->id,
                     'name'  => $student->full_name,
+                    // Pastikan fungsi formatPhoneNumber sudah ada di controller agan
                     'phone' => $this->formatPhoneNumber($student->phone_student), 
                 ];
             });
 
-        // 4. Return gabungan dengan metadata pagination
+        // 4. Return response
         return response()->json([
             'chats'    => $chatData,
-            'contacts' => $students,
+            'contacts' => $students, // Daftar semua siswa (terfilter search)
             'pagination' => [
                 'current_page' => $chats->currentPage(),
                 'last_page'    => $chats->lastPage(),
