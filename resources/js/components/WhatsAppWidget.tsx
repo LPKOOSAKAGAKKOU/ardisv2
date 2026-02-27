@@ -50,29 +50,51 @@ function ChatWindow({
     const [messages, setMessages] = useState<MessageItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
+    
+    // FIX: Tambahkan state pagination di dalam ChatWindow
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const loadMessages = async () => {
+    // FIX: Fungsi loadMessages mendukung pagination (Load More)
+    const loadMessages = async (pageNum: number = 1) => {
+        if (pageNum === 1) {
+            setLoading(true);
+        }
+
         try {
-            const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=1`);
-            setMessages(response.data.messages);
+            const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
+            
+            if (pageNum === 1) {
+                setMessages(response.data.messages);
+            } else {
+                // Prepend history lama ke atas
+                setMessages(prev => [...response.data.messages, ...prev]);
+            }
+            
+            setHasMore(response.data.pagination.has_more);
+            setPage(pageNum);
+            
         } catch (error) {
-            console.error(error);
+            console.error("Gagal memuat pesan di window", error);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        loadMessages();
+        loadMessages(1);
     }, [chatId]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (page === 1) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, page]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,9 +110,13 @@ function ChatWindow({
             await axios.post(`${basePath}/send`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+            
             setNewMessage('');
             setSelectedFile(null);
-            loadMessages();
+            
+            // Refresh ke halaman 1 setelah kirim
+            loadMessages(1);
+            
         } catch (error) {
             alert('Gagal mengirim');
         } finally {
@@ -100,54 +126,83 @@ function ChatWindow({
 
     return (
         <div className="w-80 h-[450px] bg-background border border-border shadow-2xl rounded-t-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
-            <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0">
+            
+            {/* Header Window */}
+            <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0 relative z-20">
                 <span className="font-bold text-[11px] truncate uppercase tracking-tight text-foreground">
                     {info.name}
                 </span>
-                <button onClick={onClose} className="hover:bg-accent p-1 rounded-md transition-colors text-muted-foreground">
+                <button 
+                    onClick={onClose} 
+                    className="hover:bg-accent p-1 rounded-md transition-colors text-muted-foreground"
+                >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 relative">
-                <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5 z-0" />
+            {/* Body Window - FIX: Relative agar Pattern Rapi */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 relative flex flex-col min-h-0">
                 
-                {loading ? (
-                    <div className="flex justify-center items-center h-full text-[10px] uppercase font-bold animate-pulse text-muted-foreground">
-                        Memuat Chat...
-                    </div>
-                ) : (
-                    messages.map((msg) => (
-                        <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[90%] rounded-lg p-2 shadow-sm border text-[11px] ${
-                                msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
-                            }`}>
-                                {/* RENDER MEDIA */}
-                                {msg.message_type === 'image' && msg.media_url && (
-                                    <img 
-                                        src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
-                                        className="rounded mb-1 max-h-32 w-full object-cover cursor-pointer"
-                                        onClick={() => window.open(msg.media_url, '_blank')}
-                                    />
-                                )}
-                                
-                                {msg.text && !['[image]', '[document]'].includes(msg.text) && (
-                                    <p className="break-words leading-relaxed">{msg.text}</p>
-                                )}
-                                
-                                <div className="text-[8px] text-right opacity-50 mt-1 font-medium">
-                                    {msg.time}
+                {/* Background Pattern tetap di dalam area scroll */}
+                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
+                </div>
+                
+                <div className="relative z-10 flex-1">
+                    
+                    {/* FIX: Tombol Load More di Jendela Kecil */}
+                    {hasMore && (
+                        <div className="flex justify-center mb-2">
+                            <button 
+                                onClick={() => loadMessages(page + 1)}
+                                className="text-[9px] font-bold py-1 px-3 bg-white border border-border rounded-full shadow-sm hover:bg-muted transition-colors uppercase text-muted-foreground"
+                            >
+                                {loading ? '...' : 'Lihat Pesan Lama'}
+                            </button>
+                        </div>
+                    )}
+
+                    {loading && page === 1 ? (
+                        <div className="flex justify-center items-center h-32 text-[10px] uppercase font-bold animate-pulse text-muted-foreground">
+                            Memuat...
+                        </div>
+                    ) : (
+                        messages.map((msg) => (
+                            <div key={msg.id} className={`flex mb-3 ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[90%] rounded-lg p-2 shadow-sm border text-[11px] ${
+                                    msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
+                                }`}>
+                                    
+                                    {/* RENDER MEDIA GAMBAR */}
+                                    {msg.message_type === 'image' && msg.media_url && (
+                                        <img 
+                                            src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
+                                            className="rounded mb-1 max-h-32 w-full object-cover cursor-pointer"
+                                            onClick={() => window.open(msg.media_url, '_blank')}
+                                        />
+                                    )}
+
+                                    {/* TEKS PESAN */}
+                                    {msg.text && !['[image]', '[document]'].includes(msg.text) && (
+                                        <p className="break-words leading-relaxed">{msg.text}</p>
+                                    )}
+                                    
+                                    <div className="text-[8px] text-right opacity-50 mt-1 font-medium">
+                                        {msg.time}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))
-                )}
-                <div ref={messagesEndRef} />
+                        ))
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
-            <form onSubmit={handleSend} className="p-2 border-t border-border bg-background shrink-0">
+            {/* Input Window */}
+            <form onSubmit={handleSend} className="p-2 border-t border-border bg-background shrink-0 relative z-20">
+                
                 {selectedFile && (
                     <div className="mb-1.5 p-1 px-2 bg-muted rounded text-[9px] flex justify-between items-center italic">
                         <span className="truncate">{selectedFile.name}</span>
@@ -158,6 +213,7 @@ function ChatWindow({
                         </button>
                     </div>
                 )}
+
                 <div className="flex items-center gap-2">
                     <button 
                         type="button" 
@@ -206,21 +262,18 @@ export default function WhatsAppWidget() {
     const [contactList, setContactList] = useState<ContactItem[]>([]);
     const [messages, setMessages] = useState<MessageItem[]>([]);
     
-    // State Aktif (Mobile)
+    // State Aktif
     const [activeChat, setActiveChat] = useState<number | null>(null);
     const [chatInfo, setChatInfo] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     
-    // Desktop Multi-Chat State
     const [openWindows, setOpenWindows] = useState<{id: number, info: any}[]>([]);
 
-    // Fitur Baru: Search, Pagination, & Upload File
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
 
-    // Pagination Chat List State
     const [chatListPage, setChatListPage] = useState(1);
     const [hasMoreChats, setHasMoreChats] = useState(false);
     const [isListLoading, setIsListLoading] = useState(false);
@@ -232,7 +285,7 @@ export default function WhatsAppWidget() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatListContainerRef = useRef<HTMLDivElement>(null);
 
-    // Logic Persistent: Desktop Auto-Open, Mobile Auto-Close
+    // Logic Persistent
     useEffect(() => {
         const handleInitialState = () => {
             if (window.innerWidth >= 1024) {
@@ -246,7 +299,7 @@ export default function WhatsAppWidget() {
         return () => window.removeEventListener('resize', handleInitialState);
     }, []);
 
-    // 1. Fetch Daftar Chat dengan Search & Pagination
+    // 1. Fetch Daftar Chat
     const fetchChatList = async (pageNum: number = 1, isLoadMore: boolean = false) => {
         if (isListLoading) return;
         setIsListLoading(true);
@@ -276,7 +329,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // Auto refresh chat list
     useEffect(() => {
         fetchChatList(1, false);
         const interval = setInterval(() => {
@@ -287,7 +339,7 @@ export default function WhatsAppWidget() {
         return () => clearInterval(interval);
     }, [searchQuery]);
 
-    // Infinite Scroll Chat List
+    // FIX: Infinite Scroll List Chat Mobile
     const handleChatListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const container = e.currentTarget;
         if (
@@ -299,7 +351,7 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // 2. Fetch Pesan dengan Pagination (Mobile View)
+    // 2. Fetch Pesan Mobile
     const loadMessages = async (chatId: number, pageNum: number = 1) => {
         if (pageNum === 1) {
             setLoading(true);
@@ -331,26 +383,21 @@ export default function WhatsAppWidget() {
         if (!selected) return;
 
         if (window.innerWidth >= 1024) {
-            // --- LOGIKA MULTI WINDOW DESKTOP ---
             setOpenWindows(prev => {
-                // Jangan duplikat jika sudah terbuka
                 if (prev.find(w => w.id === chatId)) return prev;
-                
-                // Tambah baru ke depan, potong maksimal 2
-                const newWindows = [{ id: chatId, info: selected }, ...prev];
-                return newWindows.slice(0, 2);
+                return [{ id: chatId, info: selected }, ...prev].slice(0, 2);
             });
         } else {
-            // --- LOGIKA MOBILE FULLSCREEN ---
+            // FIX: Agar di mobile tidak tertutup saat klik, reset state view
             setMessages([]);
             setLoading(true);
             setActiveChat(chatId);
+            setChatInfo(selected);
             setViewMode('chat');
             loadMessages(chatId, 1);
         }
     };
 
-    // 3. Mulai Chat Baru
     const startNewChat = (contact: ContactItem) => {
         const existingChat = chatList.find(c => c.phone === contact.phone);
         
@@ -360,10 +407,8 @@ export default function WhatsAppWidget() {
             const info = { name: contact.name, phone: contact.phone, isNew: true };
             
             if (window.innerWidth >= 1024) {
-                // Desktop: Buka window baru
                 setOpenWindows(prev => [{ id: Math.random(), info }, ...prev].slice(0, 2));
             } else {
-                // Mobile: Buka fullscreen
                 setMessages([]);
                 setActiveChat(null);
                 setChatInfo(info);
@@ -374,14 +419,12 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // Scroll otomatis ke bawah (Mobile)
     useEffect(() => {
         if (page === 1 && !loading && window.innerWidth < 1024) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages, viewMode, page, loading]);
 
-    // 4. Kirim Pesan (Mobile)
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if ((!newMessage.trim() && !selectedFile) || !chatInfo || isSending) return;
@@ -392,32 +435,19 @@ export default function WhatsAppWidget() {
         if (newMessage.trim()) formData.append('message', newMessage);
         if (selectedFile) formData.append('file', selectedFile);
 
-        if (!selectedFile) {
-            const tempMsg: MessageItem = {
-                id: Date.now(),
-                text: newMessage,
-                direction: 'outbound',
-                time: 'Just now',
-                is_admin: true,
-                message_type: 'chat'
-            };
-            setMessages([...messages, tempMsg]);
-        }
-        
-        setNewMessage('');
-        setSelectedFile(null);
-
         try {
             const response = await axios.post(`${basePath}/send`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             
-            if (chatInfo.isNew && response.data?.chat_id) {
-                openChat(response.data.chat_id);
-            } else if (activeChat) {
+            setNewMessage('');
+            setSelectedFile(null);
+
+            if (activeChat) {
                 loadMessages(activeChat, 1);
             }
             fetchChatList(1, false); 
+
         } catch (error) {
             alert('Gagal mengirim pesan');
         } finally {
@@ -434,8 +464,8 @@ export default function WhatsAppWidget() {
 
     return (
         <>
-            {/* --- AREA JENDELA CHAT MELAYANG (DESKTOP) --- */}
-            <div className="hidden lg:flex fixed bottom-0 right-[390px] z-[45] gap-4 items-end pointer-events-none pr-4 pb-0">
+            {/* AREA JENDELA CHAT DESKTOP */}
+            <div className="hidden lg:flex fixed bottom-0 right-[390px] z-[100] gap-4 items-end pointer-events-none pr-4">
                 {openWindows.map((win) => (
                     <div key={win.id} className="pointer-events-auto">
                         <ChatWindow 
@@ -451,90 +481,76 @@ export default function WhatsAppWidget() {
 
             <div className="flex flex-col h-full">
                 
-                {/* Tombol Floating Mobile */}
+                {/* FLOATING TRIGGER MOBILE (FIXED INDEX) */}
                 {!isOpen && (
-                    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-2 lg:hidden">
+                    <div className="fixed bottom-6 right-6 z-[999] lg:hidden">
                         <button 
-                            onClick={() => setIsOpen(true)}
-                            className="group relative flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300 ease-in-out"
+                            onClick={() => setIsOpen(true)} 
+                            className="flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all"
                         >
                             {totalUnread > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white border-2 border-white animate-bounce">
+                                <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold border-2 border-white animate-bounce">
                                     {totalUnread > 99 ? '99+' : totalUnread}
                                 </span>
                             )}
-                            
                             <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                             </svg>
                         </button>
                     </div>
                 )}
 
-                {/* Main Sidebar */}
+                {/* SIDEBAR UTAMA */}
                 <div 
-                    className={`fixed lg:relative top-0 right-0 h-screen bg-background border-l border-border z-[50] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none overflow-hidden
-                        ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 lg:w-0 border-none'}`}
+                    className={`fixed lg:relative top-0 right-0 h-screen bg-background border-l border-border z-[1000] flex flex-col transition-all duration-300 ease-in-out shadow-xl lg:shadow-none overflow-hidden 
+                        ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 border-none'}`}
                 >
-                    {/* Tombol Toggle Floating Desktop */}
+                    
+                    {/* TOGGLE DESKTOP */}
                     <button 
-                        onClick={() => setIsOpen(!isOpen)}
-                        className={`fixed z-[60] flex items-center justify-center bg-slate-300 text-slate-600 shadow-lg transition-all duration-300
-                            ${isOpen 
-                                ? 'lg:right-[380px] lg:top-1/2 lg:-translate-y-1/2 lg:w-5 lg:h-12 lg:rounded-l-lg lg:rounded-r-none' 
-                                : 'hidden'}`}
+                        onClick={() => setIsOpen(!isOpen)} 
+                        className={`fixed z-[60] hidden lg:flex items-center justify-center bg-slate-300 text-slate-600 shadow-lg transition-all duration-300 
+                            ${isOpen ? 'right-[380px] top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg' : 'hidden'}`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
-                    
-                    {/* Header */}
-                    <div className="h-14 bg-background text-foreground border-b border-border px-3 flex justify-between items-center shrink-0 z-20">
-                        <h3 className="font-bold text-[11px] truncate pr-2 uppercase tracking-widest text-muted-foreground">
+
+                    <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0">
+                        <h3 className="font-bold text-xs truncate pr-2 uppercase tracking-widest text-muted-foreground">
                             {viewMode === 'chat' && window.innerWidth < 1024 ? chatInfo?.name : 'WhatsApp Chat'}
                         </h3>
-                        <div className="flex gap-2 items-center">
-                            {viewMode !== 'list' && window.innerWidth < 1024 && (
-                                <button 
-                                    onClick={() => { setViewMode('list'); setSearchQuery(''); }} 
-                                    className="text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors uppercase"
-                                >
-                                    Kembali
-                                </button>
-                            )}
-                            <button 
-                                onClick={() => setIsOpen(false)} 
-                                className="hover:bg-accent p-1 rounded-md transition-colors text-muted-foreground"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
+                        <button 
+                            onClick={() => setIsOpen(false)} 
+                            className="hover:bg-accent p-1 rounded-md transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
 
-                    {/* Container Body */}
-                    <div className="flex-1 flex flex-col overflow-hidden relative">
+                    <div className="flex-1 flex flex-col overflow-hidden">
                         
-                        {/* 1. LIST CHAT VIEW (Desktop & Mobile) */}
                         {(viewMode === 'list' || window.innerWidth >= 1024) && (
                             <div className="flex-1 flex flex-col overflow-hidden bg-background">
-                                <div className="p-2 border-b border-border bg-background shrink-0 sticky top-0 z-10">
+                                
+                                <div className="p-2 border-b border-border sticky top-0 z-10 bg-background">
                                     <input 
                                         type="text" 
                                         placeholder="Cari percakapan..." 
                                         value={searchQuery} 
                                         onChange={(e) => setSearchQuery(e.target.value)} 
-                                        className="w-full text-xs bg-muted border border-transparent rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary transition-all shadow-inner" 
+                                        className="w-full text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-inner" 
                                     />
                                 </div>
 
                                 <div 
-                                    onScroll={handleChatListScroll}
+                                    onScroll={handleChatListScroll} 
                                     className="flex-1 overflow-y-auto divide-y divide-border bg-background scrollbar-none"
                                 >
-                                    <div className="p-2 sticky top-0 bg-background z-10">
+                                    <div className="p-2">
                                         <button 
                                             onClick={() => setViewMode('new_chat')} 
                                             className="w-full flex items-center justify-center gap-2 p-2 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-xs font-bold shadow-sm"
@@ -545,29 +561,28 @@ export default function WhatsAppWidget() {
                                             CHAT BARU
                                         </button>
                                     </div>
-                                    
+
                                     {chatList.map((chat) => (
                                         <div 
                                             key={chat.id} 
                                             onClick={() => openChat(chat.id)} 
-                                            className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 bg-background relative border-b border-muted ${
-                                                openWindows.find(w => w.id === chat.id) ? 'bg-accent/30' : ''
-                                            }`}
+                                            className={`p-3 hover:bg-accent/50 cursor-pointer transition-colors flex items-center gap-3 border-b border-muted 
+                                                ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
                                         >
                                             <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
                                                 {chat.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-center mb-0.5">
-                                                    <span className="font-bold text-xs truncate pr-2 text-foreground">{chat.name}</span>
-                                                    <span className="text-[9px] text-muted-foreground shrink-0">{chat.time_ago}</span>
+                                                    <span className="font-bold text-xs truncate text-foreground">{chat.name}</span>
+                                                    <span className="text-[9px] text-muted-foreground">{chat.time_ago}</span>
                                                 </div>
                                                 <p className={`text-[11px] truncate ${chat.unread_count > 0 ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>
                                                     {chat.last_message}
                                                 </p>
                                             </div>
                                             {chat.unread_count > 0 && (
-                                                <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1 shrink-0 shadow-sm">
+                                                <div className="bg-green-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
                                                     {chat.unread_count}
                                                 </div>
                                             )}
@@ -583,17 +598,16 @@ export default function WhatsAppWidget() {
                             </div>
                         )}
 
-                        {/* 2. DAFTAR KONTAK VIEW */}
                         {viewMode === 'new_chat' && (
-                            <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-background">
-                                <div className="p-2 border-b border-border bg-background shrink-0 sticky top-0 z-10 flex items-center gap-2">
+                            <div className="absolute inset-0 z-30 flex flex-col bg-background">
+                                <div className="p-2 border-b border-border sticky top-0 z-10 flex items-center gap-2 bg-background">
                                     <button onClick={() => setViewMode('list')} className="text-[10px] font-bold uppercase p-1">Kembali</button>
                                     <input 
                                         type="text" 
                                         placeholder="Cari kontak..." 
                                         value={searchQuery} 
                                         onChange={(e) => setSearchQuery(e.target.value)} 
-                                        className="flex-1 text-xs bg-muted border border-transparent rounded-lg px-3 py-1.5 outline-none" 
+                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none shadow-inner" 
                                     />
                                 </div>
                                 <div className="flex-1 overflow-y-auto divide-y divide-border scrollbar-none">
@@ -601,7 +615,7 @@ export default function WhatsAppWidget() {
                                         <div 
                                             key={contact.id} 
                                             onClick={() => startNewChat(contact)} 
-                                            className="p-2.5 hover:bg-accent cursor-pointer transition-colors flex items-center gap-3 bg-background"
+                                            className="p-2.5 hover:bg-accent cursor-pointer flex items-center gap-3 bg-background"
                                         >
                                             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border text-xs">
                                                 {contact.name.charAt(0)}
@@ -616,36 +630,40 @@ export default function WhatsAppWidget() {
                             </div>
                         )}
 
-                        {/* 3. MOBILE CHAT VIEW (Hanya muncul jika bukan desktop) */}
                         {viewMode === 'chat' && window.innerWidth < 1024 && (
-                            <div className="absolute inset-0 z-40 flex flex-col overflow-hidden bg-background">
-                                <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5 z-0" />
+                            <div className="absolute inset-0 z-40 flex flex-col bg-background">
                                 
-                                <div className="flex-1 overflow-y-auto p-3 space-y-4 relative z-10">
-                                    {loading && <div className="text-center text-xs animate-pulse font-bold uppercase">Memuat...</div>}
+                                <div className="absolute inset-0 z-0">
+                                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-3 space-y-4 relative z-10 scrollbar-none">
+                                    {loading && <div className="text-center text-xs animate-pulse font-bold">Memuat...</div>}
+                                    
                                     {messages.map((msg) => (
                                         <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] rounded-xl p-2 shadow-sm border text-xs ${
-                                                msg.is_admin ? 'bg-slate-100' : 'bg-white'
-                                            }`}>
+                                            <div className={`max-w-[85%] rounded-xl p-2 shadow-sm border text-xs ${msg.is_admin ? 'bg-slate-100' : 'bg-white'}`}>
                                                 {/* PERTAHANKAN RENDER MEDIA */}
                                                 {msg.message_type === 'image' && msg.media_url && (
-                                                    <img src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} className="rounded mb-1 max-h-60 object-cover" />
+                                                    <img 
+                                                        src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
+                                                        className="rounded mb-1 max-h-60 object-cover" 
+                                                    />
                                                 )}
                                                 {msg.text && <p className="break-words leading-relaxed">{msg.text}</p>}
-                                                <div className="text-[8px] text-right mt-1 opacity-50 font-medium">{msg.time}</div>
+                                                <div className="text-[8px] text-right mt-1 opacity-50">{msg.time}</div>
                                             </div>
                                         </div>
                                     ))}
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                <form onSubmit={sendMessage} className="p-3 bg-background border-t border-border flex items-center gap-2">
+                                <form onSubmit={sendMessage} className="p-3 bg-background border-t border-border flex items-center gap-2 relative z-20">
                                     <input 
                                         type="text" 
                                         value={newMessage} 
                                         onChange={(e) => setNewMessage(e.target.value)} 
-                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary shadow-inner" 
+                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner" 
                                         placeholder="Ketik..." 
                                     />
                                     <button type="submit" className="bg-primary text-white p-2 rounded-lg shadow-sm">
@@ -656,6 +674,7 @@ export default function WhatsAppWidget() {
                                 </form>
                             </div>
                         )}
+
                     </div>
                 </div>
             </div>
