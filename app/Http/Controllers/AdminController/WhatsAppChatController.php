@@ -155,7 +155,6 @@ class WhatsAppChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
-        // 1. Validasi dinamis (Bisa teks saja, file saja, atau lokasi saja)
         $request->validate([
             'phone_number' => 'required',
             'message'      => 'nullable|string',
@@ -173,20 +172,23 @@ class WhatsAppChatController extends Controller
         $mediaUrl = null;
         $fileName = null;
         $mimeType = null;
-        $messageType = 'chat'; // Default
+        $messageType = 'chat'; 
         
         $gowaEndpoint = '/send/message';
         $gowaPayload = ['phone' => $destinationPhone];
 
-        // 2. CEK TIPE PESAN & SIAPKAN PAYLOAD UNTUK GOWA
+        // 2. CEK TIPE PESAN
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $fileName = $file->getClientOriginalName();
+            $originalName = $file->getClientOriginalName();
             $mimeType = $file->getMimeType();
             
-            // Simpan file ke storage/app/public/chat_media
-            $path = $file->storeAs('public/chat_media', time() . '_' . preg_replace('/[^A-Za-z0-9.\-]/', '_', $fileName));
-            $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+            // Bersihkan nama file agar tidak ada karakter aneh & double extension
+            $fileName = time() . '_' . Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            
+            // SIMPAN KE DISK 'public' (Penting!)
+            $path = $file->storeAs('chat_media', $fileName, 'public'); 
+            $mediaUrl = asset('storage/' . $path); // URL Lengkap untuk Frontend
 
             if (str_starts_with($mimeType, 'image/')) {
                 $messageType = 'image';
@@ -198,10 +200,6 @@ class WhatsAppChatController extends Controller
                 $messageType = 'document';
                 $gowaEndpoint = '/send/file';
             }
-            
-            // GOWA butuh caption untuk media
-            $gowaPayload['caption'] = $messageText; 
-
         } elseif ($request->filled('latitude') && $request->filled('longitude')) {
             $messageType = 'location';
             $gowaEndpoint = '/send/location';
@@ -209,14 +207,13 @@ class WhatsAppChatController extends Controller
             $gowaPayload['longitude'] = $request->longitude;
             $gowaPayload['name'] = 'Lokasi Dikirim Admin';
         } else {
-            // Chat teks biasa
             if (empty($messageText)) {
-                return response()->json(['status' => 'error', 'message' => 'Pesan tidak boleh kosong jika tidak ada file'], 400);
+                return response()->json(['status' => 'error', 'message' => 'Pesan kosong'], 400);
             }
             $gowaPayload['message'] = $messageText;
         }
 
-        // 3. SIMPAN KE DB DULU
+        // 3. SIMPAN KE DB
         $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText, $mediaUrl, $fileName, $mimeType, $messageType, $request) {
             $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
                       ->orWhere('phone_student', $destinationPhone)
@@ -235,7 +232,7 @@ class WhatsAppChatController extends Controller
                 'chat_id'       => $chat->id,
                 'sender_type'   => 'admin',
                 'message_body'  => $messageText,
-                'message_type'  => $messageType, // chat, image, document, location, dll
+                'message_type'  => $messageType,
                 'media_url'     => $mediaUrl,
                 'file_name'     => $fileName,
                 'mime_type'     => $mimeType,
@@ -246,50 +243,40 @@ class WhatsAppChatController extends Controller
             ]);
         });
 
-        // 4. PROSES PENGIRIMAN KE GOWA
+        // 4. PROSES PENGIRIMAN KE GOWA (Sudah Menggunakan Attach Berantai)
         try {
             $httpReq = Http::withHeaders([
                 "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->timeout(60); // Ditambah jadi 60s untuk jaga-jaga file besar
+            ])->timeout(60);
 
             if ($request->hasFile('file')) {
-                // PERBAIKAN: Gunakan attach berantai untuk menyertakan data teks dalam multipart form
                 $response = $httpReq->attach(
                     'file', 
                     file_get_contents($request->file('file')->getRealPath()), 
                     $fileName
                 )
-                ->attach('phone', $destinationPhone) // Kirim phone sebagai bagian dari form-data
-                ->attach('caption', $messageText)   // Kirim caption sebagai bagian dari form-data
-                ->post($baseUrl . $gowaEndpoint);   // Jangan masukkan $gowaPayload di sini lagi
+                ->attach('phone', $destinationPhone)
+                ->attach('caption', $messageText)
+                ->post($baseUrl . $gowaEndpoint);
             } else {
-                // Jika hanya teks atau lokasi, tetap kirim sebagai JSON biasa
                 $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
             }
 
             if ($response->successful()) {
                 $responseBody = $response->json();
-                
-                // GOWA biasanya mengembalikan ID di top-level atau di dalam data
                 $waMsgId = $responseBody['id'] ?? $responseBody['data']['id'] ?? null;
                 
                 if ($waMsgId) {
                     $chatMessage->update(['wa_message_id' => $waMsgId]);
                 }
-                
                 return response()->json(['status' => 'success', 'data' => $responseBody]);
             }
 
-            // Jika gagal, log respon asli dari GOWA untuk debugging
-            Log::error("GOWA Error Response: " . $response->body());
-            return response()->json([
-                'status' => 'error', 
-                'message' => $response->json() ?? $response->body()
-            ], $response->status());
+            return response()->json(['status' => 'error', 'message' => $response->json() ?? $response->body()], $response->status());
 
         } catch (\Exception $e) {
             Log::error("WhatsApp Exception: " . $e->getMessage());
-            return response()->json(['status' => 'partial_success', 'message' => 'Tersimpan di DB, tapi gagal kirim ke WA: ' . $e->getMessage()], 200);
+            return response()->json(['status' => 'partial_success', 'message' => 'Error: ' . $e->getMessage()], 200);
         }
     }
 
