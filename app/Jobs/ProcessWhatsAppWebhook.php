@@ -52,46 +52,54 @@ class ProcessWhatsAppWebhook implements ShouldQueue
         $msgTimestamp = isset($payload['timestamp']) ? date('Y-m-d H:i:s', strtotime($payload['timestamp'])) : now();
         $senderType = $isFromMe ? 'admin' : 'student';
 
-        // --- LOGIKA IDENTIFIKASI MEDIA & METADATA ---
+        // --- FIX LOGIKA IDENTIFIKASI MEDIA ---
         $baseUrl = rtrim(config('services.waha.url'), '/');
         $mediaUrl = null;
-        $messageType = 'chat';
+        $messageType = 'chat'; // Default awal
         $mimeType = null;
         $fileName = null;
 
-        // Cek satu-per-satu berdasarkan payload GOWA
-        if (isset($payload['image'])) {
+        // 1. Deteksi Image
+        if (!empty($payload['image'])) {
             $messageType = 'image';
-            $mediaUrl = $baseUrl . '/' . $payload['image'];
-            $mimeType = 'image/jpeg'; // Default WA image
-        } elseif (isset($payload['video'])) {
+            $mediaUrl = $baseUrl . '/' . ltrim($payload['image'], '/');
+            $mimeType = 'image/jpeg';
+        } 
+        // 2. Deteksi Video
+        elseif (!empty($payload['video'])) {
             $messageType = 'video';
-            $mediaUrl = $baseUrl . '/' . $payload['video'];
+            $mediaUrl = $baseUrl . '/' . ltrim($payload['video'], '/');
             $mimeType = 'video/mp4';
-        } elseif (isset($payload['document'])) {
+        } 
+        // 3. Deteksi Document
+        elseif (!empty($payload['document'])) {
             $messageType = 'document';
-            $mediaUrl = $baseUrl . '/' . $payload['document'];
-            // Dokumen biasanya mengirim mime_type asli di payload
+            $mediaUrl = $baseUrl . '/' . ltrim($payload['document'], '/');
             $mimeType = $payload['mime_type'] ?? 'application/octet-stream';
             $fileName = $payload['filename'] ?? 'document.pdf';
-        } elseif (isset($payload['audio'])) {
+        }
+        // 4. Deteksi Audio
+        elseif (!empty($payload['audio'])) {
             $messageType = 'audio';
-            $mediaUrl = $baseUrl . '/' . $payload['audio'];
+            $mediaUrl = $baseUrl . '/' . ltrim($payload['audio'], '/');
             $mimeType = 'audio/ogg';
         }
 
         // Lokasi
         $latitude = $payload['location']['latitude'] ?? null;
         $longitude = $payload['location']['longitude'] ?? null;
-        if ($latitude) {
+        if ($latitude && $longitude) {
             $messageType = 'location';
         }
 
+        // Ambil isi teks (caption)
         $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
 
-        // Fallback teks untuk info di sidebar
+        // Fallback jika media tidak punya caption agar sidebar tidak kosong
         if (empty($messageText)) {
-            $messageText = $mediaUrl ? "[$messageType]" : ($latitude ? "[Lokasi]" : '');
+            if ($messageType !== 'chat') {
+                $messageText = "[" . strtoupper($messageType) . "]";
+            }
         }
 
         // --- SIMPAN KE DATABASE ---
@@ -111,18 +119,19 @@ class ProcessWhatsAppWebhook implements ShouldQueue
                 $chat->increment('unread_count');
             }
 
+            // MENGGUNAKAN updateOrCreate AGAR DATA TIDAK DUPLIKAT DAN TYPE TERUPDATE
             ChatMessage::updateOrCreate(
                 ['wa_message_id' => $waMsgId], 
                 [
                     'chat_id'       => $chat->id,
                     'sender_type'   => $senderType,
                     'message_body'  => $messageText,
-                    'message_type'  => $messageType,
-                    'media_url'     => $mediaUrl,   // Tetap diisi URL dari GOWA
-                    'file_name'     => $fileName,   // Tetap disimpan jika ada
-                    'mime_type'     => $mimeType,   // Tetap disimpan
-                    'latitude'      => $latitude,   // Tetap disimpan
-                    'longitude'     => $longitude,  // Tetap disimpan
+                    'message_type'  => $messageType, // <--- INI AKAN MENJADI 'image'
+                    'media_url'     => $mediaUrl,
+                    'file_name'     => $fileName,
+                    'mime_type'     => $mimeType,
+                    'latitude'      => $latitude,
+                    'longitude'     => $longitude,
                     'read_at'       => $isFromMe ? now() : null,
                     'created_at'    => $msgTimestamp,
                 ]
