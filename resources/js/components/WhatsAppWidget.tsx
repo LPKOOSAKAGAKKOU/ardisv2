@@ -25,7 +25,6 @@ interface MessageItem {
     direction: 'inbound' | 'outbound';
     time: string;
     is_admin: boolean;
-    // Tambahan Media & Lokasi
     message_type?: string;
     media_url?: string;
     file_name?: string;
@@ -51,7 +50,6 @@ function ChatWindow({
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
     
-    // Pagination internal untuk window desktop
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     
@@ -61,9 +59,7 @@ function ChatWindow({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadMessages = async (pageNum: number = 1) => {
-        if (pageNum === 1) {
-            setLoading(true);
-        }
+        if (pageNum === 1) setLoading(true);
 
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
@@ -123,7 +119,6 @@ function ChatWindow({
     return (
         <div className="w-80 h-[450px] bg-background border border-border shadow-2xl rounded-t-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 relative">
             
-            {/* Header Window */}
             <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0 relative z-30">
                 <span className="font-bold text-[11px] truncate uppercase tracking-tight text-foreground">
                     {info.name}
@@ -138,10 +133,8 @@ function ChatWindow({
                 </button>
             </div>
 
-            {/* Body Window */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3 relative flex flex-col min-h-0 bg-background">
                 
-                {/* Background Pattern */}
                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
                 </div>
@@ -193,7 +186,6 @@ function ChatWindow({
                 </div>
             </div>
 
-            {/* Input Window */}
             <form onSubmit={handleSend} className="p-2 border-t border-border bg-background shrink-0 relative z-30">
                 
                 {selectedFile && (
@@ -248,6 +240,11 @@ export default function WhatsAppWidget() {
     const basePath = `/${userRole}/whatsapp`; 
     const baseGowaUrl = 'https://gowa-iynqg2oa4rc5.waha.web.id';
 
+    // ✅ FIX 1: State reaktif untuk deteksi mobile/desktop
+    const [isMobile, setIsMobile] = useState(() => 
+        typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+    );
+
     const [isOpen, setIsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'chat' | 'new_chat'>('list');
     
@@ -255,7 +252,6 @@ export default function WhatsAppWidget() {
     const [contactList, setContactList] = useState<ContactItem[]>([]);
     const [messages, setMessages] = useState<MessageItem[]>([]);
     
-    // State Aktif
     const [activeChat, setActiveChat] = useState<number | null>(null);
     const [chatInfo, setChatInfo] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
@@ -276,20 +272,23 @@ export default function WhatsAppWidget() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const chatListContainerRef = useRef<HTMLDivElement>(null);
 
-    // Logic Persistent: Desktop Auto-Open
+    // ✅ FIX 2: Pisahkan resize handler — HANYA update isMobile & isOpen
+    // Tidak ada logic lain di sini agar tidak konflik dengan scroll
     useEffect(() => {
-        const handleInitialState = () => {
-            if (window.innerWidth >= 1024) {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 1024;
+            setIsMobile(mobile);
+            if (!mobile) {
                 setIsOpen(true);
-            } else {
-                setIsOpen(false);
             }
         };
-        handleInitialState();
-        window.addEventListener('resize', handleInitialState);
-        return () => window.removeEventListener('resize', handleInitialState);
+
+        // Set initial state
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     // 1. Fetch Daftar Chat
@@ -332,7 +331,7 @@ export default function WhatsAppWidget() {
         return () => clearInterval(interval);
     }, [searchQuery]);
 
-    // Infinite Scroll Chat List
+    // ✅ FIX 3: Infinite scroll — hanya panggil fetchChatList, tidak ada setIsOpen
     const handleChatListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const container = e.currentTarget;
         if (
@@ -346,9 +345,7 @@ export default function WhatsAppWidget() {
 
     // 2. Fetch Pesan Mobile
     const loadMessages = async (chatId: number, pageNum: number = 1) => {
-        if (pageNum === 1) {
-            setLoading(true);
-        }
+        if (pageNum === 1) setLoading(true);
 
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
@@ -371,11 +368,12 @@ export default function WhatsAppWidget() {
         }
     };
 
+    // ✅ FIX 4: openChat pakai isMobile state, bukan window.innerWidth langsung
     const openChat = (chatId: number) => {
         const selected = chatList.find(c => c.id === chatId);
         if (!selected) return;
 
-        if (window.innerWidth >= 1024) {
+        if (!isMobile) {
             // LOGIKA DESKTOP
             setOpenWindows(prev => {
                 if (prev.find(w => w.id === chatId)) return prev;
@@ -392,6 +390,7 @@ export default function WhatsAppWidget() {
         }
     };
 
+    // ✅ FIX 5: startNewChat pakai isMobile state
     const startNewChat = (contact: ContactItem) => {
         const existingChat = chatList.find(c => c.phone === contact.phone);
         
@@ -400,7 +399,7 @@ export default function WhatsAppWidget() {
         } else {
             const info = { name: contact.name, phone: contact.phone, isNew: true };
             
-            if (window.innerWidth >= 1024) {
+            if (!isMobile) {
                 setOpenWindows(prev => [{ id: Math.random(), info }, ...prev].slice(0, 2));
             } else {
                 setMessages([]);
@@ -414,10 +413,10 @@ export default function WhatsAppWidget() {
     };
 
     useEffect(() => {
-        if (page === 1 && !loading && window.innerWidth < 1024) {
+        if (page === 1 && !loading && isMobile) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages, viewMode, page, loading]);
+    }, [messages, viewMode, page, loading, isMobile]);
 
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -500,7 +499,6 @@ export default function WhatsAppWidget() {
                         ${isOpen ? 'w-full lg:w-[380px]' : 'w-0 border-none pointer-events-none lg:pointer-events-auto'}`}
                 >
                     
-                    {/* TOGGLE DESKTOP (STICKY STYLE) */}
                     <button 
                         onClick={() => setIsOpen(!isOpen)} 
                         className={`fixed z-[60] hidden lg:flex items-center justify-center bg-slate-300 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto
@@ -513,22 +511,36 @@ export default function WhatsAppWidget() {
 
                     <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 relative z-30">
                         <h3 className="font-bold text-xs truncate pr-2 uppercase tracking-widest text-muted-foreground">
-                            {viewMode === 'chat' && window.innerWidth < 1024 ? chatInfo?.name : 'WhatsApp Chat'}
+                            {/* ✅ FIX 6: Pakai isMobile state */}
+                            {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
                         </h3>
                         <button 
-                            onClick={() => setIsOpen(false)} 
+                            onClick={() => {
+                                if (viewMode === 'chat' && isMobile) {
+                                    // ✅ FIX 7: Tombol X di header mobile kembali ke list, bukan tutup sidebar
+                                    setViewMode('list');
+                                } else {
+                                    setIsOpen(false);
+                                }
+                            }} 
                             className="hover:bg-accent p-1 rounded-md transition-colors"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M6 18L18 6M6 6l12 12" />
+                                {viewMode === 'chat' && isMobile ? (
+                                    // Tampilkan ikon back saat di chat mobile
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                ) : (
+                                    <path d="M6 18L18 6M6 6l12 12" />
+                                )}
                             </svg>
                         </button>
                     </div>
 
                     <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
                         
-                        {/* 1. LIST CHAT VIEW (Desktop & Mobile) */}
-                        {(viewMode === 'list' || window.innerWidth >= 1024) && (
+                        {/* 1. LIST CHAT VIEW */}
+                        {/* ✅ FIX 8: Pakai isMobile state konsisten */}
+                        {(viewMode === 'list' || !isMobile) && (
                             <div className="flex-1 flex flex-col overflow-hidden h-full">
                                 
                                 <div className="p-2 border-b border-border sticky top-0 z-20 bg-background">
@@ -627,7 +639,8 @@ export default function WhatsAppWidget() {
                         )}
 
                         {/* 3. MOBILE CHAT VIEW */}
-                        {viewMode === 'chat' && window.innerWidth < 1024 && (
+                        {/* ✅ FIX 9: Pakai isMobile state — ini yang menyebabkan form tidak muncul */}
+                        {viewMode === 'chat' && isMobile && (
                             <div className="absolute inset-0 z-[50] flex flex-col bg-background h-full overflow-hidden">
                                 
                                 <div className="absolute inset-0 z-0 pointer-events-none">
@@ -667,19 +680,50 @@ export default function WhatsAppWidget() {
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                <form onSubmit={sendMessage} className="p-3 bg-background border-t border-border flex items-center gap-2 relative z-30">
-                                    <input 
-                                        type="text" 
-                                        value={newMessage} 
-                                        onChange={(e) => setNewMessage(e.target.value)} 
-                                        className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground" 
-                                        placeholder="Ketik..." 
-                                    />
-                                    <button type="submit" disabled={isSending} className="bg-primary text-primary-foreground p-2 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 transition-all">
-                                        <svg className="w-4 h-4 -rotate-45" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                                        </svg>
-                                    </button>
+                                {/* ✅ FIX 10: Form input selalu render di luar scroll container */}
+                                <form 
+                                    onSubmit={sendMessage} 
+                                    className="p-3 bg-background border-t border-border shrink-0 relative z-30"
+                                >
+                                    {selectedFile && (
+                                        <div className="mb-2 p-1 px-2 bg-muted rounded text-[9px] flex justify-between items-center italic">
+                                            <span className="truncate">{selectedFile.name}</span>
+                                            <button type="button" onClick={() => setSelectedFile(null)} className="text-destructive ml-2">✕</button>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="p-1.5 text-muted-foreground hover:bg-muted rounded-full transition-colors shrink-0"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                            </svg>
+                                        </button>
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef} 
+                                            className="hidden" 
+                                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+                                        />
+                                        <input 
+                                            type="text" 
+                                            value={newMessage} 
+                                            onChange={(e) => setNewMessage(e.target.value)} 
+                                            className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
+                                            placeholder="Ketik pesan..." 
+                                        />
+                                        <button 
+                                            type="submit" 
+                                            disabled={(!newMessage.trim() && !selectedFile) || isSending}
+                                            className="bg-primary text-primary-foreground p-2 rounded-lg shadow-sm active:scale-95 disabled:opacity-50 transition-all shrink-0"
+                                        >
+                                            <svg className="w-4 h-4 -rotate-45" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         )}
