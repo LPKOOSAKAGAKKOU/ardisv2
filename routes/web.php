@@ -170,6 +170,16 @@ Route::middleware([
         // --- DASHBOARD ---
         Route::get('dashboard', [SenseiDashboardController::class, 'index'])->name('dashboard');
 
+            // --- MANAJEMEN WHATSAPP CHAT (ADMIN DASHBOARD) ---
+        Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+            // API untuk Widget React (Sidebar & Chat Box)
+            Route::get('/chats', [WhatsAppChatController::class, 'getChatList'])->name('list');
+            Route::get('/chats/{chatId}/messages', [WhatsAppChatController::class, 'getMessages'])->name('messages');
+            
+            // Endpoint Kirim Pesan (Outbound)
+            Route::post('/send', [WhatsAppChatController::class, 'sendMessage'])->name('send');
+        });
+
         // --- MANAJEMEN DOKUMEN SISWA ---
         Route::post('upload-request', [StudentDocumentController::class, 'requestUpload'])->name('documents.request');
         
