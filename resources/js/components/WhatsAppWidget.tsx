@@ -21,22 +21,30 @@ interface MessageItem {
 }
 
 export default function WhatsAppWidget() {
-    const [isOpen, setIsOpen] = useState(false); // Sidebar terbuka/tertutup
-    const [activeChat, setActiveChat] = useState<number | null>(null); // Chat yang sedang dibuka
+    // 1. AMBIL DATA USER DARI INERTIA
+    // Sesuaikan dengan struktur props di setup Inertia Laravel Anda.
+    // Biasanya user ada di dalam props.auth.user
+    const { auth } = usePage().props as any; 
+    const userRole = auth?.user?.role || 'admin'; // Default ke admin jika tidak ada
+    
+    // 2. BUAT BASE PATH DINAMIS
+    const basePath = `/${userRole}/whatsapp`; 
+
+    const [isOpen, setIsOpen] = useState(false);
+    const [activeChat, setActiveChat] = useState<number | null>(null);
     const [chatList, setChatList] = useState<ChatItem[]>([]);
     const [messages, setMessages] = useState<MessageItem[]>([]);
     const [chatInfo, setChatInfo] = useState<any>(null);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
     
-    // Ref untuk scroll otomatis ke bawah
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // 1. Fetch Daftar Chat (Polling setiap 10 detik)
+    // 1. Fetch Daftar Chat
     const fetchChatList = async () => {
         try {
-            // Pastikan route 'admin.whatsapp.list' sudah ada di web.php
-            const response = await axios.get('/admin/whatsapp/chats'); 
+            // Gunakan basePath dinamis
+            const response = await axios.get(`${basePath}/chats`); 
             setChatList(response.data);
         } catch (error) {
             console.error("Gagal memuat chat", error);
@@ -45,7 +53,7 @@ export default function WhatsAppWidget() {
 
     useEffect(() => {
         fetchChatList();
-        const interval = setInterval(fetchChatList, 15000); // Auto refresh 15 detik
+        const interval = setInterval(fetchChatList, 15000);
         return () => clearInterval(interval);
     }, []);
 
@@ -54,10 +62,10 @@ export default function WhatsAppWidget() {
         setActiveChat(chatId);
         setLoading(true);
         try {
-            const response = await axios.get(`/admin/whatsapp/chats/${chatId}/messages`);
+            // Gunakan basePath dinamis
+            const response = await axios.get(`${basePath}/chats/${chatId}/messages`);
             setMessages(response.data.messages);
             setChatInfo(response.data.chat_info);
-            // Reset unread count di UI lokal
             setChatList(prev => prev.map(c => c.id === chatId ? { ...c, unread_count: 0 } : c));
         } catch (error) {
             console.error("Error load messages", error);
@@ -66,7 +74,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // 3. Scroll ke bawah saat pesan baru dibuka/muncul
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, activeChat]);
@@ -77,25 +84,24 @@ export default function WhatsAppWidget() {
         if (!newMessage.trim() || !chatInfo) return;
 
         const tempMsg: MessageItem = {
-            id: Date.now(), // ID sementara
+            id: Date.now(),
             text: newMessage,
             direction: 'outbound',
             time: 'Just now',
             is_admin: true
         };
 
-        // Optimistic UI update (langsung tampilkan sebelum sukses server)
         setMessages([...messages, tempMsg]);
         setNewMessage('');
 
         try {
-            await axios.post('/admin/whatsapp/send', {
+            // Gunakan basePath dinamis
+            await axios.post(`${basePath}/send`, {
                 phone_number: chatInfo.phone,
                 message: tempMsg.text
             });
-            // Refresh pesan untuk dapat ID asli dan status server
             openChat(chatInfo.id); 
-            fetchChatList(); // Update last message di list
+            fetchChatList(); 
         } catch (error) {
             alert('Gagal mengirim pesan');
             console.error(error);
