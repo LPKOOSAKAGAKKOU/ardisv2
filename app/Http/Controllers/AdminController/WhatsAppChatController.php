@@ -19,15 +19,17 @@ class WhatsAppChatController extends Controller
      */
     public function getChatList()
     {
+        // 1. Ambil daftar percakapan (Chat) yang sudah ada
         $chats = Chat::with('student')
             ->orderByDesc('last_message_at')
             ->get();
 
-        $data = $chats->map(function ($chat) {
+        $chatData = $chats->map(function ($chat) {
             return [
                 'id'            => $chat->id,
                 'student_id'    => $chat->student_profile_id,
                 'name'          => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
+                // Format nomor HP
                 'phone'         => $chat->phone_number,
                 'avatar_url'    => null,
                 'last_message'  => \Illuminate\Support\Str::limit($chat->last_message, 30),
@@ -36,7 +38,22 @@ class WhatsAppChatController extends Controller
             ];
         });
 
-        return response()->json($data);
+        // 2. Ambil semua siswa dari DB untuk opsi "New Chat"
+        // PENTING: Gunakan model StudentProfile dan kolom phone_student!
+        $students = StudentProfile::select('id', 'full_name', 'phone_student')->get()->map(function($student) {
+            return [
+                'id'    => $student->id,
+                'name'  => $student->full_name,
+                // Format nomor HP dari phone_student
+                'phone' => $this->formatPhoneNumber($student->phone_student), 
+            ];
+        });
+
+        // 3. Return gabungan
+        return response()->json([
+            'chats'    => $chatData,
+            'contacts' => $students
+        ]);
     }
 
     /**
