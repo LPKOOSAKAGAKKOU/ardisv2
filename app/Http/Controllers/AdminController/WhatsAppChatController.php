@@ -250,22 +250,27 @@ class WhatsAppChatController extends Controller
         try {
             $httpReq = Http::withHeaders([
                 "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->timeout(45); // Set sedikit lebih lama untuk file besar
+            ])->timeout(60); // Ditambah jadi 60s untuk jaga-jaga file besar
 
             if ($request->hasFile('file')) {
-                // Kalo bawa file, kirim sebagai Multipart/Form-Data
+                // PERBAIKAN: Gunakan attach berantai untuk menyertakan data teks dalam multipart form
                 $response = $httpReq->attach(
                     'file', 
                     file_get_contents($request->file('file')->getRealPath()), 
                     $fileName
-                )->post($baseUrl . $gowaEndpoint, $gowaPayload);
+                )
+                ->attach('phone', $destinationPhone) // Kirim phone sebagai bagian dari form-data
+                ->attach('caption', $messageText)   // Kirim caption sebagai bagian dari form-data
+                ->post($baseUrl . $gowaEndpoint);   // Jangan masukkan $gowaPayload di sini lagi
             } else {
-                // Kalo teks / lokasi biasa, kirim sebagai JSON
+                // Jika hanya teks atau lokasi, tetap kirim sebagai JSON biasa
                 $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
             }
 
             if ($response->successful()) {
                 $responseBody = $response->json();
+                
+                // GOWA biasanya mengembalikan ID di top-level atau di dalam data
                 $waMsgId = $responseBody['id'] ?? $responseBody['data']['id'] ?? null;
                 
                 if ($waMsgId) {
@@ -275,7 +280,12 @@ class WhatsAppChatController extends Controller
                 return response()->json(['status' => 'success', 'data' => $responseBody]);
             }
 
-            return response()->json(['status' => 'error', 'message' => $response->body()], $response->status());
+            // Jika gagal, log respon asli dari GOWA untuk debugging
+            Log::error("GOWA Error Response: " . $response->body());
+            return response()->json([
+                'status' => 'error', 
+                'message' => $response->json() ?? $response->body()
+            ], $response->status());
 
         } catch (\Exception $e) {
             Log::error("WhatsApp Exception: " . $e->getMessage());
