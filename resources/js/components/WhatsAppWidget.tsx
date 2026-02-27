@@ -88,7 +88,6 @@ export default function WhatsAppWidget() {
             if (pageNum === 1) {
                 setMessages(response.data.messages);
             } else {
-                // Prepend (tambahkan ke atas) jika meload history lama
                 setMessages(prev => [...response.data.messages, ...prev]);
             }
             
@@ -96,7 +95,6 @@ export default function WhatsAppWidget() {
             setHasMore(response.data.pagination.has_more);
             setPage(pageNum);
             
-            // Hapus unread count di UI
             setChatList(prev => prev.map(c => c.id === chatId ? { ...c, unread_count: 0 } : c));
         } catch (error) {
             console.error("Error load messages", error);
@@ -125,14 +123,13 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // Scroll otomatis ke bawah HANYA saat buka chat baru atau kirim pesan (halaman 1)
     useEffect(() => {
         if (page === 1) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages, viewMode, page]);
 
-    // 4. Kirim Pesan (Mendukung FormData untuk File)
+    // 4. Kirim Pesan
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if ((!newMessage.trim() && !selectedFile) || !chatInfo || isSending) return;
@@ -144,7 +141,6 @@ export default function WhatsAppWidget() {
         if (newMessage.trim()) formData.append('message', newMessage);
         if (selectedFile) formData.append('file', selectedFile);
 
-        // Optimistic UI (khusus teks, karena file harus tunggu URL dari server)
         if (!selectedFile) {
             const tempMsg: MessageItem = {
                 id: Date.now(),
@@ -168,7 +164,7 @@ export default function WhatsAppWidget() {
             if (chatInfo.isNew && response.data?.chat_id) {
                 openChat(response.data.chat_id);
             } else if (activeChat) {
-                loadMessages(activeChat, 1); // Refresh pesan halaman 1 untuk tarik data yg barusan dikirim
+                loadMessages(activeChat, 1); 
             }
             fetchChatList(); 
         } catch (error) {
@@ -179,7 +175,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // Filter pencarian kontak
     const filteredContacts = contactList.filter(c => 
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         c.phone.includes(searchQuery)
@@ -187,29 +182,22 @@ export default function WhatsAppWidget() {
 
     // --- RENDER UI ---
 
-    // A. Tombol Floating yang Lebih Elegan & Tidak Menghalangi Konten
     if (!isOpen) {
         const totalUnread = chatList.reduce((sum, item) => sum + item.unread_count, 0);
         return (
             <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end gap-2">
-                {/* Tooltip Label (Opsional, muncul saat hover) */}
                 <button 
                     onClick={() => setIsOpen(true)}
                     className="group relative flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl hover:scale-110 transition-all duration-300 ease-in-out"
                 >
-                    {/* Badge Notifikasi Global */}
                     {totalUnread > 0 && (
                         <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white border-2 border-white animate-in zoom-in">
                             {totalUnread > 99 ? '99+' : totalUnread}
                         </span>
                     )}
-                    
-                    {/* Icon WA */}
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                     </svg>
-
-                    {/* Label melayang saat di-hover */}
                     <span className="absolute right-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                         Chat Siswa
                     </span>
@@ -219,10 +207,10 @@ export default function WhatsAppWidget() {
     }
 
     return (
-        <div className="fixed top-0 right-0 bottom-0 w-full sm:w-96 bg-background shadow-2xl border-l border-border z-50 flex flex-col transform transition-transform">
+        <div className="fixed top-0 right-0 bottom-0 w-full lg:w-[450px] bg-background shadow-2xl border-l border-border z-[10000] flex flex-col transform transition-transform">
             
-            {/* Header */}
-            <div className="bg-background text-foreground border-b border-border p-4 flex justify-between items-center shadow-sm shrink-0">
+            {/* Header - Sticky */}
+            <div className="h-16 bg-background text-foreground border-b border-border p-4 flex justify-between items-center shadow-sm shrink-0 z-20">
                 <h3 className="font-bold text-lg truncate pr-2">
                     {viewMode === 'chat' ? chatInfo?.name : viewMode === 'new_chat' ? 'Pilih Kontak' : 'Daftar Chat'}
                 </h3>
@@ -238,13 +226,13 @@ export default function WhatsAppWidget() {
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto bg-muted/10 relative">
+            {/* Container Body - Independent Scroll */}
+            <div className="flex-1 flex flex-col overflow-hidden relative">
                 
-                {/* 1. LIST CHAT */}
+                {/* 1. LIST CHAT VIEW */}
                 {viewMode === 'list' && (
-                    <div className="divide-y divide-border">
-                        <div className="p-3">
+                    <div className="flex-1 overflow-y-auto divide-y divide-border bg-background">
+                        <div className="p-3 sticky top-0 bg-background z-10 border-b border-border">
                             <button 
                                 onClick={() => setViewMode('new_chat')}
                                 className="w-full flex items-center justify-center gap-2 p-2.5 bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-all text-sm font-bold shadow-sm"
@@ -254,46 +242,32 @@ export default function WhatsAppWidget() {
                             </button>
                         </div>
                         
+                        {chatList.length === 0 && <div className="p-4 text-center text-muted-foreground text-sm">Belum ada percakapan.</div>}
+                        
                         {chatList.map((chat) => (
                             <div key={chat.id} onClick={() => openChat(chat.id)} className="p-4 hover:bg-accent cursor-pointer transition-colors flex items-center gap-4 bg-background relative border-b border-muted">
-                                {/* Avatar */}
-                                <div className="relative shrink-0">
-                                    <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border">
-                                        {chat.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    {/* Indikator Online Hijau kecil kalau mau (opsional) */}
+                                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-lg shrink-0">
+                                    {chat.name.charAt(0).toUpperCase()}
                                 </div>
-
-                                {/* Tulisan Pesan */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-center mb-0.5">
                                         <span className="font-bold text-[14px] truncate text-foreground pr-2">{chat.name}</span>
-                                        <span className={`text-[10px] shrink-0 ${chat.unread_count > 0 ? 'text-green-600 font-bold' : 'text-muted-foreground'}`}>
-                                            {chat.time_ago}
-                                        </span>
+                                        <span className={`text-[10px] shrink-0 ${chat.unread_count > 0 ? 'text-green-600 font-bold' : 'text-muted-foreground'}`}>{chat.time_ago}</span>
                                     </div>
-                                    <p className={`text-xs truncate ${chat.unread_count > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
-                                        {chat.last_message}
-                                    </p>
+                                    <p className={`text-xs truncate ${chat.unread_count > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>{chat.last_message}</p>
                                 </div>
-
-                                {/* BUBBLE UNREAD - Dibuat sangat mencolok */}
                                 {chat.unread_count > 0 && (
-                                    <div className="flex flex-col items-end gap-1">
-                                        <div className="bg-green-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] flex items-center justify-center rounded-full px-1 shadow-sm">
-                                            {chat.unread_count}
-                                        </div>
-                                    </div>
+                                    <div className="bg-green-500 text-white text-[10px] font-bold min-w-[20px] h-[20px] flex items-center justify-center rounded-full px-1 shadow-sm shrink-0">{chat.unread_count}</div>
                                 )}
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* 2. DAFTAR KONTAK DENGAN SEARCH */}
+                {/* 2. NEW CHAT VIEW */}
                 {viewMode === 'new_chat' && (
-                    <div className="flex flex-col h-full">
-                        <div className="p-3 border-b border-border bg-background shrink-0">
+                    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                        <div className="p-3 border-b border-border bg-background shrink-0 sticky top-0 z-10">
                             <input
                                 type="text"
                                 placeholder="Cari nama atau nomor..."
@@ -302,15 +276,11 @@ export default function WhatsAppWidget() {
                                 className="w-full text-sm bg-muted text-foreground border border-transparent rounded-full focus:border-primary focus:ring-1 focus:ring-primary px-4 py-2 outline-none transition-all"
                             />
                         </div>
-                        <div className="divide-y divide-border overflow-y-auto flex-1">
-                            {filteredContacts.length === 0 && (
-                                <div className="p-4 text-center text-muted-foreground text-sm">Kontak tidak ditemukan.</div>
-                            )}
+                        <div className="flex-1 overflow-y-auto divide-y divide-border">
+                            {filteredContacts.length === 0 && <div className="p-4 text-center text-muted-foreground text-sm">Kontak tidak ditemukan.</div>}
                             {filteredContacts.map((contact) => (
                                 <div key={contact.id} onClick={() => startNewChat(contact)} className="p-3 hover:bg-accent cursor-pointer transition-colors flex items-center gap-3 bg-background">
-                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border">
-                                        {contact.name.charAt(0)}
-                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border">{contact.name.charAt(0)}</div>
                                     <div className="flex-1 min-w-0">
                                         <span className="block font-semibold text-sm truncate text-foreground">{contact.name}</span>
                                         <span className="block text-xs text-muted-foreground">{contact.phone}</span>
@@ -321,20 +291,16 @@ export default function WhatsAppWidget() {
                     </div>
                 )}
 
-                {/* 3. CHAT AREA */}
+                {/* 3. CHAT VIEW (Independent Scroll) */}
                 {viewMode === 'chat' && (
-                    <div className="relative flex flex-col min-h-full">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/10 dark:stroke-neutral-100/10 z-0" />
+                    <div className="flex-1 flex flex-col overflow-hidden relative">
+                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5 dark:stroke-neutral-100/5 z-0" />
                         
-                        <div className="relative z-10 flex-1 p-3 space-y-4">
-                            {/* Tombol Load More */}
+                        {/* Area Pesan */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-4 relative z-10">
                             {hasMore && (
                                 <div className="flex justify-center mb-2">
-                                    <button 
-                                        onClick={() => activeChat && loadMessages(activeChat, page + 1)}
-                                        disabled={loading}
-                                        className="bg-white border border-border text-xs px-3 py-1 rounded-full shadow-sm hover:bg-muted transition text-foreground"
-                                    >
+                                    <button onClick={() => activeChat && loadMessages(activeChat, page + 1)} disabled={loading} className="bg-white border border-border text-[10px] font-bold px-3 py-1 rounded-full shadow-sm hover:bg-muted transition text-foreground">
                                         {loading ? 'Memuat...' : 'Lihat pesan sebelumnya'}
                                     </button>
                                 </div>
@@ -343,11 +309,10 @@ export default function WhatsAppWidget() {
                             {messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[85%] rounded-2xl p-1 shadow-sm border ${
-                                        msg.is_admin 
-                                            ? 'bg-slate-100 text-slate-800 border-slate-200 rounded-tr-none' 
-                                            : 'bg-white text-gray-800 border-gray-200 rounded-tl-none'
+                                        msg.is_admin ? 'bg-slate-100 text-slate-800 border-slate-200 rounded-tr-none' : 'bg-white text-gray-800 border-gray-200 rounded-tl-none'
                                     }`}>
-                                        {/* 1. RENDER MEDIA (Jika Ada) */}
+                                        
+                                        {/* --- PERTAHANKAN KODE RENDER MEDIA --- */}
                                         <div className="overflow-hidden rounded-xl">
                                             {/* Render Gambar */}
                                             {msg.message_type === 'image' && msg.media_url && (
@@ -357,7 +322,7 @@ export default function WhatsAppWidget() {
                                                         src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
                                                         alt="WhatsApp Image" 
                                                         className="max-w-full h-auto object-cover cursor-zoom-in hover:brightness-90 transition-all rounded-lg min-w-[200px]"
-                                                        onClick={() => window.open(msg.media_url, '_blank')}
+                                                        onClick={() => window.open(msg.media_url || '', '_blank')}
                                                         onError={(e) => {
                                                             // Fallback jika link broken/gagal stream
                                                             e.currentTarget.src = 'https://placehold.co/400x300?text=Gambar+Tidak+Tersedia';
@@ -394,79 +359,50 @@ export default function WhatsAppWidget() {
                                             )}
                                         </div>
 
-                                        {/* 2. RENDER TEKS PESAN (Jika Ada) */}
+                                        {/* Render Teks Pesan */}
                                         {(msg.text && msg.text !== '[image]' && msg.text !== '[document]') && (
                                             <div className="px-3 py-2 leading-relaxed break-words whitespace-pre-wrap text-[13px]">
                                                 {msg.text}
                                             </div>
                                         )}
 
-                                        {/* 3. FOOTER BUBBLE (Waktu) */}
+                                        {/* Footer Bubble */}
                                         <div className="px-3 pb-1 flex justify-end items-center gap-1">
-                                            <span className="text-[9px] text-slate-400 font-medium">
-                                                {msg.time}
-                                            </span>
-                                            {msg.is_admin && (
-                                                <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L9 10.586l3.293-3.293a1 1 0 111.414 1.414z"></path></svg>
-                                            )}
+                                            <span className="text-[9px] text-slate-400 font-medium">{msg.time}</span>
+                                            {msg.is_admin && <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L9 10.586l3.293-3.293a1 1 0 111.414 1.414z"></path></svg>}
                                         </div>
+                                        {/* --- SELESAI KODE RENDER MEDIA --- */}
+
                                     </div>
                                 </div>
                             ))}
                             <div ref={messagesEndRef} />
                         </div>
+
+                        {/* Input Area - Sticky at Bottom */}
+                        <div className="p-3 bg-background border-t border-border shrink-0 z-20">
+                            {selectedFile && (
+                                <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between text-xs">
+                                    <span className="truncate flex-1 font-medium">{selectedFile.name}</span>
+                                    <button onClick={() => setSelectedFile(null)} className="text-destructive hover:text-red-700 p-1">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                            )}
+                            <form onSubmit={sendMessage} className="flex gap-2 items-center">
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors shrink-0">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                </button>
+                                <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={isSending} placeholder="Ketik pesan..." className="flex-1 text-sm bg-muted text-foreground border border-transparent rounded-full focus:border-primary focus:ring-1 focus:ring-primary px-4 py-2.5 outline-none transition-all" />
+                                <button type="submit" disabled={(!newMessage.trim() && !selectedFile) || isSending} className="bg-primary text-primary-foreground p-2.5 rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0">
+                                    <svg className="w-5 h-5 -rotate-45 ml-1 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 )}
             </div>
-
-            {/* Footer Input */}
-            {viewMode === 'chat' && (
-                <div className="relative z-10 p-3 bg-background border-t border-border shrink-0">
-                    {/* Preview file yang akan dikirim */}
-                    {selectedFile && (
-                        <div className="mb-2 p-2 bg-muted rounded-md flex items-center justify-between text-xs">
-                            <span className="truncate flex-1 font-medium">{selectedFile.name}</span>
-                            <button onClick={() => setSelectedFile(null)} className="text-destructive hover:text-red-700 p-1">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
-                        </div>
-                    )}
-
-                    <form onSubmit={sendMessage} className="flex gap-2 items-center">
-                        {/* Tombol Attachment */}
-                        <button 
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors shrink-0"
-                            title="Lampirkan File"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                        </button>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            className="hidden" 
-                            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                        />
-
-                        <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            disabled={isSending}
-                            placeholder="Ketik pesan..."
-                            className="flex-1 text-sm bg-muted text-foreground border border-transparent rounded-full focus:border-primary focus:ring-1 focus:ring-primary px-4 py-2.5 outline-none transition-all"
-                        />
-                        <button 
-                            type="submit" 
-                            disabled={(!newMessage.trim() && !selectedFile) || isSending}
-                            className="bg-primary text-primary-foreground p-2.5 rounded-full hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center shrink-0"
-                        >
-                            <svg className="w-5 h-5 -rotate-45 ml-1 mb-1" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
-                        </button>
-                    </form>
-                </div>
-            )}
         </div>
     );
 }
