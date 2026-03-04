@@ -175,7 +175,7 @@ function MessageList({
     isGroup: boolean;
     baseGowaUrl: string;
     onLoadMore: () => void;
-    messagesEndRef: React.RefObject<HTMLDivElement>;
+    messagesEndRef: React.RefObject<HTMLDivElement | null>;
 }) {
     const grouped = useMemo(() => groupMessagesByDate(messages), [messages]);
 
@@ -436,7 +436,6 @@ export default function WhatsAppWidget() {
 
     const [activeChat, setActiveChat] = useState<number | null>(null);
     const [chatInfo, setChatInfo] = useState<any>(null);
-    const [isGroupChat, setIsGroupChat] = useState(false);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -558,7 +557,6 @@ export default function WhatsAppWidget() {
             const incoming: MessageItem[] = response.data.messages;
 
             if (pageNum === 1) {
-                // Silent poll: skip update jika tidak ada pesan baru
                 const newestId = incoming.length > 0 ? incoming[incoming.length - 1].id : null;
                 if (silent && newestId === mobilLastMsgIdRef.current) return;
                 mobilLastMsgIdRef.current = newestId;
@@ -567,7 +565,6 @@ export default function WhatsAppWidget() {
                 setMessages(prev => [...incoming, ...prev]);
             }
             setChatInfo(response.data.chat_info);
-            setIsGroupChat(response.data.chat_info?.is_group === 1);
             setHasMore(response.data.pagination.has_more);
             setPage(pageNum);
             setChatList(prev => prev.map(c => c.id === chatId ? { ...c, unread_count: 0 } : c));
@@ -597,8 +594,7 @@ export default function WhatsAppWidget() {
             setMessages([]);
             setLoading(true);
             setActiveChat(chatId);
-            setChatInfo(selected);
-            setIsGroupChat(selected.is_group === 1);
+            setChatInfo(selected); // selected sudah punya is_group dari getChatList
             setViewMode('chat');
             loadMessages(chatId, 1);
         }
@@ -609,14 +605,13 @@ export default function WhatsAppWidget() {
         if (existingChat) {
             openChat(existingChat.id);
         } else {
-            const info = { name: contact.name, phone: contact.phone, isNew: true };
+            const info = { name: contact.name, phone: contact.phone, isNew: true, is_group: 0 };
             if (!isMobile) {
                 setOpenWindows(prev => [{ id: Math.random(), info }, ...prev].slice(0, 2));
             } else {
                 setMessages([]);
                 setActiveChat(null);
                 setChatInfo(info);
-                setIsGroupChat(false);
                 setViewMode('chat');
                 setHasMore(false);
                 setLoading(false);
@@ -724,7 +719,7 @@ export default function WhatsAppWidget() {
                                 {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
                             </h3>
                             {/* Badge grup di header mobile saat dalam chat */}
-                            {viewMode === 'chat' && isMobile && isGroupChat && <GroupBadge />}
+                            {viewMode === 'chat' && isMobile && !!chatInfo?.is_group && <GroupBadge />}
                         </div>
                         <button
                             onClick={() => {
@@ -886,7 +881,7 @@ export default function WhatsAppWidget() {
                                 </div>
 
                                 {/* Subheader info grup */}
-                                {isGroupChat && (
+                                {!!chatInfo?.is_group && (
                                     <div className="shrink-0 px-3 py-1.5 bg-emerald-50 border-b border-emerald-100 flex items-center gap-1.5 z-20">
                                         <svg className="w-3 h-3 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z" />
@@ -902,7 +897,7 @@ export default function WhatsAppWidget() {
                                         loading={loading}
                                         page={page}
                                         hasMore={hasMore}
-                                        isGroup={isGroupChat}
+                                        isGroup={!!chatInfo?.is_group}
                                         baseGowaUrl={baseGowaUrl}
                                         onLoadMore={() => loadMessages(activeChat!, page + 1)}
                                         messagesEndRef={messagesEndRef}
@@ -941,7 +936,7 @@ export default function WhatsAppWidget() {
                                             value={newMessage}
                                             onChange={(e) => setNewMessage(e.target.value)}
                                             className="flex-1 min-w-0 bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary"
-                                            placeholder={isGroupChat ? "Kirim ke grup..." : "Ketik pesan..."}
+                                            placeholder={!!chatInfo?.is_group ? "Kirim ke grup..." : "Ketik pesan..."}
                                             style={{ fontSize: '16px' }}
                                         />
                                         <button
