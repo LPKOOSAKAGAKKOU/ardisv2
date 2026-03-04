@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Models\StudentProfile;
+use App\Models\AllowedGroup; // Tambahan Model AllowedGroup
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,8 @@ class WhatsAppChatController extends Controller
             return [
                 'id'             => $chat->id,
                 'student_id'     => $chat->student_profile_id,
-                'name'           => $chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number,
+                'is_group'       => $chat->is_group ?? 0, // Tambahan untuk membedakan ikon grup di Frontend
+                'name'           => $chat->is_group ? $chat->incoming_name : ($chat->student->full_name ?? $chat->incoming_name ?? $chat->phone_number), // Modifikasi tampilan nama
                 'phone'          => $chat->phone_number,
                 'avatar_url'     => null,
                 'last_message'   => \Illuminate\Support\Str::limit($chat->last_message, 30),
@@ -102,6 +104,7 @@ class WhatsAppChatController extends Controller
         $messages = collect($paginator->items())->map(function ($msg) {
             return [
                 'id'           => $msg->id,
+                'sender_name'  => $msg->sender_name, // Tambahan untuk memunculkan nama siswa di dalam Grup
                 'direction'    => $msg->sender_type === 'admin' ? 'outbound' : 'inbound',
                 'text'         => $msg->message_body,
                 'message_type' => $msg->message_type ?? 'chat',
@@ -119,9 +122,10 @@ class WhatsAppChatController extends Controller
 
         return response()->json([
             'chat_info' => [
-                'id'    => $chat->id,
-                'name'  => $chat->student->full_name ?? $chat->incoming_name,
-                'phone' => $chat->phone_number,
+                'id'       => $chat->id,
+                'is_group' => $chat->is_group ?? 0, // Tambahan Info Grup
+                'name'     => $chat->is_group ? $chat->incoming_name : ($chat->student->full_name ?? $chat->incoming_name), // Modifikasi tampilan nama header
+                'phone'    => $chat->phone_number,
             ],
             'messages' => $messages,
             'pagination' => [
@@ -137,40 +141,152 @@ class WhatsAppChatController extends Controller
      */
     public function handleWebhook(Request $request)
     {
-        // 1. VALIDASI SECURITY
+        // 1. Ambil data mentah secepat mungkin
+        $data = $request->all();
+        $event = $data['event'] ?? ''; // <--- WAJIB didefinisikan dulu
+    
+        // 2. FILTER PALING ATAS (Kunci agar tidak timeout/macet)
+        if ($event !== 'message') {
+            // Balas 200 OK agar Gowa tidak kirim ulang laporan status (ack)
+            return response()->json(['status' => 'ok'], 200); 
+        }
+    
+        $payload = $data['payload'] ?? [];
+        $chatIdJid = $payload['chat_id'] ?? '';
+        
+        Log::info("Payload Webhook Masuk: ", $payload);
+    
+        // Abaikan pesan grup (MODIFIKASI: Sekarang Grup Diizinkan asalkan terdaftar)
+        $isGroup = str_contains($chatIdJid, '@g.us');
+        $isGroupFlag = 0;
+        $displayName = "";
+
+        if ($isGroup) {
+            $allowedGroup = AllowedGroup::where('id_group_wa', $chatIdJid)->first();
+            if (!$allowedGroup) {
+                return response()->json(['status' => 'ignored_group_message'], 200);
+            }
+            $displayName = $allowedGroup->nama_group;
+            $isGroupFlag = 1;
+        }
+    
+        // Log hanya untuk event message yang valid
+        Log::info("WA Webhook Masuk: ", $data);
+    
+        // 3. VALIDASI SECURITY
         $secret = config('services.waha.secret');
         $signature = $request->header('X-Hub-Signature') ?? $request->header('X-Gowa-Signature');
-
-        if ($secret) {
-            $payloadRaw = $request->getContent();
-            $computedSignature = 'sha256=' . hash_hmac('sha256', $payloadRaw, $secret);
-
-            if (!$signature || !hash_equals($computedSignature, (string)$signature)) {
+    
+        if ($secret && $signature) {
+            $computedSignature = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+            if (!hash_equals($computedSignature, (string)$signature)) {
                 Log::warning("WhatsApp Webhook: Invalid Signature.");
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
         }
+    
+        try {
+            $isFromMe = $payload['is_from_me'] ?? false;
+            $fromJid = $payload['from'] ?? '';
+            
+            // MODIFIKASI: Tentukan Target Identifier (ID Grup atau No HP Personal)
+            $rawTargetJid = $isFromMe ? $chatIdJid : ($isGroup ? $chatIdJid : $fromJid);
+            $targetIdentifier = $isGroup ? $rawTargetJid : $this->formatPhoneNumber($this->extractPhoneNumber($rawTargetJid));
 
-        $data = $request->all();
+            // MODIFIKASI: Cari Pengirim Asli untuk Pesan di dalam Grup atau Personal
+            $senderPhoneRaw = $this->extractPhoneNumber($fromJid);
+            $formattedSenderPhone = $this->formatPhoneNumber($senderPhoneRaw);
+
+            $student = StudentProfile::select('id', 'full_name')
+                ->where(function($query) use ($formattedSenderPhone) {
+                    $query->whereRaw("REGEXP_REPLACE(phone_student, '[^0-9]', '') LIKE ?", ["%{$formattedSenderPhone}%"])
+                          ->orWhereRaw("CONCAT('62', SUBSTRING(REGEXP_REPLACE(phone_student, '[^0-9]', ''), 2)) = ?", [$formattedSenderPhone]);
+                })->first();
+            
+            // 2. PENENTUAN NAMA PENGIRIM (Sender Name)
+            $waName = $payload['from_name'] ?? $formattedSenderPhone;
+            if ($student) {
+                $senderName = $student->full_name;
+            } else {
+                $senderName = $waName . " (Tidak Terdaftar di Ardis)";
+            }
+
+            // Nama untuk Sidebar (Incoming Name)
+            $pushName = $isGroup ? $displayName : $senderName;
+    
+            // 6. LOGIKA MEDIA & TEKS
+            $messageType = 'chat'; 
+            if (!empty($payload['image'])) { $messageType = 'image'; }
+            elseif (!empty($payload['video'])) { $messageType = 'video'; }
+            elseif (!empty($payload['document'])) { $messageType = 'document'; }
+            elseif (!empty($payload['audio'])) { $messageType = 'audio'; }
+    
+            $messageText = $payload['body'] ?? ($payload['caption'] ?? '');
+            if (empty($messageText) && $messageType !== 'chat') {
+                $messageText = "[" . strtoupper($messageType) . "]";
+            }
+    
+            // 7. PARSING TIMESTAMP (Fix Error 1970)
+            $rawTs = $payload['timestamp'] ?? null;
+            if ($rawTs) {
+                $msgTimestamp = (is_string($rawTs) && str_contains($rawTs, 'T')) 
+                    ? date('Y-m-d H:i:s', strtotime($rawTs)) 
+                    : date('Y-m-d H:i:s', (int)$rawTs);
+            } else {
+                $msgTimestamp = now();
+            }
+    
+            $waMsgId = $payload['id'] ?? \Illuminate\Support\Str::random(30);
+    
+            // 8. SIMPAN KE DATABASE (Gunakan Transaction agar data Chat & Message sinkron)
+            DB::transaction(function () use ($targetIdentifier, $student, $pushName, $senderName, $messageText, $waMsgId, $msgTimestamp, $isFromMe, $messageType, $isGroupFlag) {
+    
+            // 1. Siapkan data yang akan diupdate di tabel Chat (Sidebar)
+            $chatUpdateData = [
+                'is_group'           => $isGroupFlag, // Tambahan
+                'group_id'           => $isGroupFlag ? $targetIdentifier : null, // Tambahan
+                'student_profile_id' => (!$isGroupFlag && $student) ? $student->id : null,
+                'last_message'       => ($isGroupFlag && !$isFromMe ? "$senderName: " : "") . \Illuminate\Support\Str::limit($messageText, 190), // Tambahan penanda nama di last message
+                'last_message_at'    => $msgTimestamp,
+            ];
         
+            // FIX: Hanya masukkan 'incoming_name' ke array update jika pesan BUKAN dari admin
+            // Dengan begini, saat admin balas, nama chat di sidebar tidak akan berubah jadi nama admin.
+            if (!$isFromMe) {
+                $chatUpdateData['incoming_name'] = $pushName;
+            }
         
-        if (($data['event'] ?? '') !== 'message') {
-            return response()->json(['status' => 'ignored_event']);
+            $chat = Chat::updateOrCreate(
+                ['phone_number' => $targetIdentifier],
+                $chatUpdateData
+            );
+        
+            // 2. Tambah unread count hanya jika pesan dari siswa
+            if (!$isFromMe) {
+                $chat->increment('unread_count');
+            }
+        
+            // 3. Simpan Detail Pesan
+            ChatMessage::updateOrCreate(
+                ['wa_message_id' => $waMsgId], 
+                [
+                    'chat_id'       => $chat->id,
+                    'sender_type'   => $isFromMe ? 'admin' : 'student',
+                    'sender_name'   => $senderName, // Tambahan: Menyimpan nama pengirim
+                    'message_body'  => $messageText,
+                    'message_type'  => $messageType,
+                    'created_at'    => $msgTimestamp,
+                ]
+            );
+        });
+    
+            return response()->json(['status' => 'processed_successfully'], 200);
+    
+        } catch (\Exception $e) {
+            Log::error("❌ ERROR WEBHOOK: " . $e->getMessage());
+            // Selalu return 200 walau error agar server Gowa berhenti mengirim ulang
+            return response()->json(['status' => 'error_recorded'], 200);
         }
-
-        $payload = $data['payload'] ?? [];
-        $chatIdJid = $payload['chat_id'] ?? '';
-
-        // Abaikan jika ini pesan grup
-        if (str_contains($chatIdJid, '@g.us')) {
-            return response()->json(['status' => 'ignored_group_message']);
-        }
-
-        // 2. LEMPAR TUGAS KE QUEUE LALU TINGGALKAN
-        \App\Jobs\ProcessWhatsAppWebhook::dispatch($data);
-
-        // 3. RESPON GOWA INSTAN DALAM HITUNGAN MILIDETIK
-        return response()->json(['status' => 'queued_successfully'], 200);
     }
 
     /**
@@ -186,7 +302,11 @@ class WhatsAppChatController extends Controller
             'longitude'    => 'nullable|numeric',
         ]);
 
-        $destinationPhone = $this->formatPhoneNumber($request->phone_number);
+        // MODIFIKASI: Jangan format phone number jika itu adalah JID Grup
+        $target = $request->phone_number;
+        $isGroup = str_contains($target, '@g.us');
+        $destinationPhone = $isGroup ? $target : $this->formatPhoneNumber($target);
+
         $messageText = $request->message ?? '';
         
         $baseUrl = config('services.waha.url');
@@ -237,10 +357,15 @@ class WhatsAppChatController extends Controller
         }
 
         // 3. SIMPAN KE DB
-        $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText, $mediaUrl, $fileName, $mimeType, $messageType, $request) {
-            $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
-                      ->orWhere('phone_student', $destinationPhone)
-                      ->first();
+        $chatMessage = DB::transaction(function () use ($destinationPhone, $messageText, $mediaUrl, $fileName, $mimeType, $messageType, $request, $isGroup) {
+            
+            // MODIFIKASI: Pencarian student profile hanya jika bukan grup
+            $student = null;
+            if (!$isGroup) {
+                $student = StudentProfile::where('phone_student', 'LIKE', "%{$destinationPhone}%")
+                          ->orWhere('phone_student', $destinationPhone)
+                          ->first();
+            }
 
             $chat = Chat::updateOrCreate(
                 ['phone_number' => $destinationPhone],
@@ -254,6 +379,7 @@ class WhatsAppChatController extends Controller
             return ChatMessage::create([
                 'chat_id'       => $chat->id,
                 'sender_type'   => 'admin',
+                'sender_name'   => 'Admin', // Tambahan
                 'message_body'  => $messageText,
                 'message_type'  => $messageType,
                 'media_url'     => $mediaUrl,

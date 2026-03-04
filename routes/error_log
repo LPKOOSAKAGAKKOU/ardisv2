@@ -1,0 +1,4 @@
+[04-Mar-2026 12:10:10 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Illuminate\Support\Facades\Artisan" not found in /home/oose4596/public_html/ardisv2/routes/console.php:6
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/routes/console.php on line 6

@@ -1,0 +1,16 @@
+[01-Mar-2026 22:28:05 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Tests\TestCase" not found in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/RegistrationTest.php:8
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/RegistrationTest.php on line 8
+[01-Mar-2026 23:01:44 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Tests\TestCase" not found in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/AuthenticationTest.php:11
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/AuthenticationTest.php on line 11
+[02-Mar-2026 00:16:41 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Tests\TestCase" not found in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/EmailVerificationTest.php:12
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/EmailVerificationTest.php on line 12
+[02-Mar-2026 02:03:40 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Tests\TestCase" not found in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/TwoFactorChallengeTest.php:11
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/tests/Feature/Auth/TwoFactorChallengeTest.php on line 11

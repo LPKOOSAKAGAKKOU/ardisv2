@@ -1,0 +1,8 @@
+[01-Mar-2026 19:39:40 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Illuminate\Database\Eloquent\Model" not found in /home/oose4596/public_html/ardisv2/app/Models/Recruitment.php:10
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/app/Models/Recruitment.php on line 10
+[01-Mar-2026 23:40:29 Asia/Jakarta] PHP Fatal error:  Uncaught Error: Class "Illuminate\Database\Eloquent\Model" not found in /home/oose4596/public_html/ardisv2/app/Models/TrainingCurriculumCache.php:7
+Stack trace:
+#0 {main}
+  thrown in /home/oose4596/public_html/ardisv2/app/Models/TrainingCurriculumCache.php on line 7

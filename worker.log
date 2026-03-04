@@ -1,0 +1,22 @@
+nohup: ignoring input
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000] [2002] Connection refused (Connection: mysql, Host: 127.0.0.1, Port: 3306, Database: oose4596_ardisv2, SQL: select * from `cache` where `key` in (ardisv2-cache-illuminate:queue:restart))
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:831
+    827▕             $exceptionType = $this->isUniqueConstraintError($e)
+    828▕                 ? UniqueConstraintViolationException::class
+    829▕                 : QueryException::class;
+    830▕ 
+  ➜ 831▕             throw new $exceptionType(
+    832▕                 $this->getNameWithReadWriteType(),
+    833▕                 $query,
+    834▕                 $this->prepareBindings($bindings),
+    835▕                 $e,
+
+      [2m+42 vendor frames [22m
+
+  43  artisan:16
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+
