@@ -82,8 +82,42 @@ function ChatWindow({
         }
     };
 
+    // ✅ FITUR BARU: Polling Pesan Secara Siluman (Tanpa Loading)
+    const pollMessages = async () => {
+        try {
+            const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=1`);
+            const newFetchedMessages = response.data.messages;
+
+            setMessages(prev => {
+                if (prev.length === 0) return newFetchedMessages;
+                
+                // Cari pesan yang benar-benar baru berdasarkan ID
+                const existingIds = new Set(prev.map(m => m.id));
+                const trulyNewMessages = newFetchedMessages.filter((m: MessageItem) => !existingIds.has(m.id));
+                
+                // Jika ada pesan baru, gabungkan di posisi paling bawah
+                if (trulyNewMessages.length > 0) {
+                    return [...prev, ...trulyNewMessages];
+                }
+                return prev;
+            });
+        } catch (error) {
+            console.error("Gagal polling pesan di desktop", error);
+        }
+    };
+
+    // Trigger Load awal
     useEffect(() => {
         loadMessages(1);
+    }, [chatId]);
+
+    // ✅ FITUR BARU: Interval Polling setiap 3 Detik untuk Desktop
+    useEffect(() => {
+        const interval = setInterval(() => {
+            pollMessages();
+        }, 3000);
+
+        return () => clearInterval(interval);
     }, [chatId]);
 
     useEffect(() => {
@@ -425,6 +459,45 @@ export default function WhatsAppWidget() {
             setLoading(false);
         }
     };
+
+    // ✅ FITUR BARU: Polling Pesan Secara Siluman untuk Mobile
+    const pollMobileMessages = async () => {
+        if (!activeChat || viewMode !== 'chat') return;
+        try {
+            const response = await axios.get(`${basePath}/chats/${activeChat}/messages?page=1`);
+            const newFetchedMessages = response.data.messages;
+
+            setMessages(prev => {
+                if (prev.length === 0) return newFetchedMessages;
+                
+                const existingIds = new Set(prev.map(m => m.id));
+                const trulyNewMessages = newFetchedMessages.filter((m: MessageItem) => !existingIds.has(m.id));
+                
+                if (trulyNewMessages.length > 0) {
+                    return [...prev, ...trulyNewMessages];
+                }
+                return prev;
+            });
+            
+            // Hapus unread count jika menerima pesan saat room sedang dibuka
+            setChatList(prevChats => prevChats.map(c => c.id === activeChat ? { ...c, unread_count: 0 } : c));
+        } catch (error) {
+            console.error("Gagal polling pesan di mobile", error);
+        }
+    };
+
+    // Interval Polling setiap 3 Detik untuk Mobile
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (activeChat && viewMode === 'chat' && isMobile) {
+            interval = setInterval(() => {
+                pollMobileMessages();
+            }, 3000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [activeChat, viewMode, isMobile]);
 
     // ✅ FIX 4: openChat pakai isMobile state
     const openChat = (chatId: number) => {
