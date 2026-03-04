@@ -11,6 +11,7 @@ interface ChatItem {
     time_ago: string;
     unread_count: number;
     phone: string;
+    is_group?: boolean | number; // ✅ TAMBAHAN: Deteksi Grup
 }
 
 interface ContactItem {
@@ -30,6 +31,7 @@ interface MessageItem {
     file_name?: string;
     latitude?: string;
     longitude?: string;
+    sender_name?: string; // ✅ TAMBAHAN: Nama pengirim di dalam grup
 }
 
 // --- Komponen Window Chat Terpisah (Khusus Desktop) ---
@@ -119,8 +121,14 @@ function ChatWindow({
     return (
         <div className="w-80 h-[450px] bg-background border border-border shadow-2xl rounded-t-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 relative">
             
-            <div className="p-3 bg-background border-b border-border flex justify-between items-center shrink-0 relative z-30">
-                <span className="font-bold text-[11px] truncate uppercase tracking-tight text-foreground">
+            <div className="p-3 bg-background border-b border-border flex gap-2 items-center shrink-0 relative z-30">
+                {/* Ikon Grup di Header Desktop */}
+                {info.is_group ? (
+                    <div className="w-6 h-6 bg-slate-200 text-slate-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                ) : null}
+                <span className="font-bold text-[11px] truncate uppercase tracking-tight text-foreground flex-1">
                     {info.name}
                 </span>
                 <button 
@@ -163,6 +171,13 @@ function ChatWindow({
                                     msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
                                 }`}>
                                     
+                                    {/* ✅ TAMPILKAN NAMA PENGIRIM DI DALAM GRUP */}
+                                    {!msg.is_admin && info.is_group && (
+                                        <span className="text-[9px] font-bold text-[#25D366] block mb-1 truncate">
+                                            ~ {msg.sender_name || 'Anggota'}
+                                        </span>
+                                    )}
+
                                     {msg.message_type === 'image' && msg.media_url && (
                                         <img 
                                             src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
@@ -277,7 +292,6 @@ export default function WhatsAppWidget() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // ✅ FIX 2: Pisahkan resize handler — HANYA update isMobile & isOpen
-    // Tidak ada logic lain di sini agar tidak konflik dengan scroll
     useEffect(() => {
         const handleResize = () => {
             const mobile = window.innerWidth < 1024;
@@ -287,7 +301,6 @@ export default function WhatsAppWidget() {
             }
         };
 
-        // Set initial state
         handleResize();
 
         window.addEventListener('resize', handleResize);
@@ -334,14 +347,13 @@ export default function WhatsAppWidget() {
         return () => clearInterval(interval);
     }, [searchQuery]);
 
-    // Fetch kontak saat masuk view new_chat
     useEffect(() => {
         if (viewMode === 'new_chat') {
             fetchContacts(1, false);
         }
     }, [viewMode, searchQuery]);
 
-    // ✅ FIX 3: Infinite scroll — hanya panggil fetchChatList, tidak ada setIsOpen
+    // ✅ FIX 3: Infinite scroll
     const handleChatListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const container = e.currentTarget;
         if (
@@ -353,7 +365,6 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // Fetch kontak dengan pagination
     const fetchContacts = async (pageNum: number = 1, isLoadMore: boolean = false) => {
         if (isContactLoading && pageNum > 1) return;
         setIsContactLoading(true);
@@ -415,19 +426,17 @@ export default function WhatsAppWidget() {
         }
     };
 
-    // ✅ FIX 4: openChat pakai isMobile state, bukan window.innerWidth langsung
+    // ✅ FIX 4: openChat pakai isMobile state
     const openChat = (chatId: number) => {
         const selected = chatList.find(c => c.id === chatId);
         if (!selected) return;
 
         if (!isMobile) {
-            // LOGIKA DESKTOP
             setOpenWindows(prev => {
                 if (prev.find(w => w.id === chatId)) return prev;
                 return [{ id: chatId, info: selected }, ...prev].slice(0, 2);
             });
         } else {
-            // LOGIKA MOBILE
             setMessages([]);
             setLoading(true);
             setActiveChat(chatId);
@@ -502,6 +511,13 @@ export default function WhatsAppWidget() {
 
     const totalUnread = chatList.reduce((sum, item) => sum + item.unread_count, 0);
 
+    // ✅ LOGIKA SORTING CHAT LIST (Grup selalu di atas)
+    const sortedChatList = [...chatList].sort((a, b) => {
+        const aGroup = a.is_group ? 1 : 0;
+        const bGroup = b.is_group ? 1 : 0;
+        return bGroup - aGroup; // Grup (1) berada di atas Personal (0)
+    });
+
     return (
         <>
             {/* --- AREA JENDELA CHAT DESKTOP --- */}
@@ -563,9 +579,17 @@ export default function WhatsAppWidget() {
 
                     {/* Header — selalu tampil */}
                     <div className="h-14 bg-background border-b border-border px-3 flex justify-between items-center shrink-0 z-30">
-                        <h3 className="font-bold text-xs truncate pr-2 uppercase tracking-widest text-muted-foreground">
-                            {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
-                        </h3>
+                        <div className="flex items-center gap-2 overflow-hidden pr-2">
+                            {/* Ikon Grup di Header Mobile View */}
+                            {viewMode === 'chat' && isMobile && chatInfo?.is_group && (
+                                <div className="w-6 h-6 bg-slate-200 text-slate-600 rounded-full flex items-center justify-center shrink-0">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                </div>
+                            )}
+                            <h3 className="font-bold text-xs truncate uppercase tracking-widest text-muted-foreground">
+                                {viewMode === 'chat' && isMobile ? chatInfo?.name : 'WhatsApp Chat'}
+                            </h3>
+                        </div>
                         <button 
                             onClick={() => {
                                 if (viewMode === 'chat' && isMobile) {
@@ -588,14 +612,9 @@ export default function WhatsAppWidget() {
                         </button>
                     </div>
 
-                    {/*
-                        ✅ KUNCI FIX: Wrapper konten pakai min-h-0 + flex-1
-                        agar flex children bisa shrink dengan benar.
-                        Setiap view mengisi penuh area ini tanpa saling override.
-                    */}
                     <div className="flex-1 min-h-0 bg-background relative">
 
-                        {/* 1. LIST CHAT VIEW — tampil saat viewMode=list, atau di desktop saat bukan chat mobile */}
+                        {/* 1. LIST CHAT VIEW */}
                         <div className={`absolute inset-0 flex flex-col ${
                             (viewMode === 'list' || (!isMobile && viewMode !== 'new_chat')) ? 'z-10 pointer-events-auto' : 'z-0 pointer-events-none opacity-0'
                         }`}>
@@ -623,7 +642,8 @@ export default function WhatsAppWidget() {
                                         CHAT BARU
                                     </button>
                                 </div>
-                                {chatList.map((chat) => (
+                                {/* ✅ RENDER DARI sortedChatList (Bukan chatList langsung) */}
+                                {sortedChatList.map((chat) => (
                                     <div 
                                         key={chat.id} 
                                         onClick={() => openChat(chat.id)} 
@@ -631,7 +651,12 @@ export default function WhatsAppWidget() {
                                             ${openWindows.find(w => w.id === chat.id) ? 'bg-accent/40 ring-1 ring-inset ring-primary/20' : ''}`}
                                     >
                                         <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold border border-border text-sm shrink-0">
-                                            {chat.name.charAt(0).toUpperCase()}
+                                            {/* ✅ Ikon Khusus jika itu adalah Grup */}
+                                            {chat.is_group ? (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                            ) : (
+                                                chat.name.charAt(0).toUpperCase()
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0 pointer-events-none">
                                             <div className="flex justify-between items-center mb-0.5">
@@ -657,7 +682,7 @@ export default function WhatsAppWidget() {
                             </div>
                         </div>
 
-                        {/* 2. DAFTAR KONTAK VIEW — mobile & desktop */}
+                        {/* 2. DAFTAR KONTAK VIEW */}
                         {viewMode === 'new_chat' && (
                             <div className="absolute inset-0 z-20 flex flex-col bg-background">
                                 <div className="p-2 border-b border-border shrink-0 flex items-center gap-2 bg-background">
@@ -669,7 +694,6 @@ export default function WhatsAppWidget() {
                                         onChange={(e) => {
                                             setSearchQuery(e.target.value);
                                             setContactPage(1);
-                                            // re-fetch dengan query baru
                                             setContactList([]);
                                         }} 
                                         className="flex-1 text-xs bg-muted border-none rounded-lg px-3 py-1.5 outline-none shadow-inner text-foreground" 
@@ -708,22 +732,14 @@ export default function WhatsAppWidget() {
                             </div>
                         )}
 
-                        {/* 3. MOBILE CHAT VIEW
-                            ✅ KUNCI FIX FORM:
-                            - Tidak pakai overflow-hidden di container utama
-                            - flex flex-col dengan min-h-0 agar form tidak terclip
-                            - Form pakai shrink-0 agar tidak pernah dishrink oleh flex parent
-                            - Tidak ada position:absolute di wrapper form
-                        */}
+                        {/* 3. MOBILE CHAT VIEW */}
                         {viewMode === 'chat' && isMobile && (
                             <div className="absolute inset-0 z-20 flex flex-col bg-background">
                                 
-                                {/* Background pattern — tidak block interaksi */}
                                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                                     <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/5" />
                                 </div>
 
-                                {/* Area pesan — scrollable, flex-1 */}
                                 <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4 relative z-10 scrollbar-none">
                                     
                                     {hasMore && (
@@ -745,6 +761,14 @@ export default function WhatsAppWidget() {
                                                 <div className={`max-w-[85%] rounded-xl p-2 shadow-sm border text-xs ${
                                                     msg.is_admin ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-white border-gray-200 text-gray-800'
                                                 }`}>
+                                                    
+                                                    {/* ✅ TAMPILKAN NAMA PENGIRIM DI DALAM GRUP (MOBILE) */}
+                                                    {!msg.is_admin && chatInfo?.is_group && (
+                                                        <span className="text-[10px] font-bold text-[#25D366] block mb-1 truncate">
+                                                            ~ {msg.sender_name || 'Anggota'}
+                                                        </span>
+                                                    )}
+
                                                     {msg.message_type === 'image' && msg.media_url && (
                                                         <img 
                                                             src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
@@ -763,7 +787,6 @@ export default function WhatsAppWidget() {
                                     <div ref={messagesEndRef} />
                                 </div>
 
-                                {/* Form input — shrink-0 agar selalu terlihat, tidak pernah terclip */}
                                 <form 
                                     onSubmit={sendMessage} 
                                     className="shrink-0 p-3 bg-background border-t border-border relative z-20"
@@ -800,7 +823,6 @@ export default function WhatsAppWidget() {
                                             onChange={(e) => setNewMessage(e.target.value)} 
                                             className="flex-1 min-w-0 text-xs bg-muted border-none rounded-lg px-3 py-2 outline-none shadow-inner text-foreground focus:ring-1 focus:ring-primary" 
                                             placeholder="Ketik pesan..." 
-                                            // ✅ Mencegah zoom otomatis di iOS (font-size minimal 16px saat focus)
                                             style={{ fontSize: '16px' }}
                                         />
                                         <button 
