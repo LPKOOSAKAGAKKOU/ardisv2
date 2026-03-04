@@ -266,14 +266,24 @@ function ChatWindow({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const loadMessages = async (pageNum: number = 1) => {
-        if (pageNum === 1) setLoading(true);
+    // Simpan ID pesan terakhir untuk deteksi pesan baru tanpa flicker
+    const lastMsgIdRef = useRef<number | null>(null);
+
+    const loadMessages = async (pageNum: number = 1, silent: boolean = false) => {
+        if (pageNum === 1 && !silent) setLoading(true);
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
+            const incoming: MessageItem[] = response.data.messages;
+
             if (pageNum === 1) {
-                setMessages(response.data.messages);
+                // Silent poll: hanya update jika ada pesan baru (cek ID terakhir)
+                const newestId = incoming.length > 0 ? incoming[incoming.length - 1].id : null;
+                if (silent && newestId === lastMsgIdRef.current) return; // Tidak ada perubahan
+
+                lastMsgIdRef.current = newestId;
+                setMessages(incoming);
             } else {
-                setMessages(prev => [...response.data.messages, ...prev]);
+                setMessages(prev => [...incoming, ...prev]);
             }
             setIsGroup(response.data.chat_info?.is_group === 1);
             setHasMore(response.data.pagination.has_more);
@@ -281,11 +291,18 @@ function ChatWindow({
         } catch (error) {
             console.error('Gagal memuat pesan di window', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
+    // Load awal
     useEffect(() => { loadMessages(1); }, [chatId]);
+
+    // Polling setiap 4 detik — silent agar tidak flicker
+    useEffect(() => {
+        const interval = setInterval(() => loadMessages(1, true), 4000);
+        return () => clearInterval(interval);
+    }, [chatId]);
 
     useEffect(() => {
         if (page === 1) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -531,14 +548,23 @@ export default function WhatsAppWidget() {
         }
     };
 
-    const loadMessages = async (chatId: number, pageNum: number = 1) => {
-        if (pageNum === 1) setLoading(true);
+    // Ref untuk deteksi pesan baru tanpa flicker di mobile
+    const mobilLastMsgIdRef = useRef<number | null>(null);
+
+    const loadMessages = async (chatId: number, pageNum: number = 1, silent: boolean = false) => {
+        if (pageNum === 1 && !silent) setLoading(true);
         try {
             const response = await axios.get(`${basePath}/chats/${chatId}/messages?page=${pageNum}`);
+            const incoming: MessageItem[] = response.data.messages;
+
             if (pageNum === 1) {
-                setMessages(response.data.messages);
+                // Silent poll: skip update jika tidak ada pesan baru
+                const newestId = incoming.length > 0 ? incoming[incoming.length - 1].id : null;
+                if (silent && newestId === mobilLastMsgIdRef.current) return;
+                mobilLastMsgIdRef.current = newestId;
+                setMessages(incoming);
             } else {
-                setMessages(prev => [...response.data.messages, ...prev]);
+                setMessages(prev => [...incoming, ...prev]);
             }
             setChatInfo(response.data.chat_info);
             setIsGroupChat(response.data.chat_info?.is_group === 1);
@@ -548,9 +574,16 @@ export default function WhatsAppWidget() {
         } catch (error) {
             console.error('Error load messages', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
+
+    // Polling mobile chat — aktif hanya saat chat view terbuka
+    useEffect(() => {
+        if (viewMode !== 'chat' || !activeChat || !isMobile) return;
+        const interval = setInterval(() => loadMessages(activeChat, 1, true), 4000);
+        return () => clearInterval(interval);
+    }, [viewMode, activeChat, isMobile]);
 
     const openChat = (chatId: number) => {
         const selected = chatList.find(c => c.id === chatId);
