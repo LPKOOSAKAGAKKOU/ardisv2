@@ -237,9 +237,14 @@ class WhatsAppChatController extends Controller
             }
     
             $waMsgId = $payload['id'] ?? \Illuminate\Support\Str::random(30);
+            $mediaUrl =
+                (is_array($payload['image'] ?? null) ? $payload['image']['url'] : ($payload['image'] ?? null)) ??
+                (is_array($payload['video'] ?? null) ? $payload['video']['url'] : ($payload['video'] ?? null)) ??
+                (is_array($payload['document'] ?? null) ? $payload['document']['url'] : ($payload['document'] ?? null)) ??
+                (is_array($payload['audio'] ?? null) ? $payload['audio']['url'] : ($payload['audio'] ?? null));
     
             // 8. SIMPAN KE DATABASE (Gunakan Transaction agar data Chat & Message sinkron)
-            DB::transaction(function () use ($targetIdentifier, $student, $pushName, $senderName, $messageText, $waMsgId, $msgTimestamp, $isFromMe, $messageType, $isGroupFlag) {
+            DB::transaction(function () use ($mediaUrl, $payload, $targetIdentifier, $student, $pushName, $senderName, $messageText, $waMsgId, $msgTimestamp, $isFromMe, $messageType, $isGroupFlag) {
     
             // 1. Siapkan data yang akan diupdate di tabel Chat (Sidebar)
             $chatUpdateData = [
@@ -265,12 +270,6 @@ class WhatsAppChatController extends Controller
             if (!$isFromMe) {
                 $chat->increment('unread_count');
             }
-
-            $mediaUrl =
-                (is_array($payload['image'] ?? null) ? $payload['image']['url'] : ($payload['image'] ?? null)) ??
-                (is_array($payload['video'] ?? null) ? $payload['video']['url'] : ($payload['video'] ?? null)) ??
-                (is_array($payload['document'] ?? null) ? $payload['document']['url'] : ($payload['document'] ?? null)) ??
-                (is_array($payload['audio'] ?? null) ? $payload['audio']['url'] : ($payload['audio'] ?? null));
         
             // 3. Simpan Detail Pesan
             ChatMessage::updateOrCreate(
