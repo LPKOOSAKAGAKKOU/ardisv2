@@ -176,6 +176,13 @@ class WhatsAppChatController extends Controller
         $chatIdJid = $payload['chat_id'] ?? '';
         
         Log::info("Payload Webhook Masuk: ", $payload);
+
+        // Abaikan webhook kosong (metadata only)
+        if (
+            empty($payload['body'])
+        ) {
+            return response()->json(['status' => 'ignored_empty_message'], 200);
+        }
     
         // Abaikan pesan grup (MODIFIKASI: Sekarang Grup Diizinkan asalkan terdaftar)
         $isGroup = str_contains($chatIdJid, '@g.us');
