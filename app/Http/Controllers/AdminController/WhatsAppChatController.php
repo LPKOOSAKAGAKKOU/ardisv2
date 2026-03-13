@@ -265,6 +265,12 @@ class WhatsAppChatController extends Controller
             if (!$isFromMe) {
                 $chat->increment('unread_count');
             }
+
+            $mediaUrl =
+                (is_array($payload['image'] ?? null) ? $payload['image']['url'] : ($payload['image'] ?? null)) ??
+                (is_array($payload['video'] ?? null) ? $payload['video']['url'] : ($payload['video'] ?? null)) ??
+                (is_array($payload['document'] ?? null) ? $payload['document']['url'] : ($payload['document'] ?? null)) ??
+                (is_array($payload['audio'] ?? null) ? $payload['audio']['url'] : ($payload['audio'] ?? null));
         
             // 3. Simpan Detail Pesan
             ChatMessage::updateOrCreate(
@@ -274,6 +280,9 @@ class WhatsAppChatController extends Controller
                     'sender_type'   => $isFromMe ? 'admin' : 'student',
                     'sender_name'   => $senderName, // Tambahan: Menyimpan nama pengirim
                     'message_body'  => $messageText,
+                    'media_url'     => $mediaUrl,
+                    'file_name'     => $payload['document']['filename'] ?? null,
+                    'mime_type'     => $payload['document']['mime_type'] ?? null,
                     'message_type'  => $messageType,
                     'created_at'    => $msgTimestamp,
                 ]
