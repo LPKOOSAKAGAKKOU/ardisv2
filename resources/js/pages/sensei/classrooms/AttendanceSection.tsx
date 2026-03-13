@@ -373,13 +373,27 @@ export default function AttendanceSection({ classroom, isAdmin = false }: Props)
                                                 <div className="col-span-12 md:col-span-3"><p className="font-bold text-xs uppercase">{student.full_name}</p><p className="text-[10px] text-muted-foreground font-mono">{student.nik}</p></div>
                                                 <div className="col-span-12 md:col-span-6 flex justify-center items-center">
                                                     {showForm ? (
-                                                        <RadioGroup value={manualData[student.id]?.status || 'hadir'} onValueChange={(val) => handleManualChange(student.id, 'status', val)} className="flex items-center gap-2">
-                                                            <AttendanceRadio idPrefix={student.id} value="hadir" label="H" color="bg-green-100 text-green-700 border-green-200" />
-                                                            <AttendanceRadio idPrefix={student.id} value="sakit" label="S" color="bg-yellow-100 text-yellow-700 border-yellow-200" />
-                                                            <AttendanceRadio idPrefix={student.id} value="izin" label="I" color="bg-blue-100 text-blue-700 border-blue-200" />
-                                                            <AttendanceRadio idPrefix={student.id} value="alpha" label="A" color="bg-red-100 text-red-700 border-red-200" />
-                                                            <AttendanceRadio idPrefix={student.id} value="terlambat" label="T" color="bg-orange-100 text-orange-700 border-orange-200" />
-                                                        </RadioGroup>
+                                                        <div className="flex items-center gap-2">
+                                                            {[
+                                                                { value: 'hadir',    label: 'H', color: 'bg-green-100 text-green-700 border-green-200' },
+                                                                { value: 'sakit',    label: 'S', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+                                                                { value: 'izin',     label: 'I', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                                                                { value: 'alpha',    label: 'A', color: 'bg-red-100 text-red-700 border-red-200' },
+                                                                { value: 'terlambat',label: 'T', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+                                                            ].map(opt => {
+                                                                const isSelected = (manualData[student.id]?.status || 'hadir') === opt.value
+                                                                return (
+                                                                    <button
+                                                                        key={opt.value}
+                                                                        type="button"
+                                                                        onClick={() => handleManualChange(student.id, 'status', opt.value)}
+                                                                        className={`flex size-8 items-center justify-center rounded-md border text-[10px] font-black uppercase transition-all ${opt.color} ${isSelected ? 'ring-2 ring-offset-2 ring-black dark:ring-white brightness-90' : 'opacity-60 hover:opacity-100'}`}
+                                                                    >
+                                                                        {opt.label}
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
                                                     ) : getStatusBadge(record!.status)}
                                                 </div>
                                                 <div className="col-span-12 md:col-span-3 flex justify-end">
