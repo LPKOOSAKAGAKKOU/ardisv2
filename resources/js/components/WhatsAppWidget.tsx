@@ -216,7 +216,7 @@ function ChatWindow({
                                         <img 
                                             src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
                                             className="rounded mb-1 max-h-32 w-full object-cover cursor-pointer"
-                                            onClick={() => window.open(msg.media_url, '_blank')}
+                                            onClick={() => window.open(`${baseGowaUrl}/${msg.media_url}`, '_blank')}
                                         />
                                     )}
 
