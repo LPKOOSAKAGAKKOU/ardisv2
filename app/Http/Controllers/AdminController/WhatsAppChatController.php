@@ -179,7 +179,12 @@ class WhatsAppChatController extends Controller
 
         // Abaikan webhook kosong (metadata only)
         if (
-            empty($payload['body'])
+            empty($payload['body']) &&
+            empty($payload['caption']) &&
+            empty($payload['image']) &&
+            empty($payload['video']) &&
+            empty($payload['document']) &&
+            empty($payload['audio'])
         ) {
             return response()->json(['status' => 'ignored_empty_message'], 200);
         }
