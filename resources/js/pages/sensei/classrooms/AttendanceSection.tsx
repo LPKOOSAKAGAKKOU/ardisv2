@@ -431,13 +431,3 @@ export default function AttendanceSection({ classroom, isAdmin = false }: Props)
         </div>
     )
 }
-
-function AttendanceRadio({ idPrefix, value, label, color }: { idPrefix: number, value: string, label: string, color: string }) {
-    const uniqueId = `r-${idPrefix}-${value}`
-    return (
-        <div>
-            <RadioGroupItem value={value} id={uniqueId} className="peer sr-only" />
-            <Label htmlFor={uniqueId} className={`flex size-8 cursor-pointer items-center justify-center rounded-md border text-[10px] font-black uppercase transition-all hover:opacity-80 peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-offset-2 ${color} peer-data-[state=checked]:brightness-90 peer-data-[state=checked]:ring-black dark:peer-data-[state=checked]:ring-white`}>{label}</Label>
-        </div>
-    )
-}

@@ -190,18 +190,25 @@ export default function GradesSection({ classroom, isAdmin = false }: Props) {
                 
                 {/* HEADER CONTROL & NAVIGATION */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4">
-                    <TabsList>
-                        <TabsTrigger value="summary" className="gap-2"><BarChart3 size={16}/> Rekap Nilai</TabsTrigger>
-                        <TabsTrigger value="input" className="gap-2"><Plus size={16}/> Input Nilai Baru</TabsTrigger>
+                    {/* TabsList — full width di mobile */}
+                    <TabsList className="w-full sm:w-auto">
+                        <TabsTrigger value="summary" className="flex-1 sm:flex-none gap-2">
+                            <BarChart3 size={16}/> Rekap Nilai
+                        </TabsTrigger>
+                        <TabsTrigger value="input" className="flex-1 sm:flex-none gap-2">
+                            <Plus size={16}/> Input Nilai Baru
+                        </TabsTrigger>
                     </TabsList>
                     
                     {activeTab === 'summary' && (
-                        <div className="flex flex-col sm:flex-row items-center gap-2 w-full xl:w-auto">
-                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-950 border rounded-md p-1 w-full sm:w-auto justify-between">
-                                <div className="flex items-center">
-                                    <Filter size={14} className="ml-2 text-muted-foreground mr-2" />
+                        <div className="flex flex-col gap-2 w-full xl:w-auto">
+                            {/* Baris 1: Filter + Navigasi Tanggal */}
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-950 border rounded-md p-1 w-full">
+                                {/* Select Filter */}
+                                <div className="flex items-center flex-1">
+                                    <Filter size={14} className="ml-2 text-muted-foreground mr-2 shrink-0" />
                                     <Select value={timeFilter} onValueChange={(val: any) => setTimeFilter(val)}>
-                                        <SelectTrigger className="h-7 border-none shadow-none focus:ring-0 w-[110px] text-xs px-0">
+                                        <SelectTrigger className="h-7 border-none shadow-none focus:ring-0 w-[100px] text-xs px-0">
                                             <SelectValue placeholder="Pilih Waktu" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -211,20 +218,22 @@ export default function GradesSection({ classroom, isAdmin = false }: Props) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex items-center gap-2 border-l pl-2 ml-1">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handlePrev}>
+                                {/* Navigasi Tanggal */}
+                                <div className="flex items-center gap-1 border-l pl-2">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrev}>
                                         <ChevronLeft size={14} />
                                     </Button>
-                                    <span className="text-xs font-medium w-[150px] text-center truncate flex items-center justify-center gap-1">
-                                        <Calendar size={10} className="text-muted-foreground"/>
+                                    <span className="text-xs font-medium w-[140px] sm:w-[160px] text-center flex items-center justify-center gap-1 truncate">
+                                        <Calendar size={10} className="text-muted-foreground shrink-0"/>
                                         {getDateLabel()}
                                     </span>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleNext}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNext}>
                                         <ChevronRight size={14} />
                                     </Button>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="w-full sm:w-auto">
+                            {/* Baris 2: Tombol Refresh */}
+                            <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="w-full sm:w-auto self-end">
                                 {isLoading ? <Loader2 className="size-3 animate-spin mr-2"/> : null}
                                 Refresh
                             </Button>
@@ -232,8 +241,11 @@ export default function GradesSection({ classroom, isAdmin = false }: Props) {
                     )}
                 </div>
 
+                {/* TAB: REKAP NILAI */}
                 <TabsContent value="summary" className="mt-0">
-                    <Card className="border-none shadow-sm bg-white dark:bg-zinc-950">
+
+                    {/* === DESKTOP: Tabel (hidden di mobile) === */}
+                    <Card className="hidden md:block border-none shadow-sm bg-white dark:bg-zinc-950">
                         <CardContent className="p-0 overflow-x-auto">
                             <Table>
                                 <TableHeader className="bg-neutral-50 dark:bg-zinc-900">
@@ -299,8 +311,87 @@ export default function GradesSection({ classroom, isAdmin = false }: Props) {
                             </Table>
                         </CardContent>
                     </Card>
+
+                    {/* === MOBILE: Card per siswa (hidden di desktop) === */}
+                    <div className="md:hidden space-y-3">
+                        {isLoading ? (
+                            <div className="flex justify-center items-center py-12">
+                                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : filteredAssignments.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground text-sm border rounded-xl bg-white dark:bg-zinc-950">
+                                Tidak ada data untuk periode ini.
+                            </div>
+                        ) : (
+                            classroom.students.map((student) => {
+                                const studentGrades = (grades || []).filter(g => g.student_profile_id === student.id)
+                                const relevantGrades = studentGrades.filter(g =>
+                                    filteredAssignments.some(a => a.type === g.type && a.title === g.title)
+                                )
+                                const totalScore = relevantGrades.reduce((sum, g) => sum + g.score, 0)
+                                const avgScore = relevantGrades.length > 0
+                                    ? (totalScore / relevantGrades.length).toFixed(1)
+                                    : '-'
+
+                                return (
+                                    <Card key={student.id} className="bg-white dark:bg-zinc-950 shadow-sm">
+                                        <CardContent className="p-4">
+                                            {/* Header: nama siswa + rata-rata */}
+                                            <div className="flex items-center justify-between mb-3 pb-3 border-b dark:border-zinc-800">
+                                                <div>
+                                                    <p className="font-black text-sm uppercase">{student.full_name}</p>
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{student.nik}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Rata-rata</p>
+                                                    <p className="text-2xl font-black leading-none mt-1">{avgScore}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Grid nilai per tugas */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {filteredAssignments.map((assign, idx) => {
+                                                    const grade = studentGrades.find(
+                                                        g => g.type === assign.type && g.title === assign.title
+                                                    )
+                                                    return (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => setEditingCell({
+                                                                grade,
+                                                                studentId: student.id,
+                                                                type: assign.type,
+                                                                title: assign.title
+                                                            })}
+                                                            className="flex items-center justify-between bg-neutral-50 dark:bg-zinc-900 rounded-lg px-3 py-2.5 hover:bg-neutral-100 dark:hover:bg-zinc-800 active:scale-95 transition-all text-left"
+                                                        >
+                                                            <div className="min-w-0 mr-2">
+                                                                <p className="text-[9px] uppercase font-bold text-muted-foreground truncate">{assign.type}</p>
+                                                                <p className="text-[11px] font-semibold truncate">{assign.title}</p>
+                                                            </div>
+                                                            {grade ? (
+                                                                <GradeBadge
+                                                                    score={grade.score}
+                                                                    isRemedial={grade.is_remedial}
+                                                                    original={grade.original_score}
+                                                                />
+                                                            ) : (
+                                                                <span className="text-[9px] text-blue-500 font-bold whitespace-nowrap shrink-0">+ INPUT</span>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })
+                        )}
+                    </div>
                 </TabsContent>
 
+                {/* TAB: INPUT NILAI */}
                 <TabsContent value="input" className="mt-0">
                     <InputGradeForm 
                         classroom={classroom} 
@@ -375,7 +466,8 @@ function InputGradeForm({ classroom, isAdmin, onSuccess }: { classroom: Props['c
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* PERUBAHAN: grid-cols-1 di mobile, grid-cols-2 di sm ke atas */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Kategori Tugas</Label>
                             <Select onValueChange={(val) => setData('type', val)} value={data.type}>
@@ -438,7 +530,7 @@ function InputGradeForm({ classroom, isAdmin, onSuccess }: { classroom: Props['c
                     </div>
 
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={processing} className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold">
+                        <Button type="submit" disabled={processing} className="w-full sm:w-auto bg-neutral-900 text-white dark:bg-white dark:text-black font-bold">
                             <Save className="mr-2 size-4" /> SIMPAN SEMUA NILAI
                         </Button>
                     </div>
