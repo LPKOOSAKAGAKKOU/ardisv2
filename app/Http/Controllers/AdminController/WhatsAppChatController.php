@@ -56,20 +56,41 @@ class WhatsAppChatController extends Controller
 
         // 3. Ambil SEMUA siswa untuk opsi "New Chat" 
         // Tanpa Pagination agar semua daftar nomor muncul saat dicari
-        $students = StudentProfile::select('id', 'full_name', 'phone_student')
+        $students = StudentProfile::select('id', 'full_name', 'phone_student', 'phone_parent')
             ->when($search, function($query) use ($search) {
-                $query->where('full_name', 'like', "%{$search}%")
-                      ->orWhere('phone_student', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                    ->orWhere('phone_student', 'like', "%{$search}%")
+                    ->orWhere('phone_parent', 'like', "%{$search}%");
+                });
             })
             ->orderBy('full_name', 'asc')
-            ->get() // ✅ Pakai get() agar semua kontak muncul tanpa terpotong halaman
-            ->map(function($student) {
-                return [
-                    'id'    => $student->id,
-                    'name'  => $student->full_name,
-                    // Pastikan fungsi formatPhoneNumber sudah ada di controller agan
-                    'phone' => $this->formatPhoneNumber($student->phone_student), 
-                ];
+            ->get()
+            ->flatMap(function ($student) {
+
+                $contacts = [];
+
+                // nomor siswa
+                if (!empty($student->phone_student)) {
+                    $contacts[] = [
+                        'id'    => $student->id,
+                        'name'  => $student->full_name,
+                        'phone' => $this->formatPhoneNumber($student->phone_student),
+                        'type'  => 'student'
+                    ];
+                }
+
+                // nomor orang tua
+                if (!empty($student->phone_parent)) {
+                    $contacts[] = [
+                        'id'    => $student->id,
+                        'name'  => 'Orang Tua ' . $student->full_name,
+                        'phone' => $this->formatPhoneNumber($student->phone_parent),
+                        'type'  => 'parent'
+                    ];
+                }
+
+                return $contacts;
             });
 
         // 4. Return response
@@ -197,16 +218,35 @@ class WhatsAppChatController extends Controller
             $senderPhoneRaw = $this->extractPhoneNumber($fromJid);
             $formattedSenderPhone = $this->formatPhoneNumber($senderPhoneRaw);
 
-            $student = StudentProfile::select('id', 'full_name')
+            $student = StudentProfile::select('id', 'full_name', 'phone_student', 'phone_parent')
                 ->where(function($query) use ($formattedSenderPhone) {
+
+                    // cek nomor siswa
                     $query->whereRaw("REGEXP_REPLACE(phone_student, '[^0-9]', '') LIKE ?", ["%{$formattedSenderPhone}%"])
-                          ->orWhereRaw("CONCAT('62', SUBSTRING(REGEXP_REPLACE(phone_student, '[^0-9]', ''), 2)) = ?", [$formattedSenderPhone]);
-                })->first();
+                        ->orWhereRaw("CONCAT('62', SUBSTRING(REGEXP_REPLACE(phone_student, '[^0-9]', ''), 2)) = ?", [$formattedSenderPhone])
+
+                    // cek nomor orang tua
+                        ->orWhereRaw("REGEXP_REPLACE(phone_parent, '[^0-9]', '') LIKE ?", ["%{$formattedSenderPhone}%"])
+                        ->orWhereRaw("CONCAT('62', SUBSTRING(REGEXP_REPLACE(phone_parent, '[^0-9]', ''), 2)) = ?", [$formattedSenderPhone]);
+                })
+                ->first();
             
             // 2. PENENTUAN NAMA PENGIRIM (Sender Name)
             $waName = $payload['from_name'] ?? $formattedSenderPhone;
+
             if ($student) {
-                $senderName = $student->full_name;
+
+                $studentPhone = preg_replace('/[^0-9]/', '', $student->phone_student ?? '');
+                $parentPhone  = preg_replace('/[^0-9]/', '', $student->phone_parent ?? '');
+
+                if (str_contains($studentPhone, $formattedSenderPhone)) {
+                    $senderName = $student->full_name;
+                } elseif (str_contains($parentPhone, $formattedSenderPhone)) {
+                    $senderName = "Orang Tua " . $student->full_name;
+                } else {
+                    $senderName = $student->full_name;
+                }
+
             } else {
                 $senderName = $waName . " (Tidak Terdaftar di Ardis)";
             }

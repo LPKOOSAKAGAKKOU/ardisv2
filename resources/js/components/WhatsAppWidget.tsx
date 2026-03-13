@@ -18,6 +18,7 @@ interface ContactItem {
     id: number;
     name: string;
     phone: string;
+    type?: 'student' | 'parent';
 }
 
 interface MessageItem {
@@ -780,15 +781,20 @@ export default function WhatsAppWidget() {
                                 >
                                     {filteredContacts.map((contact) => (
                                         <div 
-                                            key={contact.id} 
+                                            key={`${contact.id}-${contact.type || 'student'}`}
                                             onClick={() => startNewChat(contact)} 
                                             className="p-2.5 hover:bg-accent cursor-pointer flex items-center gap-3 bg-background"
                                         >
                                             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-bold shrink-0 border border-border text-xs">
-                                                {contact.name.charAt(0)}
+                                                {contact.type === 'parent' ? '👨‍👩‍👧' : contact.name.charAt(0)}
                                             </div>
                                             <div className="flex-1 min-w-0 pointer-events-none">
-                                                <span className="block font-bold text-xs truncate text-foreground">{contact.name}</span>
+                                                <span className="block font-bold text-xs truncate text-foreground">
+                                                    {contact.name}
+                                                    {contact.type === 'parent' && (
+                                                        <span className="ml-1 text-[9px] text-orange-500">(Orang Tua)</span>
+                                                    )}
+                                                </span>
                                                 <span className="block text-[10px] text-muted-foreground">{contact.phone}</span>
                                             </div>
                                         </div>
