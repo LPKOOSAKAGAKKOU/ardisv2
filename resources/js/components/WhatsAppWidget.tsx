@@ -221,7 +221,9 @@ function ChatWindow({
                                     )}
 
                                     {msg.text && !['[image]', '[document]'].includes(msg.text) && (
-                                        <p className="break-words leading-relaxed">{msg.text}</p>
+                                        <p className="break-words leading-relaxed whitespace-pre-wrap">
+                                        {msg.text}
+                                        </p>
                                     )}
                                     
                                     <div className="text-[8px] text-right opacity-50 mt-1 font-medium">
