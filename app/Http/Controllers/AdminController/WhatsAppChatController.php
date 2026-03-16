@@ -387,7 +387,11 @@ class WhatsAppChatController extends Controller
             $mimeType = $file->getMimeType();
             
             // Bersihkan nama file agar tidak ada karakter aneh & double extension
-            $fileName = time() . '_' . Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            $storageName = time() . '_' . Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            $fileName = $originalName; // ← nama asli untuk ditampilkan di WhatsApp & DB
+
+            $path = $file->storeAs('chat_media', $storageName, 'public'); // simpan dengan nama unik
+            $mediaUrl = asset('storage/' . $path);
             
             // SIMPAN KE DISK 'public' (Penting!)
             $path = $file->storeAs('chat_media', $fileName, 'public'); 
@@ -479,7 +483,7 @@ class WhatsAppChatController extends Controller
                 [
                     'name'     => 'file',
                     'contents' => $fileContents,
-                    'filename' => $originalFileName,
+                    'filename' => $fileName, 
                     'headers'  => ['Content-Type' => $mimeType],
                 ],
             ]);
