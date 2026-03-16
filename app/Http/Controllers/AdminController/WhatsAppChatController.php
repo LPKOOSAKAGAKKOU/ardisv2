@@ -399,6 +399,9 @@ class WhatsAppChatController extends Controller
             } elseif (str_starts_with($mimeType, 'video/')) {
                 $messageType = 'video';
                 $gowaEndpoint = '/send/video';
+            } elseif (str_starts_with($mimeType, 'audio/')) {
+                $messageType = 'audio';
+                $gowaEndpoint = '/send/audio';
             } else {
                 $messageType = 'document';
                 $gowaEndpoint = '/send/file';
@@ -452,41 +455,61 @@ class WhatsAppChatController extends Controller
             ]);
         });
 
-        // 4. PROSES PENGIRIMAN KE GOWA (Sudah Menggunakan Attach Berantai)
-        try {
-            $httpReq = Http::withHeaders([
-                "Authorization" => "Basic " . base64_encode($apiKey)
-            ])->timeout(60);
+    // 4. PROSES PENGIRIMAN KE GOWA
+    try {
+        $httpReq = Http::withHeaders([
+            "Authorization" => "Basic " . base64_encode($apiKey)
+        ])->timeout(60);
 
-            if ($request->hasFile('file')) {
-                $response = $httpReq->attach(
-                    'file', 
-                    file_get_contents($request->file('file')->getRealPath()), 
-                    $fileName
-                )
-                ->attach('phone', $destinationPhone)
-                ->attach('caption', $messageText)
-                ->post($baseUrl . $gowaEndpoint);
-            } else {
-                $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
-            }
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileContents = file_get_contents($file->getRealPath());
+            $originalFileName = $fileName; // sudah di-set sebelumnya
+            
+            // ✅ FIX: Semua field dikirim sebagai multipart yang benar
+            $response = $httpReq->asMultipart()->post($baseUrl . $gowaEndpoint, [
+                [
+                    'name'     => 'phone',
+                    'contents' => $destinationPhone,
+                ],
+                [
+                    'name'     => 'caption',
+                    'contents' => $messageText ?? '',
+                ],
+                [
+                    'name'     => 'file',
+                    'contents' => $fileContents,
+                    'filename' => $originalFileName,
+                    'headers'  => ['Content-Type' => $mimeType],
+                ],
+            ]);
 
-            if ($response->successful()) {
-                $responseBody = $response->json();
-                $waMsgId = $responseBody['id'] ?? $responseBody['data']['id'] ?? null;
-                
-                if ($waMsgId) {
-                    $chatMessage->update(['wa_message_id' => $waMsgId]);
-                }
-                return response()->json(['status' => 'success', 'data' => $responseBody]);
-            }
-
-            return response()->json(['status' => 'error', 'message' => $response->json() ?? $response->body()], $response->status());
-
-        } catch (\Exception $e) {
-            Log::error("WhatsApp Exception: " . $e->getMessage());
-            return response()->json(['status' => 'partial_success', 'message' => 'Error: ' . $e->getMessage()], 200);
+        } elseif ($request->filled('latitude') && $request->filled('longitude')) {
+            $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
+        } else {
+            $response = $httpReq->post($baseUrl . $gowaEndpoint, $gowaPayload);
         }
+
+        if ($response->successful()) {
+            $responseBody = $response->json();
+            $waMsgId = $responseBody['id'] ?? $responseBody['data']['id'] ?? null;
+            
+            if ($waMsgId) {
+                $chatMessage->update(['wa_message_id' => $waMsgId]);
+            }
+            return response()->json(['status' => 'success', 'data' => $responseBody]);
+        }
+
+        Log::error("GoWA Error Response: " . $response->body());
+        return response()->json([
+            'status'  => 'error', 
+            'message' => $response->json() ?? $response->body()
+        ], $response->status());
+
+    } catch (\Exception $e) {
+        Log::error("WhatsApp Exception: " . $e->getMessage());
+        return response()->json(['status' => 'partial_success', 'message' => 'Error: ' . $e->getMessage()], 200);
+    }
     }
 
     private function extractPhoneNumber($jid)
