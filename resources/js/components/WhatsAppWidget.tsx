@@ -35,6 +35,91 @@ interface MessageItem {
     sender_name?: string; // ✅ TAMBAHAN: Nama pengirim di dalam grup
 }
 
+// ✅ Komponen Render Media Universal
+function MediaRenderer({ msg, baseGowaUrl }: { msg: MessageItem; baseGowaUrl: string }) {
+    const url = msg.media_url?.startsWith('http') 
+        ? msg.media_url 
+        : `${baseGowaUrl}/${msg.media_url}`;
+
+    if (!msg.media_url) return null;
+
+    switch (msg.message_type) {
+        case 'image':
+            return (
+                <img
+                    src={url}
+                    className="rounded mb-1 max-h-48 w-full object-cover cursor-pointer"
+                    onClick={() => window.open(url, '_blank')}
+                    alt="Gambar"
+                />
+            );
+
+        case 'video':
+            return (
+                <video
+                    src={url}
+                    controls
+                    className="rounded mb-1 max-h-48 w-full object-cover"
+                    preload="metadata"
+                >
+                    Browser tidak mendukung video.
+                </video>
+            );
+
+        case 'audio':
+        case 'ptt': // push-to-talk / voice note WhatsApp
+            return (
+                <audio controls className="w-full mb-1" preload="metadata">
+                    <source src={url} />
+                    Browser tidak mendukung audio.
+                </audio>
+            );
+
+        case 'document':
+            return (
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 mb-1 p-2 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 transition-colors"
+                >
+                    <svg className="w-5 h-5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-[11px] text-slate-700 truncate font-medium">
+                        {msg.file_name || 'Unduh Dokumen'}
+                    </span>
+                    <svg className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                </a>
+            );
+
+        case 'sticker':
+            return (
+                <img
+                    src={url}
+                    className="rounded mb-1 w-20 h-20 object-contain"
+                    alt="Stiker"
+                />
+            );
+
+        default:
+            // Fallback untuk tipe tidak dikenal tapi ada media_url
+            return (
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 mb-1 text-[11px] text-blue-500 underline"
+                >
+                    📎 {msg.file_name || 'Lihat Lampiran'}
+                </a>
+            );
+    }
+}
+
 // --- Komponen Window Chat Terpisah (Khusus Desktop) ---
 function ChatWindow({ 
     chatId, 
@@ -213,15 +298,9 @@ function ChatWindow({
                                         </span>
                                     )}
 
-                                    {msg.message_type === 'image' && msg.media_url && (
-                                        <img 
-                                            src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
-                                            className="rounded mb-1 max-h-32 w-full object-cover cursor-pointer"
-                                            onClick={() => window.open(`${baseGowaUrl}/${msg.media_url}`, '_blank')}
-                                        />
-                                    )}
+                                    <MediaRenderer msg={msg} baseGowaUrl={baseGowaUrl} />
 
-                                    {msg.text && !['[image]', '[document]'].includes(msg.text) && (
+                                    {msg.text && !['[image]', '[document]', '[audio]', '[video]', '[sticker]', '[ptt]'].includes(msg.text) && (
                                         <p className="break-words leading-relaxed whitespace-pre-wrap">
                                         {msg.text}
                                         </p>
@@ -850,14 +929,8 @@ export default function WhatsAppWidget() {
                                                         </span>
                                                     )}
 
-                                                    {msg.message_type === 'image' && msg.media_url && (
-                                                        <img 
-                                                            src={msg.media_url.startsWith('http') ? msg.media_url : `${baseGowaUrl}/${msg.media_url}`} 
-                                                            className="rounded mb-1 max-h-60 object-cover" 
-                                                            onClick={() => window.open(msg.media_url, '_blank')} 
-                                                        />
-                                                    )}
-                                                    {msg.text && !['[image]', '[document]'].includes(msg.text) && (
+                                                    <MediaRenderer msg={msg} baseGowaUrl={baseGowaUrl} />
+                                                    {msg.text && !['[image]', '[document]', '[audio]', '[video]', '[sticker]', '[ptt]'].includes(msg.text) && (
                                                         <p className="break-words leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                                                     )}
                                                     <div className="text-[8px] text-right mt-1 opacity-50 font-medium">{msg.time}</div>
