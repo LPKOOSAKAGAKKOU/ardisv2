@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import DashboardCalendar, { type CalendarEvent } from '@/components/dashboard-calendar'
 
 interface Stats {
     total_students: number
@@ -38,6 +39,7 @@ interface RecentInterview {
 interface Props {
     stats: Stats
     recentInterviews: RecentInterview[]
+    calendarEvents: CalendarEvent[]
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -47,7 +49,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ]
 
-export default function AdminDashboard({ stats, recentInterviews }: Props) {
+export default function AdminDashboard({ stats, recentInterviews, calendarEvents }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Admin" />
@@ -98,6 +100,12 @@ export default function AdminDashboard({ stats, recentInterviews }: Props) {
                         icon={<GraduationCap className="h-5 w-5 text-rose-600" />}
                         href={route('admin.teachers.index')}
                     />
+                </div>
+
+                {/* --- KALENDER AGENDA --- */}
+                <div>
+                    <h3 className="mb-3 text-lg font-semibold">Kalender Agenda</h3>
+                    <DashboardCalendar events={calendarEvents} />
                 </div>
 
                 {/* --- QUICK ACTIONS (SHORTCUT TAMBAH) --- */}
