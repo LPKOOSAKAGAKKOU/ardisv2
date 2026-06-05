@@ -1,9 +1,9 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { 
-    Plus, Search, Edit, Eye, 
-    Building2, Calendar, 
-    Users
+import {
+    Plus, Search, Edit, Eye,
+    Building2,
+    Users, GraduationCap, Plane, Clock
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,18 @@ interface Interview {
     details_count: number;
 }
 
+interface DepartedStudent {
+    name: string;
+    company: string | null;
+    organization: string | null;
+    date: string | null;
+}
+interface Summary {
+    total_passed: number;
+    departed_count: number;
+    not_departed_count: number;
+    departed_students: DepartedStudent[];
+}
 interface Props {
     interviews: {
         data: Interview[];
@@ -30,9 +42,10 @@ interface Props {
         total: number;
     };
     filters: { search: string };
+    summary: Summary;
 }
 
-export default function InterviewIndex({ interviews, filters }: Props) {
+export default function InterviewIndex({ interviews, filters, summary }: Props) {
     const [search, setSearch] = useState(filters?.search || '');
 
     const breadcrumbs = [
@@ -62,6 +75,62 @@ export default function InterviewIndex({ interviews, filters }: Props) {
                             <Plus className="mr-2 h-4 w-4" /> Tambah Wawancara
                         </Button>
                     </Link>
+                </div>
+
+                {/* RINGKASAN KELULUSAN & KEBERANGKATAN */}
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 lg:col-span-1">
+                        <div className="rounded-2xl border border-sidebar-border bg-background p-4 shadow-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <GraduationCap size={15} className="text-purple-600" />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.15em]">Total Lulus</span>
+                            </div>
+                            <p className="mt-1 text-2xl font-bold tabular-nums">{summary.total_passed}</p>
+                        </div>
+                        <div className="rounded-2xl border border-sidebar-border bg-background p-4 shadow-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <Plane size={15} className="text-sky-600" />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.15em]">Sudah Berangkat</span>
+                            </div>
+                            <p className="mt-1 text-2xl font-bold tabular-nums text-sky-600">{summary.departed_count}</p>
+                        </div>
+                        <div className="rounded-2xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-4 shadow-sm">
+                            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                                <Clock size={15} />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.15em]">Lulus, Belum Berangkat</span>
+                            </div>
+                            <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{summary.not_departed_count}</p>
+                        </div>
+                    </div>
+
+                    {/* Daftar siswa yang sudah berangkat */}
+                    <div className="rounded-2xl border border-sidebar-border bg-background p-5 shadow-sm lg:col-span-2">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Plane size={15} className="text-sky-600" />
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                                Siswa Sudah Berangkat ({summary.departed_students.length})
+                            </p>
+                        </div>
+                        {summary.departed_students.length > 0 ? (
+                            <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
+                                {summary.departed_students.map((s, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-3 rounded-lg border border-sidebar-border px-3 py-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[10px] font-bold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                                                {s.name.charAt(0)}
+                                            </span>
+                                            <span className="truncate text-sm font-medium">{s.name}</span>
+                                        </div>
+                                        <span className="shrink-0 truncate text-[11px] text-muted-foreground font-japanese" title={`${s.company ?? ''} ${s.organization ?? ''}`}>
+                                            {s.company || s.organization || '-'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="py-6 text-center text-sm italic text-muted-foreground">Belum ada siswa yang berangkat.</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* SEARCH BAR */}

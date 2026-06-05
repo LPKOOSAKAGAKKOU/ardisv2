@@ -47,8 +47,58 @@ class InterviewController extends Controller
 
         return Inertia::render('admin/interview/Index', [
             'interviews' => $interviews,
-            'filters' => $request->only(['search'])
+            'filters' => $request->only(['search']),
+            'summary' => $this->graduateSummary(),
         ]);
+    }
+
+    /**
+     * Ringkasan siswa lulus wawancara: siapa yang sudah berangkat dan
+     * berapa yang sudah lulus tapi belum berangkat.
+     *
+     * "Sudah berangkat" = peserta lulus pada wawancara yang punya keberangkatan
+     * non-batal dengan tanggal <= hari ini.
+     */
+    private function graduateSummary(): array
+    {
+        $departedInterviewIds = \App\Models\Departure::query()
+            ->where('status', '!=', 'cancelled')
+            ->whereNotNull('interview_id')
+            ->whereNotNull('departure_date')
+            ->whereDate('departure_date', '<=', now()->toDateString())
+            ->pluck('interview_id')
+            ->unique();
+
+        $passed = InterviewDetail::query()
+            ->where('result', 'passed')
+            ->with([
+                'user:id,name',
+                'interview:id,company_id,accepting_organization_id,interview_date',
+                'interview.company:id,name,name_in_japanese',
+                'interview.acceptingOrganization:id,name',
+            ])
+            ->get();
+
+        $departedPassed = $passed->filter(fn ($d) => $departedInterviewIds->contains($d->interview_id));
+
+        $departedStudents = $departedPassed
+            ->map(fn ($d) => [
+                'name'         => $d->user?->name,
+                'company'      => $d->interview?->company?->name_in_japanese ?: $d->interview?->company?->name,
+                'organization' => $d->interview?->acceptingOrganization?->name,
+                'date'         => $d->interview?->interview_date
+                    ? \Illuminate\Support\Carbon::parse($d->interview->interview_date)->toDateString()
+                    : null,
+            ])
+            ->filter(fn ($s) => $s['name'])
+            ->values();
+
+        return [
+            'total_passed'       => $passed->count(),
+            'departed_count'     => $departedPassed->count(),
+            'not_departed_count' => $passed->count() - $departedPassed->count(),
+            'departed_students'  => $departedStudents,
+        ];
     }
 
 

@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, Link, router } from '@inertiajs/react'
-import { Plane, Plus, Search, Edit, Trash2, Eye, Users } from 'lucide-react'
+import { Plane, Plus, Search, Edit, Trash2, Eye, Users, Building2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,10 +22,21 @@ interface DepartureRow {
     total_management_fee: number
 }
 
+interface OrgSummary {
+    name: string
+    departures: number
+    people: number
+}
+interface Summary {
+    total_people: number
+    total_departures: number
+    per_organization: OrgSummary[]
+}
 interface Props {
     departures: { data: DepartureRow[]; links: any[]; from: number; to: number; total: number }
     organizations: { id: number; name: string }[]
     filters: { search?: string; status?: string; organization_id?: string }
+    summary: Summary
 }
 
 const yen = (n: number) => '¥' + (n ?? 0).toLocaleString('ja-JP')
@@ -38,7 +49,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
     cancelled: { label: 'Batal', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 }
 
-export default function DepartureIndex({ departures, organizations, filters }: Props) {
+export default function DepartureIndex({ departures, organizations, filters, summary }: Props) {
     const [search, setSearch] = useState(filters?.search || '')
 
     const breadcrumbs = [
@@ -83,6 +94,46 @@ export default function DepartureIndex({ departures, organizations, filters }: P
                             <Plus className="mr-2 h-4 w-4" /> Tambah Keberangkatan
                         </Button>
                     </Link>
+                </div>
+
+                {/* RINGKASAN KEBERANGKATAN */}
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-xl bg-sky-600 p-2.5 text-white shadow-lg shadow-sky-500/20">
+                                <Users size={20} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Siswa Sudah Berangkat</p>
+                                <p className="text-2xl font-bold tabular-nums">{summary.total_people}</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            dari <span className="font-semibold text-foreground">{summary.total_departures}</span> batch keberangkatan
+                        </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-5 shadow-sm lg:col-span-2">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Building2 size={15} className="text-indigo-600" />
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Sudah Berangkat per Kumiai</p>
+                        </div>
+                        {summary.per_organization.length > 0 ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                {summary.per_organization.map((o) => (
+                                    <div key={o.name} className="flex items-center justify-between gap-2 rounded-lg border border-sidebar-border px-3 py-2">
+                                        <span className="truncate text-sm font-medium" title={o.name}>{o.name}</span>
+                                        <span className="flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums text-sky-600">
+                                            <Users size={12} /> {o.people}
+                                            <span className="text-[10px] font-normal text-muted-foreground">({o.departures}x)</span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="py-4 text-center text-sm italic text-muted-foreground">Belum ada siswa yang berangkat.</p>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-3">

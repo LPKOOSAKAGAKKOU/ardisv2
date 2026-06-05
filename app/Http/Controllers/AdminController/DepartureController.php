@@ -69,7 +69,38 @@ class DepartureController extends Controller
             'departures'    => $departures,
             'organizations' => AcceptingOrganization::orderBy('name')->get(['id', 'name']),
             'filters'       => $request->only(['search', 'status', 'organization_id']),
+            'summary'       => $this->departedSummary(),
         ]);
+    }
+
+    /**
+     * Ringkasan siswa yang sudah berangkat (keberangkatan non-batal, tgl <= hari ini),
+     * total & rincian per kumiai/organisasi penerima.
+     */
+    private function departedSummary(): array
+    {
+        $departed = Departure::query()
+            ->where('status', '!=', 'cancelled')
+            ->whereNotNull('departure_date')
+            ->whereDate('departure_date', '<=', now()->toDateString())
+            ->with('acceptingOrganization:id,name')
+            ->get(['id', 'accepting_organization_id', 'people_count', 'departure_date', 'status']);
+
+        $perOrg = $departed
+            ->groupBy(fn (Departure $d) => $d->acceptingOrganization?->name ?? 'Tanpa Organisasi')
+            ->map(fn ($group, $name) => [
+                'name'       => $name,
+                'departures' => $group->count(),
+                'people'     => (int) $group->sum('people_count'),
+            ])
+            ->sortByDesc('people')
+            ->values();
+
+        return [
+            'total_people'     => (int) $departed->sum('people_count'),
+            'total_departures' => $departed->count(),
+            'per_organization' => $perOrg,
+        ];
     }
 
     public function create()
