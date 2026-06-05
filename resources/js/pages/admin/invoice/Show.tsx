@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, router } from '@inertiajs/react'
-import { Receipt, ArrowLeft, CheckCircle2, RotateCcw, Printer } from 'lucide-react'
+import { Receipt, ArrowLeft, CheckCircle2, RotateCcw, FileDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -34,12 +34,12 @@ interface Props {
 // Data penerbit (LPK) & rekening — sesuai format seikyuusho PDF.
 const ISSUER = {
     heading: '日本語教育センター及び送り出し機関',
-    name: 'LPK OOSAKA GAKKOU',
+    name: 'PT OOSAKA GAKKOU INDONESIA',
     postal: '〒64173',
     address: ['Jl. Raya Wates Kediri RT 008 RW 00', 'Desa Ngletih Kec. Kandat Kab. Kediri, Jawa Timur'],
 }
 const BANK = [
-    { label: 'NAME', sub: '（英語会社名）', value: ['LPK OOSAKA GAKKOU'] },
+    { label: 'NAME', sub: '（英語会社名）', value: ['PT OOSAKA GAKKOU INDONESIA'] },
     { label: 'ADDRESS', sub: '（所在地）', value: ['Jl. Raya Wates Kediri RT 008 RW 00', 'Desa Ngletih Kec. Kandat Kab. Kediri, Jawa Timur 64173'] },
     { label: 'Company Office Number', sub: '（電話番号）', value: ['+62-857-4594-5292'] },
     { label: 'ACCOUNT NO.', sub: '（口座番号）', value: ['710636903'] },
@@ -99,8 +99,8 @@ export default function InvoiceShow({ invoice }: Props) {
                         <Button variant="ghost" onClick={() => router.get('/admin/invoices')}>
                             <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
                         </Button>
-                        <Button variant="outline" onClick={() => window.print()}>
-                            <Printer className="mr-2 h-4 w-4" /> Cetak
+                        <Button variant="outline" onClick={() => window.open(`/admin/invoices/${invoice.id}/print`, '_blank')}>
+                            <FileDown className="mr-2 h-4 w-4" /> Export PDF
                         </Button>
                         {invoice.status !== 'paid' ? (
                             <Button

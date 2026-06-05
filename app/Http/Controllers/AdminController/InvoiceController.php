@@ -142,6 +142,19 @@ class InvoiceController extends Controller
         ]);
     }
 
+    /**
+     * Halaman cetak bersih (standalone, tanpa shell aplikasi) untuk di-export
+     * sebagai PDF lewat dialog cetak browser (Save as PDF).
+     */
+    public function print($id)
+    {
+        $invoice = Invoice::with(['acceptingOrganization', 'items'])->findOrFail($id);
+
+        return view('invoices.print', [
+            'invoice' => $invoice,
+        ]);
+    }
+
     public function markPaid(Request $request, $id)
     {
         $invoice = Invoice::findOrFail($id);

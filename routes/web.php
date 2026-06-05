@@ -144,6 +144,7 @@ Route::middleware([
     Route::resource('departures', DepartureController::class);
 
     // --- MANAJEMEN PENAGIHAN (INVOICE) ---
+    Route::get('/invoices/{id}/print', [InvoiceController::class, 'print'])->name('invoices.print');
     Route::patch('/invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
     Route::patch('/invoices/{id}/mark-unpaid', [InvoiceController::class, 'markUnpaid'])->name('invoices.mark-unpaid');
     Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
