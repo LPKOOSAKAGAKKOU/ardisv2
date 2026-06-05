@@ -129,8 +129,10 @@ class InvoiceController extends Controller
                 'organization'   => $invoice->acceptingOrganization,
                 'items'          => $invoice->items->map(fn ($it) => [
                     'id'           => $it->id,
+                    'kind'         => $it->kind,
                     'company_name' => $it->company_name,
                     'description'  => $it->description,
+                    'students'     => $it->students ?? [],
                     'people'       => $it->people,
                     'months'       => $it->months,
                     'unit_price'   => $it->unit_price,

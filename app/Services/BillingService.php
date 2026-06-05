@@ -54,8 +54,12 @@ class BillingService
             $index++;
             $months = min(self::BILLING_CYCLE_MONTHS, $remaining);
 
-            $periodFrom = $cursor->copy();
-            $periodTo = $cursor->copy()->addMonthsNoOverflow($months);
+            // Tagihan dibayar di akhir siklus (in arrears). Periode yang ditagih
+            // adalah `$months` bulan yang BERAKHIR di bulan penagihan (inklusif),
+            // mis. tagihan bulan Juni utk siklus 3 bulan = April–Juni.
+            $billDate = $cursor->copy()->addMonthsNoOverflow($months);
+            $periodTo = $billDate->copy();                                  // bulan terakhir (inklusif)
+            $periodFrom = $billDate->copy()->subMonthsNoOverflow($months - 1); // bulan pertama (inklusif)
             $amount = $unitPrice * $people * $months;
 
             $blocks[] = [
@@ -66,11 +70,11 @@ class BillingService
                 'amount'      => $amount,
                 'period_from' => $periodFrom,
                 'period_to'   => $periodTo,
-                'bill_date'   => $periodTo->copy(),
+                'bill_date'   => $billDate->copy(),
             ];
 
             $remaining -= $months;
-            $cursor = $periodTo;
+            $cursor = $cursor->copy()->addMonthsNoOverflow($months);
         }
 
         return $blocks;
@@ -120,24 +124,62 @@ class BillingService
     {
         $departures = $organization->departures()
             ->where('status', 'managing')
+            ->with('interview.details.user')
             ->get();
 
         $items = collect();
         foreach ($departures as $departure) {
-            $block = $this->blockDueInMonth($departure, $month);
-            if (! $block) {
-                continue;
+            $students = $this->studentNames($departure);
+            $people = max(1, (int) $departure->people_count);
+
+            // Penagihan satu kali (渡航費 & 事前教育費) di bulan keberangkatan.
+            if ($departure->departure_date && $departure->departure_date->isSameMonth($month)) {
+                $travel = (int) ($departure->travel_cost ?? 0);
+                if ($travel > 0) {
+                    $items->push([
+                        'departure_id' => $departure->id,
+                        'kind'         => 'travel',
+                        'company_name' => $departure->company_name,
+                        'description'  => '渡航費',
+                        'students'     => $students,
+                        'people'       => $people,
+                        'months'       => 1,
+                        'unit_price'   => $travel,
+                        'amount'       => $travel * $people,
+                    ]);
+                }
+
+                $preEducation = $departure->effectivePreEducationFee();
+                if ($preEducation > 0) {
+                    $items->push([
+                        'departure_id' => $departure->id,
+                        'kind'         => 'pre_education',
+                        'company_name' => $departure->company_name,
+                        'description'  => '事前教育費',
+                        'students'     => $students,
+                        'people'       => $people,
+                        'months'       => 1,
+                        'unit_price'   => $preEducation,
+                        'amount'       => $preEducation * $people,
+                    ]);
+                }
             }
 
-            $items->push([
-                'departure_id' => $departure->id,
-                'company_name' => $departure->company_name,
-                'description'  => $this->itemDescription($block),
-                'people'       => $block['people'],
-                'months'       => $block['months'],
-                'unit_price'   => $block['unit_price'],
-                'amount'       => $block['amount'],
-            ]);
+            // Penagihan management fee per siklus (jika jatuh tempo bulan ini).
+            $block = $this->blockDueInMonth($departure, $month);
+            if ($block) {
+                $items->push([
+                    'departure_id' => $departure->id,
+                    'kind'         => 'management',
+                    'company_name' => $departure->company_name,
+                    'description'  => $this->itemDescription($block),
+                    'students'     => $students,
+                    'people'       => $block['people'],
+                    'months'       => $block['months'],
+                    'unit_price'   => $block['unit_price'],
+                    'amount'       => $block['amount'],
+                ]);
+            }
         }
 
         return $items;
@@ -186,13 +228,28 @@ class BillingService
 
     private function itemDescription(array $block): string
     {
-        $from = $block['period_from'];
-        $toInclusive = $block['period_to']->copy()->subMonthNoOverflow();
-
+        // period_from & period_to keduanya inklusif (bulan pertama & terakhir ditagih).
         return sprintf(
             '技能実習生管理費（%s〜%s）',
-            $from->format('Y年n月'),
-            $toInclusive->format('Y年n月')
+            $block['period_from']->format('Y年n月'),
+            $block['period_to']->format('Y年n月')
         );
+    }
+
+    /**
+     * Nama siswa keberangkatan, diambil dari peserta wawancara yang lulus.
+     *
+     * @return array<int, string>
+     */
+    private function studentNames(Departure $departure): array
+    {
+        $departure->loadMissing('interview.details.user');
+
+        return $departure->interview?->details
+            ->where('result', 'passed')
+            ->map(fn ($detail) => $detail->user?->name)
+            ->filter()
+            ->values()
+            ->all() ?? [];
     }
 }

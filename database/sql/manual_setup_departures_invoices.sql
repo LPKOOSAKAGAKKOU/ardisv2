@@ -95,7 +95,15 @@ CREATE TABLE `invoice_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- 5) Tandai 4 migration sebagai SUDAH dijalankan, supaya `php artisan migrate`
+-- 4b) Kolom tambahan invoice_items: jenis baris & daftar nama siswa
+--     (migration 2026_06_05_000005). `kind`: management|travel|pre_education.
+-- ---------------------------------------------------------------------
+ALTER TABLE `invoice_items`
+    ADD COLUMN `kind` VARCHAR(255) NOT NULL DEFAULT 'management' AFTER `departure_id`,
+    ADD COLUMN `students` JSON NULL AFTER `description`;
+
+-- ---------------------------------------------------------------------
+-- 5) Tandai migration sebagai SUDAH dijalankan, supaya `php artisan migrate`
 --    di kemudian hari tidak mencoba membuat tabel ini lagi.
 --    Batch dihitung otomatis = batch terakhir + 1.
 -- ---------------------------------------------------------------------
@@ -105,4 +113,5 @@ INSERT INTO `migrations` (`migration`, `batch`) VALUES
     ('2026_06_05_000001_add_billing_fields_to_accepting_organizations_table', @next_batch),
     ('2026_06_05_000002_create_departures_table',                            @next_batch),
     ('2026_06_05_000003_create_invoices_table',                             @next_batch),
-    ('2026_06_05_000004_create_invoice_items_table',                        @next_batch);
+    ('2026_06_05_000004_create_invoice_items_table',                        @next_batch),
+    ('2026_06_05_000005_add_kind_students_to_invoice_items_table',          @next_batch);

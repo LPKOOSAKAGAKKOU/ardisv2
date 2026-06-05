@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
 
 interface PreviewItem {
     departure_id: number
+    kind: 'management' | 'travel' | 'pre_education'
     company_name: string
     description: string
+    students: string[]
     people: number
     months: number
     unit_price: number
@@ -118,14 +120,17 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-sidebar-border">
-                                        {preview.items.map((it) => (
-                                            <tr key={it.departure_id}>
+                                        {preview.items.map((it, idx) => (
+                                            <tr key={`${it.departure_id}-${it.kind}-${idx}`}>
                                                 <td className="px-6 py-3">
                                                     <p className="font-semibold font-japanese">{it.company_name}</p>
                                                     <p className="text-[11px] text-muted-foreground font-japanese">{it.description}</p>
+                                                    {it.students?.length > 0 && (
+                                                        <p className="text-[11px] text-sky-600 font-japanese">対象者: {it.students.join('、')}</p>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-3 text-center">{it.people}</td>
-                                                <td className="px-6 py-3 text-center">{it.months}ヶ月</td>
+                                                <td className="px-6 py-3 text-center">{it.kind === 'management' ? `${it.months}ヶ月` : '—'}</td>
                                                 <td className="px-6 py-3 text-right tabular-nums">{yen(it.unit_price)}</td>
                                                 <td className="px-6 py-3 text-right font-semibold tabular-nums">{yen(it.amount)}</td>
                                             </tr>

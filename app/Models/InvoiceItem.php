@@ -10,8 +10,10 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'departure_id',
+        'kind',
         'company_name',
         'description',
+        'students',
         'people',
         'months',
         'unit_price',
@@ -19,6 +21,7 @@ class InvoiceItem extends Model
     ];
 
     protected $casts = [
+        'students'   => 'array',
         'people'     => 'integer',
         'months'     => 'integer',
         'unit_price' => 'integer',

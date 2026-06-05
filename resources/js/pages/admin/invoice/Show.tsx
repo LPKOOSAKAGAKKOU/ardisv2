@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge'
 
 interface Item {
     id: number
+    kind: 'management' | 'travel' | 'pre_education'
     company_name: string
     description: string | null
+    students: string[]
     people: number
     months: number
     unit_price: number
@@ -29,7 +31,29 @@ interface Props {
     }
 }
 
-const yen = (n: number) => '¥' + (n ?? 0).toLocaleString('ja-JP')
+// Data penerbit (LPK) & rekening — sesuai format seikyuusho PDF.
+const ISSUER = {
+    heading: '日本語教育センター及び送り出し機関',
+    name: 'LPK OOSAKA GAKKOU',
+    postal: '〒64173',
+    address: ['Jl. Raya Wates Kediri RT 008 RW 00', 'Desa Ngletih Kec. Kandat Kab. Kediri, Jawa Timur'],
+}
+const BANK = [
+    { label: 'NAME', sub: '（英語会社名）', value: ['LPK OOSAKA GAKKOU'] },
+    { label: 'ADDRESS', sub: '（所在地）', value: ['Jl. Raya Wates Kediri RT 008 RW 00', 'Desa Ngletih Kec. Kandat Kab. Kediri, Jawa Timur 64173'] },
+    { label: 'Company Office Number', sub: '（電話番号）', value: ['+62-857-4594-5292'] },
+    { label: 'ACCOUNT NO.', sub: '（口座番号）', value: ['710636903'] },
+    { label: "BENEFICIARY'S BANK", sub: '（送金先銀行名）', value: ['BANK NEGARA INDONESIA'] },
+    { label: 'Swift BIC Code', sub: '', value: ['BNINIDJAXXX'] },
+    { label: 'Account Opening Bank Address', sub: '（銀行所在地）', value: ['Jl. Brawijaya No.17, Pakelan, Kec. Kota, Kota Kediri, Jawa Timur 64129'] },
+]
+
+const yen = (n: number) => (n ?? 0).toLocaleString('ja-JP') + '円'
+const fmtJpDate = (d: string | null) => {
+    if (!d) return '-'
+    const dt = new Date(d)
+    return `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日`
+}
 const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'
 
@@ -37,6 +61,13 @@ const statusMap: Record<string, { label: string; cls: string }> = {
     draft: { label: 'Draft', cls: 'bg-zinc-100 text-zinc-600' },
     issued: { label: 'Belum Lunas', cls: 'bg-amber-100 text-amber-700' },
     paid: { label: 'Lunas', cls: 'bg-emerald-100 text-emerald-700' },
+}
+
+// 品名 utama per baris (nama perusahaan + label jenis tagihan).
+const itemTitle = (it: Item) => {
+    if (it.kind === 'travel') return `${it.company_name} 渡航費`
+    if (it.kind === 'pre_education') return `${it.company_name} 事前教育費`
+    return `${it.company_name} ${it.people}人`
 }
 
 export default function InvoiceShow({ invoice }: Props) {
@@ -51,6 +82,7 @@ export default function InvoiceShow({ invoice }: Props) {
             <Head title={`Invoice ${invoice.invoice_number}`} />
 
             <div className="max-w-3xl mx-auto p-4 lg:p-8 flex flex-col gap-6">
+                {/* Toolbar (tidak ikut tercetak) */}
                 <div className="flex items-center justify-between gap-4 print:hidden">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-violet-600 rounded-xl text-white shadow-lg shadow-violet-500/20">
@@ -88,59 +120,95 @@ export default function InvoiceShow({ invoice }: Props) {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-8 shadow-sm">
-                    <div className="flex justify-between items-start mb-8">
+                {/* Lembar seikyuusho (請求書) */}
+                <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-8 shadow-sm font-japanese text-zinc-900 dark:text-zinc-100">
+                    {/* Baris atas: nomor (kiri) & tanggal (kanan) */}
+                    <div className="flex justify-between items-start text-sm">
+                        <p>請求番号：<span className="tabular-nums font-semibold">{invoice.invoice_number}</span></p>
+                        <p>請求日：{fmtJpDate(invoice.issue_date)}</p>
+                    </div>
+
+                    {/* Judul */}
+                    <h2 className="text-center text-2xl font-bold tracking-[0.3em] my-4">請求書</h2>
+
+                    {/* Penerima (kiri) & penerbit (kanan) */}
+                    <div className="grid grid-cols-2 gap-6 mb-8">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-wide">請 求 書</h2>
-                            <p className="text-sm text-muted-foreground mt-1">INVOICE</p>
+                            <p className="text-lg font-bold border-b border-zinc-400 inline-block pb-0.5">
+                                {org.name_in_japanese || org.name} 御中
+                            </p>
+                            <p className="text-sm mt-2">下記のとおりご請求申し上げます。</p>
                         </div>
-                        <div className="text-right text-sm">
-                            <p><span className="text-muted-foreground">請求番号：</span><span className="tabular-nums font-semibold">{invoice.invoice_number}</span></p>
-                            <p><span className="text-muted-foreground">請求日：</span>{fmtDate(invoice.issue_date)}</p>
+                        <div className="text-sm">
+                            <p className="font-semibold">{ISSUER.heading}</p>
+                            <p className="font-bold">{ISSUER.name}</p>
+                            <p className="mt-2">{ISSUER.postal}</p>
+                            {ISSUER.address.map((line, i) => (
+                                <p key={i} className="text-xs text-muted-foreground">{line}</p>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="mb-6">
-                        <p className="text-lg font-bold font-japanese">{org.name_in_japanese || org.name} 御中</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            請求期間: {fmtDate(invoice.period_from)} 〜 {fmtDate(invoice.period_to)}
-                        </p>
-                    </div>
-
-                    <table className="w-full text-left text-sm border-t border-sidebar-border">
-                        <thead className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground border-b border-sidebar-border">
-                            <tr>
-                                <th className="py-3">品名</th>
-                                <th className="py-3 text-center">数量</th>
-                                <th className="py-3 text-center">期間</th>
-                                <th className="py-3 text-right">単価</th>
-                                <th className="py-3 text-right">金額</th>
+                    {/* Tabel rincian */}
+                    <table className="w-full text-sm border border-zinc-300 dark:border-zinc-700">
+                        <thead className="bg-neutral-50 dark:bg-neutral-900/50 text-xs">
+                            <tr className="[&>th]:border [&>th]:border-zinc-300 dark:[&>th]:border-zinc-700 [&>th]:py-2 [&>th]:px-2">
+                                <th className="w-10 text-center">番号</th>
+                                <th className="text-left">品名</th>
+                                <th className="w-20 text-center">数量</th>
+                                <th className="w-24 text-right">単価</th>
+                                <th className="w-28 text-right">金額</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-sidebar-border">
-                            {invoice.items.map((it) => (
-                                <tr key={it.id}>
-                                    <td className="py-3">
-                                        <p className="font-semibold font-japanese">{it.company_name} {it.people}人</p>
-                                        <p className="text-[11px] text-muted-foreground font-japanese">{it.description}</p>
+                        <tbody>
+                            {invoice.items.map((it, idx) => (
+                                <tr key={it.id} className="[&>td]:border [&>td]:border-zinc-300 dark:[&>td]:border-zinc-700 [&>td]:py-2 [&>td]:px-2 align-top">
+                                    <td className="text-center tabular-nums">{idx + 1}</td>
+                                    <td>
+                                        <p className="font-semibold">{itemTitle(it)}</p>
+                                        {it.kind === 'management' && it.description && (
+                                            <p className="text-[11px] text-muted-foreground">{it.description}</p>
+                                        )}
+                                        {it.students.length > 0 && (
+                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                対象者: {it.students.join('、')}
+                                            </p>
+                                        )}
                                     </td>
-                                    <td className="py-3 text-center">{it.people}</td>
-                                    <td className="py-3 text-center">{it.months}ヶ月</td>
-                                    <td className="py-3 text-right tabular-nums">{yen(it.unit_price)}</td>
-                                    <td className="py-3 text-right font-semibold tabular-nums">{yen(it.amount)}</td>
+                                    <td className="text-center tabular-nums">{it.people}名</td>
+                                    <td className="text-right tabular-nums">{yen(it.unit_price)}</td>
+                                    <td className="text-right font-semibold tabular-nums">{yen(it.amount)}</td>
+                                </tr>
+                            ))}
+                            <tr className="[&>td]:border [&>td]:border-zinc-300 dark:[&>td]:border-zinc-700 [&>td]:py-3 [&>td]:px-2 font-bold">
+                                <td colSpan={4} className="text-center">合計</td>
+                                <td className="text-right tabular-nums">{yen(invoice.total_amount)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    {/* Informasi pembayaran (振込先) */}
+                    <p className="mt-8 mb-2 font-bold">振込先：</p>
+                    <table className="w-full text-xs border border-zinc-300 dark:border-zinc-700">
+                        <tbody>
+                            {BANK.map((row) => (
+                                <tr key={row.label} className="[&>td]:border [&>td]:border-zinc-300 dark:[&>td]:border-zinc-700 [&>td]:py-2 [&>td]:px-3 align-top">
+                                    <td className="w-1/3 font-semibold">
+                                        {row.label}
+                                        {row.sub && <span className="block text-muted-foreground font-normal">{row.sub}</span>}
+                                    </td>
+                                    <td>
+                                        {row.value.map((v, i) => (
+                                            <span key={i} className="block">{v}</span>
+                                        ))}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot>
-                            <tr className="border-t-2 border-foreground/20 font-bold text-base">
-                                <td className="py-4" colSpan={4}>合計</td>
-                                <td className="py-4 text-right tabular-nums">{yen(invoice.total_amount)}</td>
-                            </tr>
-                        </tfoot>
                     </table>
 
                     {invoice.status === 'paid' && (
-                        <p className="mt-4 text-sm text-emerald-600 font-semibold">✓ Lunas pada {fmtDate(invoice.paid_at)}</p>
+                        <p className="mt-4 text-sm text-emerald-600 font-semibold print:hidden">✓ Lunas pada {fmtDate(invoice.paid_at)}</p>
                     )}
                 </div>
             </div>
