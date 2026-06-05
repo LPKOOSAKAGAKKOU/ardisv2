@@ -26,6 +26,7 @@ interface Company {
 interface InterviewOption {
     id: number
     label: string
+    people: number
 }
 interface Props {
     departure?: any
@@ -45,7 +46,6 @@ export default function DepartureForm({ departure, organizations, companies, int
         interview_id: departure?.interview_id?.toString() || '',
         company_name: departure?.company_name || '',
         departure_date: departure?.departure_date?.slice(0, 10) || '',
-        people_count: departure?.people_count?.toString() || '1',
         travel_cost: departure?.travel_cost?.toString() || '0',
         pre_education_fee: departure?.pre_education_fee?.toString() || '',
         management_fee: departure?.management_fee?.toString() || '',
@@ -54,6 +54,8 @@ export default function DepartureForm({ departure, organizations, companies, int
     })
 
     const selectedOrg = organizations.find((o) => o.id.toString() === data.accepting_organization_id)
+    const selectedInterview = interviews.find((iv) => iv.id.toString() === data.interview_id)
+    const peopleCount = selectedInterview ? selectedInterview.people : departure?.people_count ?? 1
 
     const breadcrumbs = [
         { title: 'Data Keberangkatan', href: '/admin/departures' },
@@ -163,9 +165,13 @@ export default function DepartureForm({ departure, organizations, companies, int
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Jumlah Orang</Label>
-                            <Input type="number" min={1} value={data.people_count} onChange={(e) => setData('people_count', e.target.value)} className="h-11" />
-                            {errors.people_count && <p className="text-xs text-red-500">{errors.people_count}</p>}
+                            <Label>Jumlah Orang (otomatis)</Label>
+                            <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
+                                <span className="font-semibold">{peopleCount}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                    {selectedInterview ? 'dari siswa wawancara' : 'tautkan wawancara untuk menghitung otomatis'}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="space-y-2">

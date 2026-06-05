@@ -7,6 +7,7 @@ use App\Models\AcceptingOrganization;
 use App\Models\Company;
 use App\Models\Departure;
 use App\Models\Interview;
+use App\Models\InterviewDetail;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -84,6 +85,7 @@ class DepartureController extends Controller
     {
         $data = $this->validateDeparture($request);
         $data = $this->resolveCompanyName($data);
+        $data['people_count'] = $this->peopleFromInterview($data['interview_id'] ?? null);
 
         Departure::create($data);
 
@@ -157,6 +159,7 @@ class DepartureController extends Controller
 
         $data = $this->validateDeparture($request);
         $data = $this->resolveCompanyName($data);
+        $data['people_count'] = $this->peopleFromInterview($data['interview_id'] ?? null, $departure->people_count);
 
         $departure->update($data);
 
@@ -180,7 +183,6 @@ class DepartureController extends Controller
             'interview_id'              => 'nullable|exists:interviews,id',
             'company_name'              => 'required_without:company_id|nullable|string|max:255',
             'departure_date'            => 'required|date',
-            'people_count'              => 'required|integer|min:1',
             'travel_cost'               => 'nullable|integer|min:0',
             'pre_education_fee'         => 'nullable|integer|min:0',
             'management_fee'            => 'nullable|integer|min:0',
@@ -223,17 +225,36 @@ class DepartureController extends Controller
     }
 
     /**
+     * Jumlah orang otomatis = jumlah siswa lulus pada interview yang ditautkan.
+     * Tanpa interview, pakai fallback (default 1).
+     */
+    private function peopleFromInterview($interviewId, int $fallback = 1): int
+    {
+        if (! $interviewId) {
+            return max(1, $fallback);
+        }
+
+        $count = InterviewDetail::where('interview_id', $interviewId)
+            ->where('result', 'passed')
+            ->count();
+
+        return max(1, $count);
+    }
+
+    /**
      * Opsi interview untuk dropdown pada form keberangkatan.
      */
     private function interviewOptions()
     {
         return Interview::query()
             ->with('company:id,name,name_in_japanese')
+            ->withCount(['details as people' => fn ($q) => $q->where('result', 'passed')])
             ->latest('interview_date')
             ->get(['id', 'interviewer_title', 'company_id', 'interview_date'])
             ->map(fn (Interview $i) => [
-                'id'    => $i->id,
-                'label' => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
+                'id'     => $i->id,
+                'label'  => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
+                'people' => $i->people,
             ]);
     }
 }
