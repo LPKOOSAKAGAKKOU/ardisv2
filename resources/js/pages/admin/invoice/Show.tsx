@@ -70,6 +70,10 @@ const itemTitle = (it: Item) => {
     return `${it.company_name} ${it.people}人`
 }
 
+// 単価 = harga per orang untuk seluruh periode tagihan (bukan per bulan),
+// supaya 単価 × 数量(orang) = 金額 dan tidak ambigu.
+const unitForPeriod = (it: Item) => (it.people > 0 ? Math.round(it.amount / it.people) : it.amount)
+
 export default function InvoiceShow({ invoice }: Props) {
     const breadcrumbs = [
         { title: 'Data Penagihan', href: '/admin/invoices' },
@@ -176,7 +180,7 @@ export default function InvoiceShow({ invoice }: Props) {
                                         )}
                                     </td>
                                     <td className="text-center tabular-nums">{it.people}名</td>
-                                    <td className="text-right tabular-nums">{yen(it.unit_price)}</td>
+                                    <td className="text-right tabular-nums">{yen(unitForPeriod(it))}</td>
                                     <td className="text-right font-semibold tabular-nums">{yen(it.amount)}</td>
                                 </tr>
                             ))}

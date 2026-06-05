@@ -26,6 +26,8 @@
         ];
 
         $yen = fn ($n) => number_format((int) $n) . '円';
+        // 単価 = harga per orang untuk seluruh periode (= 金額 ÷ orang), tidak per bulan.
+        $unitForPeriod = fn ($it) => $it->people > 0 ? intdiv((int) $it->amount, (int) $it->people) : (int) $it->amount;
         $title = function ($it) {
             return match ($it->kind) {
                 'travel'        => $it->company_name . ' 渡航費',
@@ -142,7 +144,7 @@
                             @endif
                         </td>
                         <td class="c num">{{ $it->people }}名</td>
-                        <td class="r num">{{ $yen($it->unit_price) }}</td>
+                        <td class="r num">{{ $yen($unitForPeriod($it)) }}</td>
                         <td class="r num">{{ $yen($it->amount) }}</td>
                     </tr>
                 @endforeach

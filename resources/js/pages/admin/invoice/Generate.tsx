@@ -131,7 +131,7 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
                                                 </td>
                                                 <td className="px-6 py-3 text-center">{it.people}</td>
                                                 <td className="px-6 py-3 text-center">{it.kind === 'management' ? `${it.months}ヶ月` : '—'}</td>
-                                                <td className="px-6 py-3 text-right tabular-nums">{yen(it.unit_price)}</td>
+                                                <td className="px-6 py-3 text-right tabular-nums">{yen(it.people > 0 ? Math.round(it.amount / it.people) : it.amount)}</td>
                                                 <td className="px-6 py-3 text-right font-semibold tabular-nums">{yen(it.amount)}</td>
                                             </tr>
                                         ))}
