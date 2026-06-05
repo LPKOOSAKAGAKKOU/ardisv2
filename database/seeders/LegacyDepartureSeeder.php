@@ -151,6 +151,19 @@ class LegacyDepartureSeeder extends Seeder
                     'tbc_history'     => 'tidak',
                     'color_blind'     => 'normal',
                     'has_passport'    => 'tidak',
+
+                    // Field wajib lain (placeholder, bisa diedit manual).
+                    'yunerva_file_password' => '-',
+                    'class_level'           => '-',
+                    'program_expert'        => '-',
+                    'entry_date_lpk'        => '2000-01-01',
+                    'strength'              => '-',
+                    'weakness'              => '-',
+                    'skill_technical'       => '-',
+                    'hobby'                 => '-',
+                    'savings_target'        => '-',
+                    'savings_reason'        => '-',
+                    'student_status'        => 'berangkat',
                 ],
             );
 
