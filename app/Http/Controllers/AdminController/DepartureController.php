@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcceptingOrganization;
 use App\Models\Company;
 use App\Models\Departure;
+use App\Models\Interview;
 use App\Services\BillingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,7 +20,13 @@ class DepartureController extends Controller
     public function index(Request $request)
     {
         $query = Departure::query()
-            ->with(['acceptingOrganization:id,name,pre_education_fee,management_fee', 'company:id,name,name_in_japanese'])
+            ->with([
+                'acceptingOrganization:id,name,pre_education_fee,management_fee',
+                'company:id,name,name_in_japanese',
+                'interview:id',
+                'interview.details:id,interview_id,user_id,result',
+                'interview.details.user:id,name',
+            ])
             ->latest('departure_date');
 
         if ($request->search) {
@@ -50,6 +57,7 @@ class DepartureController extends Controller
                     'travel_cost'         => $d->travel_cost,
                     'status'              => $d->status,
                     'notes'               => $d->notes,
+                    'students'            => $this->studentNames($d),
                     'first_billing_date'  => $summary['first_billing_date']?->toDateString(),
                     'end_date'            => $summary['end_date']?->toDateString(),
                     'total_management_fee' => $summary['total_management_fee'],
@@ -68,6 +76,7 @@ class DepartureController extends Controller
         return Inertia::render('admin/departure/DepartureForm', [
             'organizations' => AcceptingOrganization::orderBy('name')->get(['id', 'name', 'pre_education_fee', 'management_fee']),
             'companies'     => Company::orderBy('name')->get(['id', 'name', 'name_in_japanese']),
+            'interviews'    => $this->interviewOptions(),
         ]);
     }
 
@@ -84,8 +93,13 @@ class DepartureController extends Controller
 
     public function show($id)
     {
-        $departure = Departure::with(['acceptingOrganization:id,name,pre_education_fee,management_fee', 'company:id,name,name_in_japanese'])
-            ->findOrFail($id);
+        $departure = Departure::with([
+            'acceptingOrganization:id,name,pre_education_fee,management_fee',
+            'company:id,name,name_in_japanese',
+            'interview:id,interview_date',
+            'interview.details:id,interview_id,user_id,result',
+            'interview.details.user:id,name',
+        ])->findOrFail($id);
 
         $schedule = collect($this->billing->schedule($departure))->map(fn ($b) => [
             'index'       => $b['index'],
@@ -110,6 +124,8 @@ class DepartureController extends Controller
                 'travel_cost'    => $departure->travel_cost,
                 'status'         => $departure->status,
                 'notes'          => $departure->notes,
+                'interview_id'   => $departure->interview_id,
+                'students'       => $this->studentNames($departure),
             ],
             'schedule' => $schedule,
             'summary'  => [
@@ -131,6 +147,7 @@ class DepartureController extends Controller
             'departure'     => $departure,
             'organizations' => AcceptingOrganization::orderBy('name')->get(['id', 'name', 'pre_education_fee', 'management_fee']),
             'companies'     => Company::orderBy('name')->get(['id', 'name', 'name_in_japanese']),
+            'interviews'    => $this->interviewOptions(),
         ]);
     }
 
@@ -160,6 +177,7 @@ class DepartureController extends Controller
         return $request->validate([
             'accepting_organization_id' => 'required|exists:accepting_organizations,id',
             'company_id'                => 'nullable|exists:companies,id',
+            'interview_id'              => 'nullable|exists:interviews,id',
             'company_name'              => 'required_without:company_id|nullable|string|max:255',
             'departure_date'            => 'required|date',
             'people_count'              => 'required|integer|min:1',
@@ -187,5 +205,35 @@ class DepartureController extends Controller
         $data['travel_cost'] = $data['travel_cost'] ?? 0;
 
         return $data;
+    }
+
+    /**
+     * Daftar nama siswa keberangkatan, diambil dari peserta interview yang lulus.
+     *
+     * @return array<int, string>
+     */
+    private function studentNames(Departure $departure): array
+    {
+        return $departure->interview?->details
+            ->where('result', 'passed')
+            ->map(fn ($detail) => $detail->user?->name)
+            ->filter()
+            ->values()
+            ->all() ?? [];
+    }
+
+    /**
+     * Opsi interview untuk dropdown pada form keberangkatan.
+     */
+    private function interviewOptions()
+    {
+        return Interview::query()
+            ->with('company:id,name,name_in_japanese')
+            ->latest('interview_date')
+            ->get(['id', 'interviewer_title', 'company_id', 'interview_date'])
+            ->map(fn (Interview $i) => [
+                'id'    => $i->id,
+                'label' => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
+            ]);
     }
 }

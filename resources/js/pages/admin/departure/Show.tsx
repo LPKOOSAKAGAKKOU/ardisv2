@@ -23,6 +23,8 @@ interface Props {
         travel_cost: number
         status: string
         notes: string | null
+        interview_id: number | null
+        students: string[]
     }
     schedule: Block[]
     summary: {
@@ -85,6 +87,28 @@ export default function DepartureShow({ departure, schedule, summary }: Props) {
                     <InfoRow label="Biaya Pra-Edukasi (total)" value={yen(summary.pre_education_total)} />
                     <InfoRow label="Management Fee / orang / bln" value={yen(summary.management_unit_price)} />
                     <InfoRow label="Biaya Tiket / 渡航費" value={yen(departure.travel_cost)} />
+                </div>
+
+                <div className="rounded-xl border border-sidebar-border bg-white dark:bg-zinc-950 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">
+                        Siswa ({departure.students.length})
+                    </p>
+                    {departure.students.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {departure.students.map((name, i) => (
+                                <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 dark:bg-sky-900/20 px-3 py-1 text-xs font-medium text-sky-700 dark:text-sky-300"
+                                >
+                                    <Users size={12} /> {name}
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground italic">
+                            Belum ada siswa tertaut. Tautkan wawancara lewat tombol Edit untuk menampilkan daftar siswa.
+                        </p>
+                    )}
                 </div>
 
                 {departure.notes && (

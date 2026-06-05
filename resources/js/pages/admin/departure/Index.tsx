@@ -15,6 +15,7 @@ interface DepartureRow {
     travel_cost: number
     status: 'managing' | 'completed' | 'cancelled'
     notes: string | null
+    students: string[]
     first_billing_date: string | null
     end_date: string | null
     total_management_fee: number
@@ -139,9 +140,13 @@ export default function DepartureIndex({ departures, organizations, filters }: P
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="font-bold text-foreground font-japanese">{d.company_name}</span>
                                                     <span className="text-[11px] text-muted-foreground">{d.organization || '-'}</span>
-                                                    {d.notes && (
+                                                    {d.students?.length > 0 ? (
+                                                        <span className="text-[11px] text-sky-600 dark:text-sky-400 truncate max-w-[240px]">
+                                                            {d.students.join(', ')}
+                                                        </span>
+                                                    ) : d.notes ? (
                                                         <span className="text-[11px] text-muted-foreground truncate max-w-[220px]">{d.notes}</span>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center text-xs">{fmtDate(d.departure_date)}</td>

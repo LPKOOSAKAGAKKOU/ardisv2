@@ -24,7 +24,14 @@ interface Company {
 interface Props {
     companies: {
         data: Company[];
-        links: any[];
+        links: {
+            url: string | null;
+            label: string;
+            active: boolean;
+        }[];
+        current_page: number;
+        total: number;
+        per_page: number;
     };
     filters: { search: string };
 }
@@ -164,6 +171,27 @@ export default function CompanyIndex({ companies, filters }: Props) {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                {/* PAGINATION */}
+                <div className="flex flex-col items-center justify-between gap-4 px-2 md:flex-row">
+                    <p className="text-sm text-muted-foreground">
+                        Menampilkan {companies?.data?.length || 0} dari {companies?.total || 0} perusahaan
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                        {companies?.links?.map((link, i) => (
+                            <Link
+                                key={i}
+                                href={link.url || '#'}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                className={`rounded-md px-3 py-1 text-xs border ${
+                                    link.active
+                                        ? 'bg-black text-white border-black dark:bg-white dark:text-black'
+                                        : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-800 dark:text-neutral-400'
+                                } ${!link.url && 'opacity-50 cursor-not-allowed'}`}
+                            />
+                        ))}
                     </div>
                 </div>
             </div>

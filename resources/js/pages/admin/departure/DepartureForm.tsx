@@ -23,18 +23,26 @@ interface Company {
     name: string
     name_in_japanese: string | null
 }
+interface InterviewOption {
+    id: number
+    label: string
+}
 interface Props {
     departure?: any
     organizations: Org[]
     companies: Company[]
+    interviews: InterviewOption[]
 }
 
-export default function DepartureForm({ departure, organizations, companies }: Props) {
+const NONE = 'none'
+
+export default function DepartureForm({ departure, organizations, companies, interviews }: Props) {
     const isEdit = !!departure
 
     const { data, setData, post, patch, processing, errors } = useForm({
         accepting_organization_id: departure?.accepting_organization_id?.toString() || '',
         company_id: departure?.company_id?.toString() || '',
+        interview_id: departure?.interview_id?.toString() || '',
         company_name: departure?.company_name || '',
         departure_date: departure?.departure_date?.slice(0, 10) || '',
         people_count: departure?.people_count?.toString() || '1',
@@ -122,6 +130,30 @@ export default function DepartureForm({ departure, organizations, companies }: P
                                 className="h-10 font-japanese"
                             />
                             {errors.company_name && <p className="text-xs text-red-500">{errors.company_name}</p>}
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                            <Label>Wawancara Terkait (sumber daftar siswa)</Label>
+                            <Select
+                                value={data.interview_id || NONE}
+                                onValueChange={(v) => setData('interview_id', v === NONE ? '' : v)}
+                            >
+                                <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Pilih wawancara (opsional)" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[320px]">
+                                    <SelectItem value={NONE}>— Tidak ditautkan —</SelectItem>
+                                    {interviews.map((iv) => (
+                                        <SelectItem key={iv.id} value={iv.id.toString()} className="font-japanese">
+                                            {iv.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground">
+                                Siswa peserta wawancara yang lulus akan otomatis terhubung ke keberangkatan ini.
+                            </p>
+                            {errors.interview_id && <p className="text-xs text-red-500">{errors.interview_id}</p>}
                         </div>
 
                         <div className="space-y-2">
