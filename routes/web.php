@@ -15,6 +15,7 @@ use App\Http\Controllers\AdminController\CompanyController;
 use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\AdminController\AdminClassroomController;
 use App\Http\Controllers\AdminController\RecruitmentsController;
+use App\Http\Controllers\AdminController\AdminDashboardController;
 use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
@@ -78,7 +79,7 @@ Route::middleware([
 ->group(function () {
 
     // Dashboard
-    Route::get('dashboard', fn () => Inertia::render('admin/dashboard'))->name('dashboard');
+    Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // --- MANAJEMEN WHATSAPP CHAT (ADMIN DASHBOARD) ---
     Route::prefix('whatsapp')->name('whatsapp.')->group(function () {

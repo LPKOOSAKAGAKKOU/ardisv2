@@ -154,7 +154,7 @@ class InterviewController extends Controller
             ]);
         }
 
-        \App\Models\Interview::create($data);
+        $interview = \App\Models\Interview::create($data);
 
     // --- LOGIKA NOTIFIKASI MASSAL ---
         
@@ -162,7 +162,7 @@ class InterviewController extends Controller
         // - Punya profil (sudah melengkapi biodata)
         // - BELUM PERNAH lulus di wawancara manapun
         $eligibleStudents = \App\Models\User::whereHas('student_profile') 
-            ->whereDoesntHave('interviewDetails', function($query) {
+            ->whereDoesntHave('hasManyInterviewDetails', function($query) {
                 $query->where('result', 'passed');
             })
             ->get();
