@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import Pagination from '@/components/pagination'
 
 interface InvoiceRow {
     id: number
@@ -19,7 +20,7 @@ interface InvoiceRow {
     items_count: number
 }
 interface Props {
-    invoices: { data: InvoiceRow[]; links: any[] }
+    invoices: { data: InvoiceRow[]; links: any[]; from: number; to: number; total: number }
     organizations: { id: number; name: string }[]
     filters: { search?: string; status?: string; organization_id?: string }
 }
@@ -164,21 +165,13 @@ export default function InvoiceIndex({ invoices, organizations, filters }: Props
                     </div>
                 </div>
 
-                {invoices?.links?.length > 3 && (
-                    <div className="flex flex-wrap gap-1 justify-center">
-                        {invoices.links.map((link, i) => (
-                            <button
-                                key={i}
-                                disabled={!link.url}
-                                onClick={() => link.url && router.get(link.url)}
-                                className={`px-3 py-1.5 text-xs rounded-md border ${
-                                    link.active ? 'bg-neutral-900 text-white dark:bg-white dark:text-black' : 'bg-background text-muted-foreground hover:bg-muted disabled:opacity-40'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
-                )}
+                <Pagination
+                    links={invoices?.links}
+                    from={invoices?.from}
+                    to={invoices?.to}
+                    total={invoices?.total}
+                    label="invoice"
+                />
             </div>
         </AppLayout>
     )

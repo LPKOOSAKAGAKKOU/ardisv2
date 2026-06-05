@@ -45,7 +45,7 @@ class StudentController extends Controller
             });
         }
 
-        $students = $query->latest()
+        $students = $query->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
 

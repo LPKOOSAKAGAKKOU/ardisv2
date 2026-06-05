@@ -24,7 +24,7 @@ class CompanyController extends Controller
         }
 
         return Inertia::render('admin/company/Index', [
-            'companies' => $query->latest()->paginate(10)->withQueryString(),
+            'companies' => $query->orderByDesc('id')->paginate(10)->withQueryString(),
             'filters' => $request->only(['search'])
         ]);
     }

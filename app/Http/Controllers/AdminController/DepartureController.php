@@ -28,7 +28,7 @@ class DepartureController extends Controller
                 'interview.details:id,interview_id,user_id,result',
                 'interview.details.user:id,name',
             ])
-            ->latest('departure_date');
+            ->orderByDesc('id');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {

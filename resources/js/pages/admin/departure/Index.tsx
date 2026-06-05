@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import Pagination from '@/components/pagination'
 
 interface DepartureRow {
     id: number
@@ -22,7 +23,7 @@ interface DepartureRow {
 }
 
 interface Props {
-    departures: { data: DepartureRow[]; links: any[] }
+    departures: { data: DepartureRow[]; links: any[]; from: number; to: number; total: number }
     organizations: { id: number; name: string }[]
     filters: { search?: string; status?: string; organization_id?: string }
 }
@@ -198,23 +199,13 @@ export default function DepartureIndex({ departures, organizations, filters }: P
                     </div>
                 </div>
 
-                {departures?.links?.length > 3 && (
-                    <div className="flex flex-wrap gap-1 justify-center">
-                        {departures.links.map((link, i) => (
-                            <button
-                                key={i}
-                                disabled={!link.url}
-                                onClick={() => link.url && router.get(link.url)}
-                                className={`px-3 py-1.5 text-xs rounded-md border ${
-                                    link.active
-                                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-black'
-                                        : 'bg-background text-muted-foreground hover:bg-muted disabled:opacity-40'
-                                }`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
-                        ))}
-                    </div>
-                )}
+                <Pagination
+                    links={departures?.links}
+                    from={departures?.from}
+                    to={departures?.to}
+                    total={departures?.total}
+                    label="keberangkatan"
+                />
             </div>
         </AppLayout>
     )

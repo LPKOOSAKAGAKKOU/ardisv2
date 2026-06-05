@@ -40,7 +40,7 @@ class InterviewController extends Controller
         }
 
         $interviews = $query->withCount('details')
-            ->latest()
+            ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 
