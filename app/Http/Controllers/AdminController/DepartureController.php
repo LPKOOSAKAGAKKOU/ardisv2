@@ -250,11 +250,14 @@ class DepartureController extends Controller
             ->with('company:id,name,name_in_japanese')
             ->withCount(['details as people' => fn ($q) => $q->where('result', 'passed')])
             ->latest('interview_date')
-            ->get(['id', 'interviewer_title', 'company_id', 'interview_date'])
+            ->get(['id', 'interviewer_title', 'company_id', 'accepting_organization_id', 'interview_date'])
             ->map(fn (Interview $i) => [
-                'id'     => $i->id,
-                'label'  => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
-                'people' => $i->people,
+                'id'                        => $i->id,
+                'label'                     => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
+                'people'                    => $i->people,
+                'company_id'                => $i->company_id,
+                'company_name'              => $i->company?->name_in_japanese ?: $i->company?->name,
+                'accepting_organization_id' => $i->accepting_organization_id,
             ]);
     }
 }

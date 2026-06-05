@@ -33,6 +33,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/pagination';
 
 interface Props {
     classrooms: any;
@@ -231,12 +232,14 @@ export default function AdminClassroomIndex({ classrooms, teachers, filters }: P
                         </Table>
                     </div>
                     
-                    {/* Simple Pagination Info */}
-                    <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Menampilkan {classrooms.from} sampai {classrooms.to} dari {classrooms.total} kelas</span>
-                        <div className="flex gap-2">
-                             {/* Anda bisa menambahkan komponen Pagination Shadcn di sini jika perlu */}
-                        </div>
+                    <div className="mt-4">
+                        <Pagination
+                            links={classrooms?.links}
+                            from={classrooms?.from}
+                            to={classrooms?.to}
+                            total={classrooms?.total}
+                            label="kelas"
+                        />
                     </div>
                 </div>
             </div>

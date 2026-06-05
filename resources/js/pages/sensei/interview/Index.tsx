@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/pagination';
 
 interface Interview {
     id: number;
@@ -24,6 +25,9 @@ interface Props {
     interviews: {
         data: Interview[];
         links: any[];
+        from: number | null;
+        to: number | null;
+        total: number;
     };
     filters: { search: string };
 }
@@ -127,6 +131,14 @@ export default function InterviewIndex({ interviews, filters }: Props) {
                         </table>
                     </div>
                 </div>
+
+                <Pagination
+                    links={interviews.links}
+                    from={interviews.from}
+                    to={interviews.to}
+                    total={interviews.total}
+                    label="wawancara"
+                />
             </div>
         </AppLayout>
     );

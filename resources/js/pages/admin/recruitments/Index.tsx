@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm, router } from '@inertiajs/react';
+import Pagination from '@/components/pagination';
 import { Plus, Search, Trash2, Edit, Calendar, ClipboardList, CheckCircle2, Eye } from 'lucide-react';
 import { useState } from 'react';
 
@@ -211,6 +212,16 @@ export default function RecruitmentIndex({ recruitments, filters }: Props) {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    <div className="mt-4">
+                        <Pagination
+                            links={recruitments?.links}
+                            from={recruitments?.from}
+                            to={recruitments?.to}
+                            total={recruitments?.total}
+                            label="rekrutmen"
+                        />
                     </div>
                 </div>
             </div>

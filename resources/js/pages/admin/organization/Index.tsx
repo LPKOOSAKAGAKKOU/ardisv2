@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/pagination';
 
 export default function OrganizationIndex({ organizations, filters }: any) {
     const [search, setSearch] = useState(filters?.search || '');
@@ -136,6 +137,14 @@ export default function OrganizationIndex({ organizations, filters }: any) {
                         </table>
                     </div>
                 </div>
+
+                <Pagination
+                    links={organizations?.links}
+                    from={organizations?.from}
+                    to={organizations?.to}
+                    total={organizations?.total}
+                    label="organisasi"
+                />
             </div>
         </AppLayout>
     );

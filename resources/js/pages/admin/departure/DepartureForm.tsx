@@ -27,6 +27,9 @@ interface InterviewOption {
     id: number
     label: string
     people: number
+    company_id: number | null
+    company_name: string | null
+    accepting_organization_id: number | null
 }
 interface Props {
     departure?: any
@@ -37,7 +40,7 @@ interface Props {
 
 const NONE = 'none'
 
-export default function DepartureForm({ departure, organizations, companies, interviews }: Props) {
+export default function DepartureForm({ departure, organizations, interviews }: Props) {
     const isEdit = !!departure
 
     const { data, setData, post, patch, processing, errors } = useForm({
@@ -57,6 +60,25 @@ export default function DepartureForm({ departure, organizations, companies, int
     const selectedInterview = interviews.find((iv) => iv.id.toString() === data.interview_id)
     const peopleCount = selectedInterview ? selectedInterview.people : departure?.people_count ?? 1
 
+    // Hanya wawancara milik kumiai (organisasi) yang dipilih.
+    const orgInterviews = interviews.filter(
+        (iv) => iv.accepting_organization_id?.toString() === data.accepting_organization_id,
+    )
+
+    // Perusahaan yang punya koneksi dengan kumiai tsb (muncul di daftar wawancara), unik.
+    const availableCompanies = Array.from(
+        new Map(
+            orgInterviews
+                .filter((iv) => iv.company_id != null)
+                .map((iv) => [iv.company_id, { id: iv.company_id as number, name: iv.company_name || '-' }]),
+        ).values(),
+    )
+
+    // Wawancara yang ditampilkan: difilter lagi ke perusahaan terpilih (jika ada).
+    const availableInterviews = orgInterviews.filter(
+        (iv) => !data.company_id || iv.company_id?.toString() === data.company_id,
+    )
+
     const breadcrumbs = [
         { title: 'Data Keberangkatan', href: '/admin/departures' },
         { title: isEdit ? 'Edit' : 'Tambah', href: '#' },
@@ -67,10 +89,14 @@ export default function DepartureForm({ departure, organizations, companies, int
         isEdit ? patch(`/admin/departures/${departure.id}`) : post('/admin/departures')
     }
 
+    // Ganti kumiai → reset perusahaan & wawancara agar tidak campur.
+    const onPickOrg = (v: string) => {
+        setData({ ...data, accepting_organization_id: v, company_id: '', company_name: '', interview_id: '' })
+    }
+
     const onPickCompany = (id: string) => {
-        setData('company_id', id)
-        const c = companies.find((x) => x.id.toString() === id)
-        if (c) setData('company_name', c.name_in_japanese || c.name)
+        const c = availableCompanies.find((x) => x.id.toString() === id)
+        setData({ ...data, company_id: id, company_name: c?.name || data.company_name, interview_id: '' })
     }
 
     const Label = ({ children }: { children: React.ReactNode }) => (
@@ -95,8 +121,8 @@ export default function DepartureForm({ departure, organizations, companies, int
                 <form onSubmit={handleSubmit} className="space-y-8 bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-sidebar-border shadow-sm">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label>Organisasi Penerima</Label>
-                            <Select value={data.accepting_organization_id} onValueChange={(v) => setData('accepting_organization_id', v)}>
+                            <Label>Organisasi Penerima (Kumiai)</Label>
+                            <Select value={data.accepting_organization_id} onValueChange={onPickOrg}>
                                 <SelectTrigger className="h-11">
                                     <SelectValue placeholder="Pilih organisasi" />
                                 </SelectTrigger>
@@ -113,16 +139,22 @@ export default function DepartureForm({ departure, organizations, companies, int
 
                         <div className="space-y-2">
                             <Label>Perusahaan Penerima (実習実施者)</Label>
-                            <Select value={data.company_id} onValueChange={onPickCompany}>
+                            <Select value={data.company_id} onValueChange={onPickCompany} disabled={!data.accepting_organization_id}>
                                 <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Pilih perusahaan" />
+                                    <SelectValue placeholder={data.accepting_organization_id ? 'Pilih perusahaan' : 'Pilih kumiai dulu'} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[320px]">
-                                    {companies.map((c) => (
-                                        <SelectItem key={c.id} value={c.id.toString()} className="font-japanese">
-                                            {c.name_in_japanese || c.name}
-                                        </SelectItem>
-                                    ))}
+                                    {availableCompanies.length > 0 ? (
+                                        availableCompanies.map((c) => (
+                                            <SelectItem key={c.id} value={c.id.toString()} className="font-japanese">
+                                                {c.name}
+                                            </SelectItem>
+                                        ))
+                                    ) : (
+                                        <div className="px-2 py-2 text-xs text-muted-foreground">
+                                            Belum ada perusahaan dengan wawancara di kumiai ini.
+                                        </div>
+                                    )}
                                 </SelectContent>
                             </Select>
                             <Input
@@ -139,21 +171,23 @@ export default function DepartureForm({ departure, organizations, companies, int
                             <Select
                                 value={data.interview_id || NONE}
                                 onValueChange={(v) => setData('interview_id', v === NONE ? '' : v)}
+                                disabled={!data.accepting_organization_id}
                             >
                                 <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Pilih wawancara (opsional)" />
+                                    <SelectValue placeholder={data.accepting_organization_id ? 'Pilih wawancara (opsional)' : 'Pilih kumiai dulu'} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[320px]">
                                     <SelectItem value={NONE}>— Tidak ditautkan —</SelectItem>
-                                    {interviews.map((iv) => (
+                                    {availableInterviews.map((iv) => (
                                         <SelectItem key={iv.id} value={iv.id.toString()} className="font-japanese">
-                                            {iv.label}
+                                            {iv.label} ({iv.people} siswa)
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <p className="text-[11px] text-muted-foreground">
-                                Siswa peserta wawancara yang lulus akan otomatis terhubung ke keberangkatan ini.
+                                Hanya wawancara milik kumiai
+                                {data.company_id ? ' & perusahaan' : ''} terpilih yang muncul. Siswa peserta wawancara yang lulus otomatis terhubung ke keberangkatan ini.
                             </p>
                             {errors.interview_id && <p className="text-xs text-red-500">{errors.interview_id}</p>}
                         </div>
