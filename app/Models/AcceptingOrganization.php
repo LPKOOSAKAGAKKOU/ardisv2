@@ -16,6 +16,8 @@ class AcceptingOrganization extends Model
         'phone',
         'email',
         'pic_name',
+        'pre_education_fee',
+        'management_fee',
         'training_center_name',
         'training_center_address',
         'training_center_phone',
@@ -40,13 +42,31 @@ class AcceptingOrganization extends Model
         'student_pays_meal'           => 'boolean',
         'accommodation_allowance'     => 'boolean',
         'student_pays_accommodation'  => 'boolean',
+        'pre_education_fee'           => 'integer',
+        'management_fee'              => 'integer',
     ];
-    
+
     /**
      * Relasi ke Interview
      */
     public function interviews(): HasMany
     {
         return $this->hasMany(Interview::class);
+    }
+
+    /**
+     * Relasi ke Keberangkatan
+     */
+    public function departures(): HasMany
+    {
+        return $this->hasMany(Departure::class);
+    }
+
+    /**
+     * Relasi ke Invoice / Penagihan
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
     }
 }

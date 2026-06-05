@@ -16,6 +16,8 @@ use App\Http\Controllers\AdminController\TeacherController;
 use App\Http\Controllers\AdminController\AdminClassroomController;
 use App\Http\Controllers\AdminController\RecruitmentsController;
 use App\Http\Controllers\AdminController\AdminDashboardController;
+use App\Http\Controllers\AdminController\DepartureController;
+use App\Http\Controllers\AdminController\InvoiceController;
 use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
 use App\Http\Controllers\SenseiController\SenseiStudentController;
@@ -137,6 +139,14 @@ Route::middleware([
     Route::resource('organizations', AcceptingOrganizationController::class);
     // --- MANAJEMEN PERUSAHAAN ---
     Route::resource('companies', CompanyController::class);
+
+    // --- MANAJEMEN KEBERANGKATAN ---
+    Route::resource('departures', DepartureController::class);
+
+    // --- MANAJEMEN PENAGIHAN (INVOICE) ---
+    Route::patch('/invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
+    Route::patch('/invoices/{id}/mark-unpaid', [InvoiceController::class, 'markUnpaid'])->name('invoices.mark-unpaid');
+    Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
 
     // Resource Classrooms
     Route::resource('classrooms', AdminClassroomController::class);

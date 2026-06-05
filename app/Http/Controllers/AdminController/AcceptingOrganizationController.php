@@ -40,13 +40,15 @@ class AcceptingOrganizationController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'pic_name' => 'nullable|string|max:255',
+            'pre_education_fee' => 'nullable|integer|min:0',
+            'management_fee' => 'nullable|integer|min:0',
             'training_center_name' => 'nullable|string|max:255',
             'training_center_address' => 'nullable|string|max:255',
             'training_center_phone' => 'nullable|string|max:20',
             'training_center_area' => 'nullable|string|max:255',
             'training_center_capacity' => 'nullable|string|max:255',
             'training_center_type' => 'nullable|in:asrama,kos,lainnya',
-            
+
             'allowance_in_first_month' => 'nullable|boolean',
             'allowance_amount' => 'nullable|string|max:255',
 
@@ -87,13 +89,15 @@ class AcceptingOrganizationController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'pic_name' => 'nullable|string|max:255',
+            'pre_education_fee' => 'nullable|integer|min:0',
+            'management_fee' => 'nullable|integer|min:0',
             'training_center_name' => 'nullable|string|max:255',
             'training_center_address' => 'nullable|string|max:255',
             'training_center_phone' => 'nullable|string|max:20',
             'training_center_area' => 'nullable|string|max:255',
             'training_center_capacity' => 'nullable|string|max:255',
             'training_center_type' => 'nullable|in:asrama,kos,lainnya',
-            
+
             'allowance_in_first_month' => 'required|boolean',
             'allowance_amount' => 'nullable|string|max:255',
 

@@ -28,4 +28,12 @@ class Company extends Model
     {
         return $this->hasMany(Interview::class);
     }
+
+    /**
+     * Relasi ke Keberangkatan.
+     */
+    public function departures(): HasMany
+    {
+        return $this->hasMany(Departure::class);
+    }
 }

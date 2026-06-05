@@ -33,6 +33,9 @@ export default function OrganizationForm({ organization }: Props) {
         phone: organization?.phone || '',
         email: organization?.email || '',
         pic_name: organization?.pic_name || '',
+        // Tarif penagihan default (yen)
+        pre_education_fee: organization?.pre_education_fee?.toString() ?? '15000',
+        management_fee: organization?.management_fee?.toString() ?? '5000',
         // Training Center Detail
         training_center_name: organization?.training_center_name || '',
         training_center_address: organization?.training_center_address || '',
@@ -146,6 +149,29 @@ export default function OrganizationForm({ organization }: Props) {
                             <div className="space-y-2">
                                 <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider font-japanese text-indigo-500">日本語の住所 (Alamat Jepang)</label>
                                 <Textarea value={data.address_in_japanese} onChange={e => setData('address_in_japanese', e.target.value)} placeholder="住所を記入してください..." rows={3} className="font-japanese" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 1B: TARIF PENAGIHAN */}
+                    <div className="bg-white dark:bg-zinc-950 p-6 lg:p-8 rounded-3xl border shadow-sm space-y-6">
+                        <div className="flex items-center gap-2 text-violet-600 font-bold border-b pb-4 mb-2">
+                            <Info size={18} />
+                            <span className="uppercase tracking-widest text-xs">Tarif Penagihan (Default)</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground -mt-2">
+                            Dipakai sebagai dasar perhitungan invoice management fee. Bisa di-override per keberangkatan.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Biaya Pra-Edukasi (¥ / orang)</label>
+                                <Input type="number" min={0} value={data.pre_education_fee} onChange={e => setData('pre_education_fee', e.target.value)} placeholder="15000" className="h-12" />
+                                {errors.pre_education_fee && <p className="text-xs text-red-500">{errors.pre_education_fee}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Management Fee (¥ / orang / bulan)</label>
+                                <Input type="number" min={0} value={data.management_fee} onChange={e => setData('management_fee', e.target.value)} placeholder="5000" className="h-12" />
+                                {errors.management_fee && <p className="text-xs text-red-500">{errors.management_fee}</p>}
                             </div>
                         </div>
                     </div>
