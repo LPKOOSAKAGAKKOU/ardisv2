@@ -253,6 +253,11 @@ class GinouJisshuuDocumentController extends Controller
         $dt = $interview->interview_date ? Carbon::parse($interview->interview_date)->addDay() : now();
         $template = new TemplateProcessor($templatePath);
 
+        // Helper bulan Indonesia & romawi untuk dokumen surat (mis. form 1-23 req)
+        $bulanIndo = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
+        $bulanRomawi = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'];
+        $flyDate = $interview->date_fly_to_japan ? Carbon::parse($interview->date_fly_to_japan) : null;
+
         // --- DATA HEADER ---
         $template->setValues([
             'interview_title' => strtoupper($interview->interviewer_title),
@@ -271,6 +276,11 @@ class GinouJisshuuDocumentController extends Controller
             'doc_y'           => $dt->format('Y'),
             'doc_m'           => $dt->format('m'),
             'doc_d'           => $dt->format('d'),
+            'doc_bulan_id'     => $bulanIndo[(int) $dt->format('n')],
+            'doc_bulan_romawi' => $bulanRomawi[(int) $dt->format('n')],
+            'perusahaan_alamat' => $interview->company->address ?? '-',
+            'total_lulus_terbilang' => trim(preg_replace('/\s+/', ' ', $this->terbilang($interview->details->count()))),
+            'bulan_tahun_keberangkatan' => $flyDate ? ($bulanIndo[(int) $flyDate->format('n')] . ' ' . $flyDate->format('Y')) : '-',
 
             '1_34_training_item'           => $interview->{"1_34_training_item"} ?? '-',
             '1_34_training_start_date'     => $interview->{"1_34_training_start_date"} ? Carbon::parse($interview->{"1_34_training_start_date"})->format('Y年m月d日') : '-',
@@ -343,6 +353,33 @@ class GinouJisshuuDocumentController extends Controller
         return response()->streamDownload(function () use ($template) {
             $template->saveAs('php://output');
         }, $outputName);
+    }
+
+    /**
+     * Konversi angka ke terbilang Bahasa Indonesia (untuk dokumen surat)
+     */
+    private function terbilang($angka)
+    {
+        $angka = (int) $angka;
+        $kata = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+
+        if ($angka < 12) {
+            return $kata[$angka];
+        } elseif ($angka < 20) {
+            return $this->terbilang($angka - 10) . ' belas';
+        } elseif ($angka < 100) {
+            return $this->terbilang(intdiv($angka, 10)) . ' puluh ' . $this->terbilang($angka % 10);
+        } elseif ($angka < 200) {
+            return 'seratus ' . $this->terbilang($angka - 100);
+        } elseif ($angka < 1000) {
+            return $this->terbilang(intdiv($angka, 100)) . ' ratus ' . $this->terbilang($angka % 100);
+        } elseif ($angka < 2000) {
+            return 'seribu ' . $this->terbilang($angka - 1000);
+        } elseif ($angka < 1000000) {
+            return $this->terbilang(intdiv($angka, 1000)) . ' ribu ' . $this->terbilang($angka % 1000);
+        }
+
+        return (string) $angka;
     }
 
     /**
