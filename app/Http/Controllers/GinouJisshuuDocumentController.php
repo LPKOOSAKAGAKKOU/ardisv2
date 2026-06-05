@@ -260,7 +260,8 @@ class GinouJisshuuDocumentController extends Controller
 
         // --- DATA HEADER ---
         $template->setValues([
-            'interview_title' => strtoupper($interview->interviewer_title),
+            'interview_title'       => strtoupper($interview->interviewer_title),
+            'id_interview'          => $interview->id,
             'perusahaan_nama'      => $interview->company->name ?? '-',
             'perusahaan_nama_jp'   => $interview->company->name_in_japanese ?? '-',
             'perusahaan_alamat_jp' => $interview->company->address_in_japanese ?? '-',
