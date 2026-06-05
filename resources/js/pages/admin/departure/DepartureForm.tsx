@@ -157,12 +157,7 @@ export default function DepartureForm({ departure, organizations, interviews }: 
                                     )}
                                 </SelectContent>
                             </Select>
-                            <Input
-                                value={data.company_name}
-                                onChange={(e) => setData('company_name', e.target.value)}
-                                placeholder="atau ketik nama perusahaan manual"
-                                className="h-10 font-japanese"
-                            />
+                            {errors.company_id && <p className="text-xs text-red-500">{errors.company_id}</p>}
                             {errors.company_name && <p className="text-xs text-red-500">{errors.company_name}</p>}
                         </div>
 
