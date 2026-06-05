@@ -365,8 +365,15 @@ function ChatWindow({
     );
 }
 
+// Simpan preferensi buka/tutup sidebar (mode desktop) agar konsisten antar halaman.
+const DESKTOP_OPEN_KEY = 'wa_sidebar_desktop_open';
+const getStoredDesktopOpen = () => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem(DESKTOP_OPEN_KEY) !== '0'; // default: terbuka
+};
+
 export default function WhatsAppWidget() {
-    const { auth } = usePage().props as any; 
+    const { auth } = usePage().props as any;
     const userRole = auth?.user?.role || 'admin'; 
     const basePath = `/${userRole}/whatsapp`; 
     const baseGowaUrl = 'https://gowa-iynqg2oa4rc5.waha.web.id';
@@ -376,7 +383,19 @@ export default function WhatsAppWidget() {
         typeof window !== 'undefined' ? window.innerWidth < 1024 : false
     );
 
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.innerWidth < 1024 ? false : getStoredDesktopOpen();
+    });
+
+    // Set status buka/tutup + simpan preferensi saat di mode desktop.
+    const updateOpen = (value: boolean) => {
+        setIsOpen(value);
+        if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+            localStorage.setItem(DESKTOP_OPEN_KEY, value ? '1' : '0');
+        }
+    };
+
     const [viewMode, setViewMode] = useState<'list' | 'chat' | 'new_chat'>('list');
     
     const [chatList, setChatList] = useState<ChatItem[]>([]);
@@ -413,7 +432,8 @@ export default function WhatsAppWidget() {
             const mobile = window.innerWidth < 1024;
             setIsMobile(mobile);
             if (!mobile) {
-                setIsOpen(true);
+                // Hormati preferensi terakhir, jangan paksa buka tiap mount/resize.
+                setIsOpen(getStoredDesktopOpen());
             }
         };
 
@@ -712,8 +732,8 @@ export default function WhatsAppWidget() {
                 )}
 
                 {/* TOMBOL TOGGLE DESKTOP — di luar sidebar agar selalu visible */}
-                <button 
-                    onClick={() => setIsOpen(!isOpen)} 
+                <button
+                    onClick={() => updateOpen(!isOpen)}
                     className={`fixed z-[1001] hidden lg:flex items-center justify-center bg-slate-300 hover:bg-slate-400 text-slate-600 shadow-lg transition-all duration-300 pointer-events-auto top-1/2 -translate-y-1/2 w-5 h-12 rounded-l-lg
                         ${isOpen ? 'right-[380px]' : 'right-0'}`}
                 >
@@ -752,7 +772,7 @@ export default function WhatsAppWidget() {
                                 } else if (viewMode === 'new_chat') {
                                     setViewMode('list');
                                 } else {
-                                    setIsOpen(false);
+                                    updateOpen(false);
                                 }
                             }} 
                             className="hover:bg-accent p-1 rounded-md transition-colors"
