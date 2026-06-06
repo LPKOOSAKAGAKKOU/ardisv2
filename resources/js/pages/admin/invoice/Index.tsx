@@ -11,6 +11,7 @@ interface InvoiceRow {
     id: number
     invoice_number: string
     organization: string | null
+    bill_to: 'organization' | 'company'
     issue_date: string | null
     period_from: string | null
     period_to: string | null
@@ -122,7 +123,12 @@ export default function InvoiceIndex({ invoices, organizations, filters }: Props
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="font-bold tabular-nums">{inv.invoice_number}</span>
-                                                    <span className="text-[11px] text-muted-foreground">{inv.organization || '-'}</span>
+                                                    <span className="text-[11px] text-muted-foreground font-japanese flex items-center gap-1.5">
+                                                        {inv.organization || '-'}
+                                                        {inv.bill_to === 'company' && (
+                                                            <span className="rounded bg-violet-100 dark:bg-violet-900/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">TG · Perusahaan</span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-xs">{fmtMonth(inv.period_from)}</td>

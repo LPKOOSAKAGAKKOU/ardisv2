@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>請求書 {{ $invoice->invoice_number }}</title>
     @php
-        $org = $invoice->acceptingOrganization;
-        $orgName = $org?->name_in_japanese ?: $org?->name;
+        $orgName = $recipientName ?? ($invoice->acceptingOrganization?->name_in_japanese ?: $invoice->acceptingOrganization?->name);
 
         $issuer = [
             'heading' => '日本語教育センター及び送り出し機関',
@@ -32,6 +31,8 @@
             return match ($it->kind) {
                 'travel'        => $it->company_name . ' 渡航費',
                 'pre_education' => $it->company_name . ' 事前教育費',
+                'shoukairyou'   => $it->company_name . ' 紹介料',
+                'other'         => $it->company_name . ' ' . ($it->description ?: 'その他費用'),
                 default         => $it->company_name . ' ' . $it->people . '人',
             };
         };
@@ -136,7 +137,7 @@
                         <td class="c num">{{ $i + 1 }}</td>
                         <td>
                             <div class="item-title">{{ $title($it) }}</div>
-                            @if ($it->kind === 'management' && $it->description)
+                            @if ($it->description && $it->kind !== 'other')
                                 <div class="item-sub">{{ $it->description }}</div>
                             @endif
                             @if (!empty($it->students))

@@ -47,14 +47,18 @@ export default function DepartureForm({ departure, organizations, interviews }: 
         accepting_organization_id: departure?.accepting_organization_id?.toString() || '',
         company_id: departure?.company_id?.toString() || '',
         interview_id: departure?.interview_id?.toString() || '',
+        program_type: departure?.program_type || 'ginou_jisshuu',
         company_name: departure?.company_name || '',
         departure_date: departure?.departure_date?.slice(0, 10) || '',
         travel_cost: departure?.travel_cost?.toString() || '0',
         pre_education_fee: departure?.pre_education_fee?.toString() || '',
+        shoukairyou_fee: departure?.shoukairyou_fee?.toString() || '',
         management_fee: departure?.management_fee?.toString() || '',
         notes: departure?.notes || '',
         status: departure?.status || 'managing',
     })
+
+    const isTG = data.program_type === 'tokutei_ginou'
 
     const selectedOrg = organizations.find((o) => o.id.toString() === data.accepting_organization_id)
     const selectedInterview = interviews.find((iv) => iv.id.toString() === data.interview_id)
@@ -119,6 +123,30 @@ export default function DepartureForm({ departure, organizations, interviews }: 
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8 bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-sidebar-border shadow-sm">
+                    {/* Jenis program menentukan skema penagihan */}
+                    <div className="space-y-2">
+                        <Label>Tipe Program</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setData('program_type', 'ginou_jisshuu')}
+                                className={`rounded-xl border p-4 text-left transition-colors ${!isTG ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
+                            >
+                                <p className="font-semibold text-sm">技能実習 / Ginou Jisshuu</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">Magang. Penagihan management fee otomatis (siklus 3 bulan).</p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setData('program_type', 'tokutei_ginou')}
+                                className={`rounded-xl border p-4 text-left transition-colors ${isTG ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
+                            >
+                                <p className="font-semibold text-sm">特定技能 / Tokutei Ginou (TG)</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">Hanya 渡航費 + 紹介料. Cicilan diatur manual di halaman detail.</p>
+                            </button>
+                        </div>
+                        {errors.program_type && <p className="text-xs text-red-500">{errors.program_type}</p>}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label>Organisasi Penerima (Kumiai)</Label>
@@ -225,37 +253,60 @@ export default function DepartureForm({ departure, organizations, interviews }: 
 
                     <hr className="border-sidebar-border" />
 
-                    <div>
-                        <p className="text-sm font-semibold mb-1">Override Tarif (opsional)</p>
-                        <p className="text-xs text-muted-foreground mb-4">
-                            Kosongkan untuk memakai tarif default organisasi
-                            {selectedOrg ? ` (pra-edukasi ¥${selectedOrg.pre_education_fee.toLocaleString('ja-JP')} / kelola ¥${selectedOrg.management_fee.toLocaleString('ja-JP')}/bln)` : ''}.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label>Biaya Pra-Edukasi (¥ / orang)</Label>
-                                <Input
-                                    type="number"
-                                    min={0}
-                                    value={data.pre_education_fee}
-                                    onChange={(e) => setData('pre_education_fee', e.target.value)}
-                                    placeholder={selectedOrg ? selectedOrg.pre_education_fee.toString() : '15000'}
-                                    className="h-11"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Management Fee (¥ / orang / bln)</Label>
-                                <Input
-                                    type="number"
-                                    min={0}
-                                    value={data.management_fee}
-                                    onChange={(e) => setData('management_fee', e.target.value)}
-                                    placeholder={selectedOrg ? selectedOrg.management_fee.toString() : '5000'}
-                                    className="h-11"
-                                />
+                    {isTG ? (
+                        <div>
+                            <p className="text-sm font-semibold mb-1">Biaya TG</p>
+                            <p className="text-xs text-muted-foreground mb-4">
+                                紹介料 (biaya pengenalan tenaga kerja) per orang dipakai sebagai dasar preset cicilan di halaman detail keberangkatan. Biaya tiket diisi di atas (渡航費).
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>紹介料 / Shoukairyou (¥ / orang)</Label>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={data.shoukairyou_fee}
+                                        onChange={(e) => setData('shoukairyou_fee', e.target.value)}
+                                        placeholder="contoh: 200000"
+                                        className="h-11"
+                                    />
+                                    {errors.shoukairyou_fee && <p className="text-xs text-red-500">{errors.shoukairyou_fee}</p>}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div>
+                            <p className="text-sm font-semibold mb-1">Override Tarif (opsional)</p>
+                            <p className="text-xs text-muted-foreground mb-4">
+                                Kosongkan untuk memakai tarif default organisasi
+                                {selectedOrg ? ` (pra-edukasi ¥${selectedOrg.pre_education_fee.toLocaleString('ja-JP')} / kelola ¥${selectedOrg.management_fee.toLocaleString('ja-JP')}/bln)` : ''}.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label>Biaya Pra-Edukasi (¥ / orang)</Label>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={data.pre_education_fee}
+                                        onChange={(e) => setData('pre_education_fee', e.target.value)}
+                                        placeholder={selectedOrg ? selectedOrg.pre_education_fee.toString() : '15000'}
+                                        className="h-11"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Management Fee (¥ / orang / bln)</Label>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        value={data.management_fee}
+                                        onChange={(e) => setData('management_fee', e.target.value)}
+                                        placeholder={selectedOrg ? selectedOrg.management_fee.toString() : '5000'}
+                                        className="h-11"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label>Catatan / Nama Intern (備考)</Label>

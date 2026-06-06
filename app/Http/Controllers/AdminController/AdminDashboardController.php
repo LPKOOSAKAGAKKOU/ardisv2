@@ -95,7 +95,9 @@ class AdminDashboardController extends Controller
         // 3, 4 & 5 — Keberangkatan, selesai training center, dan penagihan.
         $departures = Departure::with([
                 'acceptingOrganization:id,name,pre_education_fee,management_fee',
+                'company:id,name,name_in_japanese',
                 'interview.details.user:id,name',
+                'billings',
             ])
             ->whereNotNull('departure_date')
             ->where('status', '!=', 'cancelled')
@@ -130,6 +132,38 @@ class AdminDashboardController extends Controller
                 'detail'   => 'Selesai pelatihan training center',
                 'url'      => "/admin/departures/{$d->id}",
             ];
+
+            // 5-TG — Penagihan TG memakai cicilan manual (渡航費 / 紹介料), bukan rumus.
+            if ($d->status === 'managing' && $d->isTokuteiGinou()) {
+                foreach ($d->billings as $billing) {
+                    if (! $billing->due_date) {
+                        continue;
+                    }
+
+                    $recipient = $billing->bill_to === 'company'
+                        ? ($d->company?->name_in_japanese ?: $d->company?->name ?: $company)
+                        : $org;
+
+                    $url = $billing->bill_to === 'company'
+                        ? "/admin/invoices/create?recipient_type=company&recipient_id={$d->company_id}&month={$billing->due_date->format('Y-m')}"
+                        : "/admin/invoices/create?recipient_type=organization&recipient_id={$d->accepting_organization_id}&month={$billing->due_date->format('Y-m')}";
+
+                    $events[] = [
+                        'date'     => $billing->due_date->toDateString(),
+                        'type'     => 'billing',
+                        'title'    => $company,
+                        'subtitle' => $recipient,
+                        'detail'   => ($billing->description ?: $this->billing->installmentLabel($billing->kind))
+                            . ' (' . ($billing->bill_to === 'company' ? 'ke perusahaan' : 'ke kumiai') . ')',
+                        'people'   => max(1, (int) $billing->people),
+                        'amount'   => (int) $billing->amount,
+                        'students' => $students,
+                        'url'      => $url,
+                    ];
+                }
+
+                continue;
+            }
 
             // 5a — Penagihan satu kali (渡航費 & 事前教育費) di tanggal keberangkatan.
             if ($d->status === 'managing') {

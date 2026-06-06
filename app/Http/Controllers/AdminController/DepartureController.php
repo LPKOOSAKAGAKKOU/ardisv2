@@ -132,6 +132,7 @@ class DepartureController extends Controller
             'interview:id,interview_date',
             'interview.details:id,interview_id,user_id,result',
             'interview.details.user:id,name',
+            'billings',
         ])->findOrFail($id);
 
         $schedule = collect($this->billing->schedule($departure))->map(fn ($b) => [
@@ -149,16 +150,19 @@ class DepartureController extends Controller
 
         return Inertia::render('admin/departure/Show', [
             'departure' => [
-                'id'             => $departure->id,
-                'company_name'   => $departure->company_name,
-                'organization'   => $departure->acceptingOrganization?->name,
-                'departure_date' => $departure->departure_date?->toDateString(),
-                'people_count'   => $departure->people_count,
-                'travel_cost'    => $departure->travel_cost,
-                'status'         => $departure->status,
-                'notes'          => $departure->notes,
-                'interview_id'   => $departure->interview_id,
-                'students'       => $this->studentNames($departure),
+                'id'              => $departure->id,
+                'company_name'    => $departure->company_name,
+                'company_id'      => $departure->company_id,
+                'organization'    => $departure->acceptingOrganization?->name,
+                'program_type'    => $departure->program_type,
+                'departure_date'  => $departure->departure_date?->toDateString(),
+                'people_count'    => $departure->people_count,
+                'travel_cost'     => $departure->travel_cost,
+                'shoukairyou_fee' => $departure->shoukairyou_fee,
+                'status'          => $departure->status,
+                'notes'           => $departure->notes,
+                'interview_id'    => $departure->interview_id,
+                'students'        => $this->studentNames($departure),
             ],
             'schedule' => $schedule,
             'summary'  => [
@@ -169,7 +173,59 @@ class DepartureController extends Controller
                 'total_management_fee'  => $summary['total_management_fee'],
                 'total_billings'        => $summary['total_billings'],
             ],
+            // Cicilan manual TG (渡航費 / 紹介料), beserta opsi penerima penagihan.
+            'billings'   => $departure->billings
+                ->sortBy('due_date')
+                ->map(fn ($b) => [
+                    'id'          => $b->id,
+                    'kind'        => $b->kind,
+                    'description' => $b->description,
+                    'due_date'    => $b->due_date?->toDateString(),
+                    'people'      => $b->people,
+                    'unit_price'  => $b->unit_price,
+                    'amount'      => $b->amount,
+                    'bill_to'     => $b->bill_to,
+                ])->values(),
+            'recipients' => [
+                'organization' => $departure->acceptingOrganization?->name,
+                'company'      => $departure->company?->name_in_japanese ?: $departure->company?->name ?: $departure->company_name,
+            ],
         ]);
+    }
+
+    /**
+     * Simpan ulang (replace) seluruh cicilan manual TG untuk satu keberangkatan.
+     * Frontend mengirim daftar baris hasil preset/edit; kita ganti total.
+     */
+    public function saveBillings(Request $request, $id)
+    {
+        $departure = Departure::findOrFail($id);
+
+        $validated = $request->validate([
+            'billings'               => 'present|array',
+            'billings.*.kind'        => 'required|in:travel,shoukairyou,other',
+            'billings.*.description' => 'nullable|string|max:255',
+            'billings.*.due_date'    => 'required|date',
+            'billings.*.people'      => 'required|integer|min:1',
+            'billings.*.unit_price'  => 'required|integer|min:0',
+            'billings.*.bill_to'     => 'required|in:organization,company',
+        ]);
+
+        $departure->billings()->delete();
+
+        foreach ($validated['billings'] as $row) {
+            $departure->billings()->create([
+                'kind'        => $row['kind'],
+                'description' => $row['description'] ?? null,
+                'due_date'    => $row['due_date'],
+                'people'      => $row['people'],
+                'unit_price'  => $row['unit_price'],
+                'amount'      => (int) $row['people'] * (int) $row['unit_price'],
+                'bill_to'     => $row['bill_to'],
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Cicilan penagihan berhasil disimpan.');
     }
 
     public function edit($id)
@@ -212,10 +268,12 @@ class DepartureController extends Controller
             'accepting_organization_id' => 'required|exists:accepting_organizations,id',
             'company_id'                => 'nullable|exists:companies,id',
             'interview_id'              => 'nullable|exists:interviews,id',
+            'program_type'              => 'required|in:ginou_jisshuu,tokutei_ginou',
             'company_name'              => 'required_without:company_id|nullable|string|max:255',
             'departure_date'            => 'required|date',
             'travel_cost'               => 'nullable|integer|min:0',
             'pre_education_fee'         => 'nullable|integer|min:0',
+            'shoukairyou_fee'           => 'nullable|integer|min:0',
             'management_fee'            => 'nullable|integer|min:0',
             'notes'                     => 'nullable|string',
             'status'                    => 'required|in:managing,completed,cancelled',

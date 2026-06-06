@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 
 interface Item {
     id: number
-    kind: 'management' | 'travel' | 'pre_education'
+    kind: 'management' | 'travel' | 'pre_education' | 'shoukairyou' | 'other'
     company_name: string
     description: string | null
     students: string[]
@@ -26,6 +26,8 @@ interface Props {
         status: 'draft' | 'issued' | 'paid'
         paid_at: string | null
         notes: string | null
+        bill_to: 'organization' | 'company'
+        recipient_name: string
         organization: any
         items: Item[]
     }
@@ -67,6 +69,8 @@ const statusMap: Record<string, { label: string; cls: string }> = {
 const itemTitle = (it: Item) => {
     if (it.kind === 'travel') return `${it.company_name} 渡航費`
     if (it.kind === 'pre_education') return `${it.company_name} 事前教育費`
+    if (it.kind === 'shoukairyou') return `${it.company_name} 紹介料`
+    if (it.kind === 'other') return `${it.company_name} ${it.description || 'その他費用'}`
     return `${it.company_name} ${it.people}人`
 }
 
@@ -79,7 +83,7 @@ export default function InvoiceShow({ invoice }: Props) {
         { title: 'Data Penagihan', href: '/admin/invoices' },
         { title: invoice.invoice_number, href: '#' },
     ]
-    const org = invoice.organization || {}
+    const recipientName = invoice.recipient_name || invoice.organization?.name_in_japanese || invoice.organization?.name || '-'
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -139,7 +143,7 @@ export default function InvoiceShow({ invoice }: Props) {
                     <div className="grid grid-cols-2 gap-6 mb-8">
                         <div>
                             <p className="text-lg font-bold border-b border-zinc-400 inline-block pb-0.5">
-                                {org.name_in_japanese || org.name} 御中
+                                {recipientName} 御中
                             </p>
                             <p className="text-sm mt-2">下記のとおりご請求申し上げます。</p>
                         </div>

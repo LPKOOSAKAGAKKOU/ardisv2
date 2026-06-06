@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 
 interface PreviewItem {
     departure_id: number
-    kind: 'management' | 'travel' | 'pre_education'
+    kind: 'management' | 'travel' | 'pre_education' | 'shoukairyou' | 'other'
     company_name: string
     description: string
     students: string[]
@@ -15,16 +15,19 @@ interface PreviewItem {
     unit_price: number
     amount: number
 }
+type RecipientType = 'organization' | 'company'
 interface Props {
     organizations: { id: number; name: string }[]
+    companies: { id: number; name: string; name_in_japanese: string | null }[]
     preview: {
-        organization_id: number
-        organization_name: string
+        recipient_type: RecipientType
+        recipient_id: number
+        recipient_name: string
         month: string
         items: PreviewItem[]
         total: number
     } | null
-    filters: { organization_id?: string; month?: string }
+    filters: { recipient_type?: string; recipient_id?: string; month?: string }
 }
 
 const yen = (n: number) => '¥' + (n ?? 0).toLocaleString('ja-JP')
@@ -33,8 +36,9 @@ const monthLabel = (m: string) => {
     return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
 }
 
-export default function InvoiceGenerate({ organizations, preview, filters }: Props) {
-    const [orgId, setOrgId] = useState(filters?.organization_id || '')
+export default function InvoiceGenerate({ organizations, companies, preview, filters }: Props) {
+    const [recipientType, setRecipientType] = useState<RecipientType>((filters?.recipient_type as RecipientType) || 'organization')
+    const [recipientId, setRecipientId] = useState(filters?.recipient_id || '')
     const [month, setMonth] = useState(filters?.month || new Date().toISOString().slice(0, 7))
     const [processing, setProcessing] = useState(false)
 
@@ -44,16 +48,21 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
     ]
 
     const loadPreview = () => {
-        if (!orgId || !month) return
-        router.get('/admin/invoices/create', { organization_id: orgId, month }, { preserveState: true, replace: true })
+        if (!recipientId || !month) return
+        router.get('/admin/invoices/create', { recipient_type: recipientType, recipient_id: recipientId, month }, { preserveState: true, replace: true })
     }
 
     const generate = () => {
         router.post(
             '/admin/invoices',
-            { accepting_organization_id: orgId, month },
+            { recipient_type: recipientType, recipient_id: recipientId, month },
             { onStart: () => setProcessing(true), onFinish: () => setProcessing(false) },
         )
+    }
+
+    const switchType = (t: RecipientType) => {
+        setRecipientType(t)
+        setRecipientId('')
     }
 
     return (
@@ -68,7 +77,7 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
                         </div>
                         <div>
                             <h1 className="text-xl font-bold">Buat Invoice Bulanan</h1>
-                            <p className="text-sm text-muted-foreground">Pilih organisasi & bulan, lalu cek tagihan yang jatuh tempo.</p>
+                            <p className="text-sm text-muted-foreground">Tagih ke organisasi (kumiai) atau langsung ke perusahaan (TG), lalu cek tagihan yang jatuh tempo.</p>
                         </div>
                     </div>
                     <Button variant="ghost" onClick={() => router.get('/admin/invoices')}>
@@ -76,22 +85,46 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
                     </Button>
                 </div>
 
-                <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-6 shadow-sm">
+                <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 p-6 shadow-sm space-y-4">
+                    {/* Pilih jenis penerima tagihan */}
+                    <div className="inline-flex rounded-lg border border-sidebar-border p-1">
+                        <button
+                            type="button"
+                            onClick={() => switchType('organization')}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${recipientType === 'organization' ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Ke Organisasi (Kumiai)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => switchType('company')}
+                            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${recipientType === 'company' ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Ke Perusahaan (TG)
+                        </button>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Organisasi Penerima</label>
-                            <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
-                                <option value="">Pilih organisasi</option>
-                                {organizations.map((o) => (
-                                    <option key={o.id} value={o.id}>{o.name}</option>
-                                ))}
+                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                                {recipientType === 'company' ? 'Perusahaan Penerima' : 'Organisasi Penerima'}
+                            </label>
+                            <select value={recipientId} onChange={(e) => setRecipientId(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+                                <option value="">{recipientType === 'company' ? 'Pilih perusahaan' : 'Pilih organisasi'}</option>
+                                {recipientType === 'company'
+                                    ? companies.map((c) => (
+                                          <option key={c.id} value={c.id}>{c.name_in_japanese || c.name}</option>
+                                      ))
+                                    : organizations.map((o) => (
+                                          <option key={o.id} value={o.id}>{o.name}</option>
+                                      ))}
                             </select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Bulan Tagih</label>
                             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" />
                         </div>
-                        <Button onClick={loadPreview} disabled={!orgId || !month} className="h-11 bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
+                        <Button onClick={loadPreview} disabled={!recipientId || !month} className="h-11 bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
                             <FileText className="mr-2 h-4 w-4" /> Cek Tagihan
                         </Button>
                     </div>
@@ -101,8 +134,10 @@ export default function InvoiceGenerate({ organizations, preview, filters }: Pro
                     <div className="rounded-2xl border border-sidebar-border bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
                         <div className="px-6 py-4 border-b border-sidebar-border flex items-center justify-between">
                             <div>
-                                <p className="font-bold">{preview.organization_name}</p>
-                                <p className="text-xs text-muted-foreground">Tagihan bulan {monthLabel(preview.month)}</p>
+                                <p className="font-bold font-japanese">{preview.recipient_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {preview.recipient_type === 'company' ? 'Tagih langsung ke perusahaan' : 'Tagih ke organisasi'} · bulan {monthLabel(preview.month)}
+                                </p>
                             </div>
                             <span className="text-sm font-bold tabular-nums">{yen(preview.total)}</span>
                         </div>

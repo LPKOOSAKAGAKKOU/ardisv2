@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AdminController;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcceptingOrganization;
+use App\Models\Company;
 use App\Models\Invoice;
 use App\Services\BillingService;
 use Carbon\Carbon;
@@ -19,7 +20,7 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $query = Invoice::query()
-            ->with('acceptingOrganization:id,name')
+            ->with(['acceptingOrganization:id,name', 'company:id,name,name_in_japanese'])
             ->withCount('items')
             ->latest('issue_date');
 
@@ -39,7 +40,8 @@ class InvoiceController extends Controller
             ->through(fn (Invoice $inv) => [
                 'id'             => $inv->id,
                 'invoice_number' => $inv->invoice_number,
-                'organization'   => $inv->acceptingOrganization?->name,
+                'organization'   => $inv->recipientName(),
+                'bill_to'        => $inv->bill_to,
                 'issue_date'     => $inv->issue_date?->toDateString(),
                 'period_from'    => $inv->period_from?->toDateString(),
                 'period_to'      => $inv->period_to?->toDateString(),
@@ -61,46 +63,83 @@ class InvoiceController extends Controller
      */
     public function create(Request $request)
     {
-        $preview = null;
-        $organizationId = $request->organization_id;
+        // recipient_type: organization | company. Backward-compat: link lama memakai organization_id.
+        $recipientType = $request->recipient_type ?: ($request->organization_id ? 'organization' : 'organization');
+        $recipientId = $request->recipient_id ?: $request->organization_id;
         $month = $request->month; // format YYYY-MM
 
-        if ($organizationId && $month) {
-            $organization = AcceptingOrganization::find($organizationId);
-            if ($organization) {
-                $monthDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-                $items = $this->billing->previewForMonth($organization, $monthDate);
+        $preview = null;
+        if ($recipientId && $month) {
+            $monthDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
 
-                $preview = [
-                    'organization_id'   => $organization->id,
-                    'organization_name' => $organization->name,
-                    'month'             => $month,
-                    'items'             => $items->values(),
-                    'total'             => $items->sum('amount'),
-                ];
+            if ($recipientType === 'company') {
+                $company = Company::find($recipientId);
+                if ($company) {
+                    $items = $this->billing->previewForCompany($company, $monthDate);
+                    $preview = [
+                        'recipient_type' => 'company',
+                        'recipient_id'   => $company->id,
+                        'recipient_name' => $company->name_in_japanese ?: $company->name,
+                        'month'          => $month,
+                        'items'          => $items->values(),
+                        'total'          => $items->sum('amount'),
+                    ];
+                }
+            } else {
+                $organization = AcceptingOrganization::find($recipientId);
+                if ($organization) {
+                    $items = $this->billing->previewForMonth($organization, $monthDate);
+                    $preview = [
+                        'recipient_type' => 'organization',
+                        'recipient_id'   => $organization->id,
+                        'recipient_name' => $organization->name,
+                        'month'          => $month,
+                        'items'          => $items->values(),
+                        'total'          => $items->sum('amount'),
+                    ];
+                }
             }
         }
 
         return Inertia::render('admin/invoice/Generate', [
             'organizations' => AcceptingOrganization::orderBy('name')->get(['id', 'name']),
+            'companies'     => Company::whereHas('departures')->orderBy('name')->get(['id', 'name', 'name_in_japanese']),
             'preview'       => $preview,
-            'filters'       => ['organization_id' => $organizationId, 'month' => $month],
+            'filters'       => [
+                'recipient_type' => $recipientType,
+                'recipient_id'   => $recipientId,
+                'month'          => $month,
+            ],
         ]);
     }
 
     public function store(Request $request)
     {
+        // Backward-compat: jika hanya accepting_organization_id yang dikirim, anggap recipient organisasi.
+        if (! $request->recipient_type && $request->accepting_organization_id) {
+            $request->merge([
+                'recipient_type' => 'organization',
+                'recipient_id'   => $request->accepting_organization_id,
+            ]);
+        }
+
         $validated = $request->validate([
-            'accepting_organization_id' => 'required|exists:accepting_organizations,id',
-            'month'                     => 'required|date_format:Y-m',
-            'issue_date'                => 'nullable|date',
+            'recipient_type' => 'required|in:organization,company',
+            'recipient_id'   => 'required|integer',
+            'month'          => 'required|date_format:Y-m',
+            'issue_date'     => 'nullable|date',
         ]);
 
-        $organization = AcceptingOrganization::findOrFail($validated['accepting_organization_id']);
         $month = Carbon::createFromFormat('Y-m', $validated['month'])->startOfMonth();
         $issueDate = ! empty($validated['issue_date']) ? Carbon::parse($validated['issue_date']) : null;
 
-        $invoice = $this->billing->generateForMonth($organization, $month, $issueDate);
+        if ($validated['recipient_type'] === 'company') {
+            $company = Company::findOrFail($validated['recipient_id']);
+            $invoice = $this->billing->generateForCompany($company, $month, $issueDate);
+        } else {
+            $organization = AcceptingOrganization::findOrFail($validated['recipient_id']);
+            $invoice = $this->billing->generateForMonth($organization, $month, $issueDate);
+        }
 
         if (! $invoice) {
             return redirect()->back()
@@ -113,7 +152,7 @@ class InvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::with(['acceptingOrganization', 'items'])->findOrFail($id);
+        $invoice = Invoice::with(['acceptingOrganization', 'company', 'items'])->findOrFail($id);
 
         return Inertia::render('admin/invoice/Show', [
             'invoice' => [
@@ -126,6 +165,8 @@ class InvoiceController extends Controller
                 'status'         => $invoice->status,
                 'paid_at'        => $invoice->paid_at?->toDateString(),
                 'notes'          => $invoice->notes,
+                'bill_to'        => $invoice->bill_to,
+                'recipient_name' => $invoice->recipientName(),
                 'organization'   => $invoice->acceptingOrganization,
                 'items'          => $invoice->items->map(fn ($it) => [
                     'id'           => $it->id,
@@ -148,10 +189,11 @@ class InvoiceController extends Controller
      */
     public function print($id)
     {
-        $invoice = Invoice::with(['acceptingOrganization', 'items'])->findOrFail($id);
+        $invoice = Invoice::with(['acceptingOrganization', 'company', 'items'])->findOrFail($id);
 
         return view('invoices.print', [
-            'invoice' => $invoice,
+            'invoice'       => $invoice,
+            'recipientName' => $invoice->recipientName(),
         ]);
     }
 

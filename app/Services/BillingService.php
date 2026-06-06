@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AcceptingOrganization;
+use App\Models\Company;
 use App\Models\Departure;
 use App\Models\Invoice;
 use Carbon\Carbon;
@@ -41,6 +42,12 @@ class BillingService
      */
     public function schedule(Departure $departure): array
     {
+        // Tokutei Ginou (TG) tidak memakai jadwal management fee berbasis rumus.
+        // Penagihannya manual lewat departure_billings (渡航費 / 紹介料).
+        if ($departure->isTokuteiGinou()) {
+            return [];
+        }
+
         $people = max(1, (int) $departure->people_count);
         $unitPrice = $departure->effectiveManagementFee();
 
@@ -124,13 +131,23 @@ class BillingService
     {
         $departures = $organization->departures()
             ->where('status', 'managing')
-            ->with('interview.details.user')
+            ->with(['interview.details.user', 'billings'])
             ->get();
 
         $items = collect();
         foreach ($departures as $departure) {
             $students = $this->studentNames($departure);
             $people = max(1, (int) $departure->people_count);
+
+            // Cicilan manual (TG: 渡航費/紹介料) yang ditujukan ke organisasi.
+            foreach ($this->installmentItems($departure, $month, 'organization', $students) as $installment) {
+                $items->push($installment);
+            }
+
+            // Ginou Jisshuu: penagihan otomatis berbasis rumus. TG dilewati.
+            if ($departure->isTokuteiGinou()) {
+                continue;
+            }
 
             // Penagihan satu kali (渡航費 & 事前教育費) di bulan keberangkatan.
             if ($departure->departure_date && $departure->departure_date->isSameMonth($month)) {
@@ -214,6 +231,108 @@ class BillingService
 
             return $invoice->load('items');
         });
+    }
+
+    /**
+     * Preview tagihan yang ditujukan LANGSUNG ke perusahaan (bill_to=company)
+     * pada bulan tertentu. Khusus skema TG yang dibayar perusahaan sendiri.
+     *
+     * @return Collection<int, array>
+     */
+    public function previewForCompany(Company $company, Carbon $month): Collection
+    {
+        $departures = $company->departures()
+            ->where('status', 'managing')
+            ->with(['interview.details.user', 'billings'])
+            ->get();
+
+        $items = collect();
+        foreach ($departures as $departure) {
+            $students = $this->studentNames($departure);
+            foreach ($this->installmentItems($departure, $month, 'company', $students) as $installment) {
+                $items->push($installment);
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Generate invoice yang ditujukan langsung ke perusahaan (bill_to=company).
+     */
+    public function generateForCompany(Company $company, Carbon $month, ?Carbon $issueDate = null): ?Invoice
+    {
+        $items = $this->previewForCompany($company, $month);
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        $issueDate = $issueDate ?? Carbon::today();
+
+        return DB::transaction(function () use ($company, $month, $items, $issueDate) {
+            $invoice = Invoice::create([
+                'company_id'   => $company->id,
+                'bill_to'      => 'company',
+                'invoice_number' => $this->nextInvoiceNumber($issueDate),
+                'issue_date'   => $issueDate,
+                'period_from'  => $month->copy()->startOfMonth(),
+                'period_to'    => $month->copy()->endOfMonth(),
+                'total_amount' => $items->sum('amount'),
+                'status'       => 'issued',
+            ]);
+
+            foreach ($items as $item) {
+                $invoice->items()->create($item);
+            }
+
+            return $invoice->load('items');
+        });
+    }
+
+    /**
+     * Ubah cicilan manual sebuah keberangkatan menjadi baris-baris invoice
+     * yang jatuh tempo pada bulan & penerima (bill_to) tertentu.
+     *
+     * @param  array<int, string>  $students
+     * @return array<int, array>
+     */
+    private function installmentItems(Departure $departure, Carbon $month, string $billTo, array $students = []): array
+    {
+        $rows = [];
+        foreach ($departure->billings as $billing) {
+            if ($billing->bill_to !== $billTo) {
+                continue;
+            }
+            if (! $billing->due_date || ! $billing->due_date->isSameMonth($month)) {
+                continue;
+            }
+
+            $rows[] = [
+                'departure_id' => $departure->id,
+                'kind'         => $billing->kind,
+                'company_name' => $departure->company_name,
+                'description'  => $billing->description ?: $this->installmentLabel($billing->kind),
+                'students'     => $students,
+                'people'       => max(1, (int) $billing->people),
+                'months'       => 1,
+                'unit_price'   => (int) $billing->unit_price,
+                'amount'       => (int) $billing->amount,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Label default (Jepang) untuk jenis cicilan TG.
+     */
+    public function installmentLabel(string $kind): string
+    {
+        return match ($kind) {
+            'travel'      => '渡航費',
+            'shoukairyou' => '紹介料',
+            default       => 'その他費用',
+        };
     }
 
     /**

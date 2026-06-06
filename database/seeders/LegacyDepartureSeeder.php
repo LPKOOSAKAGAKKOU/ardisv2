@@ -38,7 +38,7 @@ class LegacyDepartureSeeder extends Seeder
         ['医療法人豊生会',         '2025-06-02', 2, 30000, 'DEWI NIHA, NOVIA'],
         ['株式会社GLAD',           '2025-08-26', 1, 30000, 'FIO LETA'],
         ['株式会社川端組',         '2025-10-01', 1, 30000, 'DIMAS BAMBANG'],
-        ['株式会社イワブチ工業',   '2025-10-27', 1, 30000, 'EKSAN, BAGUS, RIZKI'],
+        ['株式会社イワブチ工業',   '2025-10-27', 3, 30000, 'EKSAN, BAGUS, RIZKI'],
         ['JUN TECH',               '2025-10-28', 1, 30000, 'FALAH'],
         ['株式会社Aoi',            '2025-11-11', 3, 30000, 'ANDRE, FIRMAN, DAVID'],
         ['株式会社ORRES',          '2025-11-14', 4, 30000, 'SITI, LAILA, FINA, ICHA'],
@@ -93,9 +93,17 @@ class LegacyDepartureSeeder extends Seeder
                 ],
             );
 
-            // Pastikan keberangkatan lama tetap tertaut ke interview-nya.
+            // Pastikan keberangkatan lama tetap tertaut ke interview-nya
+            // dan jumlah orangnya sinkron dengan data terbaru (idempoten).
+            $fixes = [];
             if (! $departure->interview_id) {
-                $departure->update(['interview_id' => $interview->id]);
+                $fixes['interview_id'] = $interview->id;
+            }
+            if ((int) $departure->people_count !== (int) $people) {
+                $fixes['people_count'] = $people;
+            }
+            if ($fixes) {
+                $departure->update($fixes);
             }
         }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Departure extends Model
 {
@@ -11,11 +12,13 @@ class Departure extends Model
         'accepting_organization_id',
         'company_id',
         'interview_id',
+        'program_type',
         'company_name',
         'departure_date',
         'people_count',
         'travel_cost',
         'pre_education_fee',
+        'shoukairyou_fee',
         'management_fee',
         'notes',
         'status',
@@ -26,12 +29,18 @@ class Departure extends Model
         'people_count'      => 'integer',
         'travel_cost'       => 'integer',
         'pre_education_fee' => 'integer',
+        'shoukairyou_fee'   => 'integer',
         'management_fee'    => 'integer',
     ];
 
     public function acceptingOrganization(): BelongsTo
     {
         return $this->belongsTo(AcceptingOrganization::class);
+    }
+
+    public function billings(): HasMany
+    {
+        return $this->hasMany(DepartureBilling::class);
     }
 
     public function company(): BelongsTo
@@ -55,5 +64,10 @@ class Departure extends Model
     public function effectivePreEducationFee(): int
     {
         return $this->pre_education_fee ?? (int) ($this->acceptingOrganization->pre_education_fee ?? 0);
+    }
+
+    public function isTokuteiGinou(): bool
+    {
+        return $this->program_type === 'tokutei_ginou';
     }
 }
