@@ -117,6 +117,7 @@ class DepartureController extends Controller
         $data = $this->validateDeparture($request);
         $data = $this->resolveCompanyName($data);
         $data['people_count'] = $this->peopleFromInterview($data['interview_id'] ?? null);
+        $data['program_type'] = $this->resolveProgramType($data);
 
         Departure::create($data);
 
@@ -247,6 +248,7 @@ class DepartureController extends Controller
         $data = $this->validateDeparture($request);
         $data = $this->resolveCompanyName($data);
         $data['people_count'] = $this->peopleFromInterview($data['interview_id'] ?? null, $departure->people_count);
+        $data['program_type'] = $this->resolveProgramType($data, $departure->program_type);
 
         $departure->update($data);
 
@@ -268,7 +270,7 @@ class DepartureController extends Controller
             'accepting_organization_id' => 'required|exists:accepting_organizations,id',
             'company_id'                => 'nullable|exists:companies,id',
             'interview_id'              => 'nullable|exists:interviews,id',
-            'program_type'              => 'required|in:ginou_jisshuu,tokutei_ginou',
+            'program_type'              => 'nullable|in:ginou_jisshuu,tokutei_ginou',
             'company_name'              => 'required_without:company_id|nullable|string|max:255',
             'departure_date'            => 'required|date',
             'travel_cost'               => 'nullable|integer|min:0',
@@ -296,6 +298,22 @@ class DepartureController extends Controller
         $data['travel_cost'] = $data['travel_cost'] ?? 0;
 
         return $data;
+    }
+
+    /**
+     * Tentukan tipe program keberangkatan. Jika ditautkan ke wawancara, ikut
+     * tipe wawancara (sumber kebenaran) agar tidak redundan. Tanpa wawancara,
+     * pakai input manual / nilai lama / default ginou_jisshuu.
+     */
+    private function resolveProgramType(array $data, string $fallback = 'ginou_jisshuu'): string
+    {
+        if (! empty($data['interview_id'])) {
+            $type = Interview::whereKey($data['interview_id'])->value('type');
+
+            return $type === 'tokuteiginou' ? 'tokutei_ginou' : 'ginou_jisshuu';
+        }
+
+        return $data['program_type'] ?? $fallback;
     }
 
     /**
@@ -339,7 +357,7 @@ class DepartureController extends Controller
             ->with('company:id,name,name_in_japanese')
             ->withCount(['details as people' => fn ($q) => $q->where('result', 'passed')])
             ->latest('interview_date')
-            ->get(['id', 'interviewer_title', 'company_id', 'accepting_organization_id', 'interview_date'])
+            ->get(['id', 'interviewer_title', 'type', 'company_id', 'accepting_organization_id', 'interview_date'])
             ->map(fn (Interview $i) => [
                 'id'                        => $i->id,
                 'label'                     => ($i->interviewer_title ?: $i->company?->name ?: 'Interview') . ' — ' . ($i->interview_date ?? '-'),
@@ -347,6 +365,7 @@ class DepartureController extends Controller
                 'company_id'                => $i->company_id,
                 'company_name'              => $i->company?->name_in_japanese ?: $i->company?->name,
                 'accepting_organization_id' => $i->accepting_organization_id,
+                'program_type'              => $i->type === 'tokuteiginou' ? 'tokutei_ginou' : 'ginou_jisshuu',
             ]);
     }
 }

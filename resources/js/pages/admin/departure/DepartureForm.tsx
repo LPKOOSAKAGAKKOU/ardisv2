@@ -30,6 +30,7 @@ interface InterviewOption {
     company_id: number | null
     company_name: string | null
     accepting_organization_id: number | null
+    program_type: 'ginou_jisshuu' | 'tokutei_ginou'
 }
 interface Props {
     departure?: any
@@ -58,11 +59,15 @@ export default function DepartureForm({ departure, organizations, interviews }: 
         status: departure?.status || 'managing',
     })
 
-    const isTG = data.program_type === 'tokutei_ginou'
-
     const selectedOrg = organizations.find((o) => o.id.toString() === data.accepting_organization_id)
     const selectedInterview = interviews.find((iv) => iv.id.toString() === data.interview_id)
     const peopleCount = selectedInterview ? selectedInterview.people : departure?.people_count ?? 1
+
+    // Tipe program ikut wawancara yang ditautkan (sumber kebenaran). Tanpa
+    // wawancara, admin memilih manual sebagai fallback.
+    const programType = selectedInterview ? selectedInterview.program_type : data.program_type
+    const programLocked = !!selectedInterview
+    const isTG = programType === 'tokutei_ginou'
 
     // Hanya wawancara milik kumiai (organisasi) yang dipilih.
     const orgInterviews = interviews.filter(
@@ -123,27 +128,44 @@ export default function DepartureForm({ departure, organizations, interviews }: 
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8 bg-white dark:bg-zinc-950 p-6 rounded-2xl border border-sidebar-border shadow-sm">
-                    {/* Jenis program menentukan skema penagihan */}
+                    {/* Tipe program: ikut wawancara bila ditautkan, manual bila tidak. */}
                     <div className="space-y-2">
                         <Label>Tipe Program</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setData('program_type', 'ginou_jisshuu')}
-                                className={`rounded-xl border p-4 text-left transition-colors ${!isTG ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
-                            >
-                                <p className="font-semibold text-sm">技能実習 / Ginou Jisshuu</p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">Magang. Penagihan management fee otomatis (siklus 3 bulan).</p>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setData('program_type', 'tokutei_ginou')}
-                                className={`rounded-xl border p-4 text-left transition-colors ${isTG ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
-                            >
-                                <p className="font-semibold text-sm">特定技能 / Tokutei Ginou (TG)</p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5">Hanya 渡航費 + 紹介料. Cicilan diatur manual di halaman detail.</p>
-                            </button>
-                        </div>
+                        {programLocked ? (
+                            <div className={`flex items-center gap-3 rounded-xl border p-4 ${isTG ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-sky-500 bg-sky-50 dark:bg-sky-950/30'}`}>
+                                <div>
+                                    <p className="font-semibold text-sm">
+                                        {isTG ? '特定技能 / Tokutei Ginou (TG)' : '技能実習 / Ginou Jisshuu'}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                        Mengikuti tipe wawancara yang ditautkan.
+                                        {isTG ? ' Cicilan 渡航費 + 紹介料 diatur di halaman detail.' : ' Penagihan management fee otomatis (siklus 3 bulan).'}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('program_type', 'ginou_jisshuu')}
+                                        className={`rounded-xl border p-4 text-left transition-colors ${!isTG ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
+                                    >
+                                        <p className="font-semibold text-sm">技能実習 / Ginou Jisshuu</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Magang. Penagihan management fee otomatis (siklus 3 bulan).</p>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('program_type', 'tokutei_ginou')}
+                                        className={`rounded-xl border p-4 text-left transition-colors ${isTG ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30' : 'border-sidebar-border hover:bg-muted/40'}`}
+                                    >
+                                        <p className="font-semibold text-sm">特定技能 / Tokutei Ginou (TG)</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Hanya 渡航費 + 紹介料. Cicilan diatur manual di halaman detail.</p>
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">Tautkan wawancara di bawah agar tipe ini terisi otomatis.</p>
+                            </>
+                        )}
                         {errors.program_type && <p className="text-xs text-red-500">{errors.program_type}</p>}
                     </div>
 
@@ -193,7 +215,18 @@ export default function DepartureForm({ departure, organizations, interviews }: 
                             <Label>Wawancara Terkait (sumber daftar siswa)</Label>
                             <Select
                                 value={data.interview_id || NONE}
-                                onValueChange={(v) => setData('interview_id', v === NONE ? '' : v)}
+                                onValueChange={(v) => {
+                                    if (v === NONE) {
+                                        setData('interview_id', '')
+                                        return
+                                    }
+                                    const iv = interviews.find((x) => x.id.toString() === v)
+                                    setData((prev) => ({
+                                        ...prev,
+                                        interview_id: v,
+                                        program_type: iv?.program_type || prev.program_type,
+                                    }))
+                                }}
                                 disabled={!data.accepting_organization_id}
                             >
                                 <SelectTrigger className="h-11">
