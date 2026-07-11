@@ -12,7 +12,9 @@ import {
     Clock, 
     AlertCircle, 
     Copy,
-    Check
+    Check,
+    ChevronRight,
+    ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
     const [description, setDescription] = useState<string>('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
@@ -48,6 +51,15 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get('/admin/payments', { search }, { preserveState: true });
+    };
+
+    // Toggle expand row
+    const toggleExpand = (id: number) => {
+        if (expandedIds.includes(id)) {
+            setExpandedIds(expandedIds.filter(x => x !== id));
+        } else {
+            setExpandedIds([...expandedIds, id]);
+        }
     };
 
     // Open Billing Dialog
@@ -186,7 +198,10 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                     <span className="text-xs text-muted-foreground italic">Belum ada tagihan</span>
                     <Button 
                         size="sm"
-                        onClick={() => handleOpenCreate(item, category)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCreate(item, category);
+                        }}
                         className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90 text-xs w-fit"
                     >
                         <Plus className="mr-1 h-3.5 w-3.5" /> Buat Tagihan
@@ -198,7 +213,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
         const isAulaa = payment.payment_method !== 'manual';
 
         return (
-            <div className="flex flex-col gap-2 text-xs">
+            <div className="flex flex-col gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
                 <div className="flex flex-col gap-0.5 border border-neutral-100 dark:border-neutral-800 p-2.5 rounded-lg bg-neutral-50/50 dark:bg-neutral-900/10">
                     <div className="flex justify-between items-center mb-1">
                         <span className="font-semibold text-foreground">
@@ -316,8 +331,8 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                             <CreditCard size={24} />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold tracking-tight">Data Pembayaran Lulus Job & COE</h1>
-                            <p className="text-sm text-muted-foreground">Kelola tagihan kelulusan wawancara (Rp15jt) dan biaya COE turun (Rp15jt) siswa.</p>
+                            <h1 className="text-xl font-bold tracking-tight">Data Pembayaran Wawancara</h1>
+                            <p className="text-sm text-muted-foreground">Kelola tagihan kelulusan wawancara dan COE turun peserta per event wawancara.</p>
                         </div>
                     </div>
                 </div>
@@ -326,7 +341,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                 <form onSubmit={handleSearch} className="relative w-full md:w-96">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        placeholder="Cari siswa atau NIK..."
+                        placeholder="Cari wawancara, perusahaan, atau siswa..."
                         className="pl-10 h-11"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -339,49 +354,106 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                         <table className="w-full text-left text-sm">
                             <thead className="bg-neutral-50 dark:bg-neutral-900/50 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground border-b border-sidebar-border">
                                 <tr>
-                                    <th className="px-6 py-4">Siswa & NIK</th>
+                                    <th className="px-6 py-4 w-12 text-center"></th>
                                     <th className="px-6 py-4">Wawancara & Perusahaan</th>
-                                    <th className="px-6 py-4">Tagihan Lulus Job (Rp15jt)</th>
-                                    <th className="px-6 py-4">Tagihan COE Turun (Rp15jt)</th>
+                                    <th className="px-6 py-4">Tanggal Wawancara</th>
+                                    <th className="px-6 py-4 text-center">Jumlah Siswa Lulus</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-sidebar-border">
-                                {students?.data && students.data.length > 0 ? students.data.map((item: any) => (
-                                    <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30 transition-colors">
-                                        {/* Siswa */}
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-bold text-foreground text-sm">{item.name}</span>
-                                                <span className="text-xs text-muted-foreground font-mono">
-                                                    NIK: {item.nik}
-                                                </span>
-                                            </div>
-                                        </td>
+                                {students?.data && students.data.length > 0 ? students.data.map((interview: any) => {
+                                    const isExpanded = expandedIds.includes(interview.id);
+                                    return (
+                                        <React.Fragment key={interview.id}>
+                                            <tr 
+                                                className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30 transition-colors cursor-pointer"
+                                                onClick={() => toggleExpand(interview.id)}
+                                            >
+                                                {/* Toggle Icon */}
+                                                <td className="px-6 py-4 text-center">
+                                                    {isExpanded ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronRight size={16} className="text-muted-foreground" />}
+                                                </td>
 
-                                        {/* Wawancara */}
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="font-medium text-foreground text-xs">{item.job_title}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    Perusahaan: {item.company_name}
-                                                </span>
-                                            </div>
-                                        </td>
+                                                {/* Wawancara & Perusahaan */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-bold text-foreground text-sm">{interview.interviewer_title}</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Perusahaan: {interview.company_name}
+                                                        </span>
+                                                    </div>
+                                                </td>
 
-                                        {/* Tagihan Lulus Job */}
-                                        <td className="px-6 py-4">
-                                            {renderPaymentCell(item.payment_job, 'biaya_lulus_job', item)}
-                                        </td>
+                                                {/* Tanggal Wawancara */}
+                                                <td className="px-6 py-4 font-mono text-xs">
+                                                    {interview.interview_date}
+                                                </td>
 
-                                        {/* Tagihan COE Turun */}
-                                        <td className="px-6 py-4">
-                                            {renderPaymentCell(item.payment_coe, 'biaya_coe_turun', item)}
-                                        </td>
-                                    </tr>
-                                )) : (
+                                                {/* Jumlah Siswa Lulus */}
+                                                <td className="px-6 py-4 text-center">
+                                                    <Badge variant="secondary" className="px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                                                        {interview.students?.length || 0} Orang
+                                                    </Badge>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expanded Students Details Row */}
+                                            {isExpanded && (
+                                                <tr>
+                                                    <td colSpan={4} className="bg-neutral-50/40 dark:bg-neutral-950/20 px-6 py-4">
+                                                        <div className="rounded-xl border border-neutral-200/60 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden shadow-xs ml-6">
+                                                            <table className="w-full text-left text-xs">
+                                                                <thead className="bg-neutral-50 dark:bg-neutral-900/30 text-[9px] font-bold uppercase tracking-wider text-muted-foreground border-b border-neutral-100 dark:border-neutral-900">
+                                                                    <tr>
+                                                                        <th className="px-4 py-3">Siswa & NIK</th>
+                                                                        <th className="px-4 py-3 w-1/3">Tagihan Lulus Job (Rp15jt)</th>
+                                                                        <th className="px-4 py-3 w-1/3">Tagihan COE Turun (Rp15jt)</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900">
+                                                                    {interview.students && interview.students.length > 0 ? (
+                                                                        interview.students.map((student: any) => (
+                                                                            <tr key={student.id} className="hover:bg-neutral-50/40 transition-colors">
+                                                                                {/* Siswa Info */}
+                                                                                <td className="px-4 py-3 align-top">
+                                                                                    <div className="flex flex-col gap-0.5">
+                                                                                        <span className="font-semibold text-foreground text-xs">{student.name}</span>
+                                                                                        <span className="text-[10px] text-muted-foreground font-mono">
+                                                                                            NIK: {student.nik}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </td>
+
+                                                                                {/* Tagihan Lulus Job */}
+                                                                                <td className="px-4 py-3 align-top">
+                                                                                    {renderPaymentCell(student.payment_job, 'biaya_lulus_job', student)}
+                                                                                </td>
+
+                                                                                {/* Tagihan COE Turun */}
+                                                                                <td className="px-4 py-3 align-top">
+                                                                                    {renderPaymentCell(student.payment_coe, 'biaya_coe_turun', student)}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))
+                                                                    ) : (
+                                                                        <tr>
+                                                                            <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">
+                                                                                Tidak ada siswa dalam wawancara ini.
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                }) : (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-16 text-center text-muted-foreground italic">
-                                            Tidak ada data siswa lulus wawancara yang ditemukan.
+                                            Tidak ada data wawancara yang ditemukan.
                                         </td>
                                     </tr>
                                 )}
@@ -459,7 +531,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                         variant="outline"
                                         size="sm"
                                         onClick={handleAddAdditionalItem}
-                                        className="h-7 text-xs flex items-center gap-1 border-neutral-350"
+                                        className="h-7 text-xs flex items-center gap-1 border-neutral-355"
                                     >
                                         <Plus size={12} /> Tambah Item
                                     </Button>

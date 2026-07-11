@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdminController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Payment;
+use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Services\AulaaPaymentService;
 use Illuminate\Http\Request;
@@ -21,70 +22,89 @@ class PaymentController extends Controller
     }
 
     /**
-     * Display a listing of students who passed interviews and their payments.
+     * Display a listing of interviews and their passed students' payments.
      */
     public function index(Request $request)
     {
         $search = $request->search;
 
-        $students = InterviewDetail::where('result', 'passed')
+        $interviews = Interview::whereHas('details', function ($q) {
+                $q->where('result', 'passed');
+            })
             ->with([
-                'user.student_profile',
-                'interview.company',
-                'payments' => function ($q) {
-                    $q->whereIn('payment_category', ['biaya_lulus_job', 'biaya_coe_turun']);
+                'company',
+                'details' => function ($q) {
+                    $q->where('result', 'passed')->with([
+                        'user.student_profile',
+                        'payments' => function ($p) {
+                            $p->whereIn('payment_category', ['biaya_lulus_job', 'biaya_coe_turun']);
+                        }
+                    ]);
                 }
             ])
             ->when($search, function ($query, $search) {
-                $query->whereHas('user', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhereHas('student_profile', function ($sp) use ($search) {
-                            $sp->where('nik', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('interviewer_title', 'like', "%{$search}%")
+                        ->orWhereHas('company', function ($c) use ($search) {
+                            $c->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('details', function ($det) use ($search) {
+                            $det->where('result', 'passed')
+                                ->whereHas('user', function ($u) use ($search) {
+                                    $u->where('name', 'like', "%{$search}%");
+                                });
                         });
                 });
             })
+            ->orderByDesc('interview_date')
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(function ($detail) {
-                $user = $detail->user;
-                $interview = $detail->interview;
-                
-                // Get payments for this interview detail
-                $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->first();
-                $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->first();
+            ->through(function ($interview) {
+                $students = $interview->details->map(function ($detail) {
+                    $user = $detail->user;
+                    
+                    $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->first();
+                    $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->first();
 
-                $formatPayment = function ($payment) {
-                    if (!$payment) return null;
+                    $formatPayment = function ($payment) {
+                        if (!$payment) return null;
+                        return [
+                            'id' => $payment->id,
+                            'invoice_number' => $payment->invoice_number,
+                            'original_amount' => $payment->original_amount,
+                            'discount' => $payment->discount,
+                            'amount' => $payment->amount,
+                            'status' => $payment->status,
+                            'payment_url' => $payment->payment_url,
+                            'payment_method' => $payment->payment_method,
+                            'payment_date' => $payment->payment_date?->toDateString(),
+                            'description' => $payment->description,
+                            'additional_items' => $payment->additional_items ?? [],
+                        ];
+                    };
+
                     return [
-                        'id' => $payment->id,
-                        'invoice_number' => $payment->invoice_number,
-                        'original_amount' => $payment->original_amount,
-                        'discount' => $payment->discount,
-                        'amount' => $payment->amount,
-                        'status' => $payment->status,
-                        'payment_url' => $payment->payment_url,
-                        'payment_method' => $payment->payment_method,
-                        'payment_date' => $payment->payment_date?->toDateString(),
-                        'description' => $payment->description,
-                        'additional_items' => $payment->additional_items ?? [],
+                        'id' => $detail->id, // interview detail ID
+                        'user_id' => $user?->id,
+                        'name' => $user?->name ?? 'N/A',
+                        'nik' => $user?->student_profile?->nik ?? '-',
+                        'payment_job' => $formatPayment($paymentJob),
+                        'payment_coe' => $formatPayment($paymentCoe),
                     ];
-                };
+                });
 
                 return [
-                    'id' => $detail->id, // interview detail ID
-                    'user_id' => $user?->id,
-                    'name' => $user?->name ?? 'N/A',
-                    'nik' => $user?->student_profile?->nik ?? '-',
-                    'job_title' => $interview?->interviewer_title ?? 'N/A',
-                    'company_name' => $interview?->company?->name ?? 'N/A',
-                    'payment_job' => $formatPayment($paymentJob),
-                    'payment_coe' => $formatPayment($paymentCoe),
+                    'id' => $interview->id,
+                    'interviewer_title' => $interview->interviewer_title,
+                    'company_name' => $interview->company?->name ?? 'N/A',
+                    'interview_date' => $interview->interview_date ? date('Y-m-d', strtotime($interview->interview_date)) : '-',
+                    'students' => $students,
                 ];
             });
 
         return Inertia::render('admin/payment/Index', [
-            'students' => $students,
+            'students' => $interviews, // Passed as 'students' to remain compatible with pagination in frontend
             'filters' => $request->only(['search']),
         ]);
     }
