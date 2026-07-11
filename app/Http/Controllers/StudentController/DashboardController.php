@@ -83,11 +83,19 @@ class DashboardController extends Controller
         $studentNameSlug = strtoupper(Str::slug($user->name));
         $invoiceNumber = 'INV-' . $catPrefix . '-' . $oldPayment->interview_detail_id . '-' . $studentNameSlug . '-' . time();
 
-        try {
-            $aulaaResponse = $aulaa->createPaymentLink($invoiceNumber, $oldPayment->amount);
-            $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
-            $expiredAt = isset($aulaaResponse['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse['expired_at'])) : now()->addHours(24);
+        $projectId = config('services.aulaa.project_id');
+        $webhookSecret = config('services.aulaa.webhook_secret');
 
+        if (empty($projectId) || empty($webhookSecret)) {
+            return back()->with('error', 'Konfigurasi AULAA_PROJECT_ID atau AULAA_WEBHOOK_SECRET belum diset di .env!');
+        }
+
+        // Format string: checkout:v1:{ProjectID}:{Amount}:{OrderID}
+        $payload = "checkout:v1:{$projectId}:{$oldPayment->amount}:{$invoiceNumber}";
+        $signature = hash_hmac('sha256', $payload, $webhookSecret);
+        $paymentUrl = "https://payment.aulaa.co/checkout/{$projectId}/{$oldPayment->amount}?order_id={$invoiceNumber}&sig={$signature}";
+
+        try {
             $newPayment = Payment::create([
                 'user_id' => $user->id,
                 'interview_detail_id' => $oldPayment->interview_detail_id,
@@ -97,9 +105,9 @@ class DashboardController extends Controller
                 'amount' => $oldPayment->amount,
                 'payment_category' => $oldPayment->payment_category,
                 'status' => 'pending',
-                'aulaa_payment_id' => $aulaaResponse['id'],
+                'aulaa_payment_id' => null,
                 'payment_url' => $paymentUrl,
-                'expired_at' => $expiredAt,
+                'expired_at' => null,
                 'description' => $oldPayment->description,
                 'additional_items' => $oldPayment->additional_items,
             ]);
