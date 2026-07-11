@@ -41,7 +41,7 @@ interface Props {
             }
         }
     } | null;
-    jobPayment?: {
+    paymentJob?: {
         id: number;
         invoice_number: string;
         amount: number;
@@ -52,10 +52,24 @@ interface Props {
         payment_method?: string;
         payment_date?: string;
         description?: string;
+        additional_items?: { name: string; amount: number }[];
+    } | null;
+    paymentCoe?: {
+        id: number;
+        invoice_number: string;
+        amount: number;
+        original_amount: number;
+        discount: number;
+        status: string;
+        payment_url: string;
+        payment_method?: string;
+        payment_date?: string;
+        description?: string;
+        additional_items?: { name: string; amount: number }[];
     } | null;
 }
 
-export default function StudentDashboard({ student, interviews, passedApplication, jobPayment }: Props) {
+export default function StudentDashboard({ student, interviews, passedApplication, paymentJob, paymentCoe }: Props) {
     // 1. Breadcrumbs
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: route('student.dashboard') },
@@ -366,23 +380,23 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                             </div>
 
                             {/* ========== CARD: TAGIHAN PEMBAYARAN LULUS JOB (AULAA) ========== */}
-                            {jobPayment && (
+                            {paymentJob && (
                                 <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
                                     <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                                         <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
-                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Kelulusan Wawancara
+                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Kelulusan Wawancara (Lulus Job)
                                         </h2>
-                                        {jobPayment.status === 'paid' ? (
+                                        {paymentJob.status === 'paid' ? (
                                             <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Lunas
                                             </Badge>
-                                        ) : jobPayment.status === 'pending' ? (
+                                        ) : paymentJob.status === 'pending' ? (
                                             <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Belum Dibayar
                                             </Badge>
                                         ) : (
                                             <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
-                                                {jobPayment.status.toUpperCase()}
+                                                {paymentJob.status.toUpperCase()}
                                             </Badge>
                                         )}
                                     </div>
@@ -394,40 +408,147 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-2xl sm:text-3xl font-black text-foreground">
-                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(jobPayment.amount)}
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJob.amount)}
                                                         </span>
                                                     </div>
-                                                    {jobPayment.discount > 0 && (
+                                                    {paymentJob.discount > 0 && (
                                                         <p className="text-xs text-red-500 font-medium">
-                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(jobPayment.discount)}
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJob.discount)}
                                                         </p>
                                                     )}
-                                                    <p className="text-[10px] text-muted-foreground font-mono">
-                                                        No. Invoice: {jobPayment.invoice_number}
+                                                    {paymentJob.additional_items && paymentJob.additional_items.length > 0 && (
+                                                        <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                                            <span className="font-semibold text-neutral-550">Item Tambahan:</span>
+                                                            <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
+                                                                {paymentJob.additional_items.map((add: any, idx: number) => (
+                                                                    <li key={idx}>
+                                                                        {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                        No. Invoice: {paymentJob.invoice_number}
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <div className="w-full md:w-auto">
-                                                {jobPayment.status === 'pending' ? (
+                                                {paymentJob.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
                                                             Silakan selesaikan pembayaran tagihan lulus wawancara Anda melalui tautan resmi Aulaa di bawah ini.
                                                         </p>
-                                                        <Button 
-                                                            onClick={() => window.open(jobPayment.payment_url, '_blank')}
-                                                            className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
-                                                        >
-                                                            <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
-                                                        </Button>
+                                                        {paymentJob.payment_url ? (
+                                                            <Button 
+                                                                onClick={() => window.open(paymentJob.payment_url, '_blank')}
+                                                                className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
+                                                            >
+                                                                <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
+                                                        )}
                                                     </div>
-                                                ) : jobPayment.status === 'paid' ? (
+                                                ) : paymentJob.status === 'paid' ? (
                                                     <div className="space-y-1 text-xs text-muted-foreground">
                                                         <p className="text-green-650 font-bold flex items-center gap-1">
                                                             <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
                                                         </p>
-                                                        <p>Metode Pembayaran: <strong className="text-foreground">{jobPayment.payment_method?.toUpperCase()}</strong></p>
-                                                        <p>Tanggal Bayar: <strong className="text-foreground">{jobPayment.payment_date}</strong></p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentJob.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentJob.payment_date}</strong></p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground italic">
+                                                        Tagihan dibatalkan atau kedaluwarsa. Silakan hubungi admin LPK.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ========== CARD: TAGIHAN PEMBAYARAN COE TURUN (AULAA) ========== */}
+                            {paymentCoe && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden mt-6">
+                                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                        <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
+                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Penurunan COE (COE Turun)
+                                        </h2>
+                                        {paymentCoe.status === 'paid' ? (
+                                            <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Lunas
+                                            </Badge>
+                                        ) : paymentCoe.status === 'pending' ? (
+                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Belum Dibayar
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                {paymentCoe.status.toUpperCase()}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                            <div>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl sm:text-3xl font-black text-foreground">
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoe.amount)}
+                                                        </span>
+                                                    </div>
+                                                    {paymentCoe.discount > 0 && (
+                                                        <p className="text-xs text-red-500 font-medium">
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoe.discount)}
+                                                        </p>
+                                                    )}
+                                                    {paymentCoe.additional_items && paymentCoe.additional_items.length > 0 && (
+                                                        <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                                            <span className="font-semibold text-neutral-550">Item Tambahan:</span>
+                                                            <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
+                                                                {paymentCoe.additional_items.map((add: any, idx: number) => (
+                                                                    <li key={idx}>
+                                                                        {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                        No. Invoice: {paymentCoe.invoice_number}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full md:w-auto">
+                                                {paymentCoe.status === 'pending' ? (
+                                                    <div className="flex flex-col gap-3">
+                                                        <p className="text-xs text-muted-foreground max-w-sm">
+                                                            Silakan selesaikan pembayaran tagihan penurunan COE Anda melalui tautan resmi Aulaa di bawah ini.
+                                                        </p>
+                                                        {paymentCoe.payment_url ? (
+                                                            <Button 
+                                                                onClick={() => window.open(paymentCoe.payment_url, '_blank')}
+                                                                className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
+                                                            >
+                                                                <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
+                                                        )}
+                                                    </div>
+                                                ) : paymentCoe.status === 'paid' ? (
+                                                    <div className="space-y-1 text-xs text-muted-foreground">
+                                                        <p className="text-green-650 font-bold flex items-center gap-1">
+                                                            <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
+                                                        </p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentCoe.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentCoe.payment_date}</strong></p>
                                                     </div>
                                                 ) : (
                                                     <p className="text-xs text-muted-foreground italic">

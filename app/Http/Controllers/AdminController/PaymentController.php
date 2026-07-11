@@ -162,7 +162,7 @@ class PaymentController extends Controller
             $aulaaResponse = $this->aulaa->createPaymentLink($invoiceNumber, $finalAmount);
             $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
 
-            Payment::create([
+            $payment = Payment::create([
                 'user_id' => $user->id,
                 'interview_detail_id' => $detail->id,
                 'invoice_number' => $invoiceNumber,
@@ -176,6 +176,15 @@ class PaymentController extends Controller
                 'description' => $request->description,
                 'additional_items' => $additionalItems,
             ]);
+
+            // Kirim email tagihan ke siswa
+            try {
+                if ($user->email) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentBillingMail($payment));
+                }
+            } catch (\Exception $mailEx) {
+                Log::error('Gagal mengirim email tagihan ke siswa: ' . $mailEx->getMessage());
+            }
 
             return back()->with('success', 'Tagihan pembayaran Aulaa berhasil dibuat.');
 

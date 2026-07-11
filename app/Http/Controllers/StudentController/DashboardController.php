@@ -38,16 +38,22 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // 4. Ambil data tagihan kelulusan job (jika ada)
-        $jobPayment = \App\Models\Payment::where('user_id', $user->id)
-            ->where('payment_category', 'sudah_dapat_job')
+        // 4. Ambil data tagihan kelulusan job dan COE (jika ada)
+        $paymentJob = \App\Models\Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_lulus_job')
+            ->latest()
+            ->first();
+
+        $paymentCoe = \App\Models\Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_coe_turun')
             ->latest()
             ->first();
 
         return Inertia::render('student/dashboard', [
             'student' => $student,
             'passedApplication' => $passedApplication, // Kirim data kelulusan ke frontend
-            'jobPayment' => $jobPayment, // Kirim data tagihan ke frontend
+            'paymentJob' => $paymentJob, // Kirim data tagihan lulus job ke frontend
+            'paymentCoe' => $paymentCoe, // Kirim data tagihan coe ke frontend
             'interviews' => $interviews,
             'auth' => [
                 'user' => $user
