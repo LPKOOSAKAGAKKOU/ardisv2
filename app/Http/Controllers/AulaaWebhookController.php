@@ -88,6 +88,8 @@ class AulaaWebhookController extends Controller
                     \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentPaidMail($payment));
                 } elseif ($status === 'expired') {
                     \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentExpiredMail($payment));
+                } elseif ($status === 'failed') {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentFailedMail($payment));
                 }
             }
         } catch (\Exception $mailEx) {
