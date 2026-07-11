@@ -40,6 +40,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
     const [description, setDescription] = useState<string>('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [syncingId, setSyncingId] = useState<number | null>(null);
     const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
     const breadcrumbs = [
@@ -127,7 +128,9 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
     // Check Status manually from Aulaa.co
     const handleCheckStatus = (id: number) => {
         router.post(`/admin/payments/${id}/check`, {}, {
-            onBefore: () => alert('Menghubungi server Aulaa.co untuk mengecek status...'),
+            onStart: () => setSyncingId(id),
+            onFinish: () => setSyncingId(null),
+            preserveScroll: true,
         });
     };
 
@@ -272,14 +275,15 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                         {copiedId === payment.id ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
                                     </Button>
                                     <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        title="Perbarui Status"
-                                        onClick={() => handleCheckStatus(payment.id)}
-                                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    >
-                                        <RefreshCw size={12} />
-                                    </Button>
+                                         variant="ghost"
+                                         size="icon"
+                                         title="Perbarui Status"
+                                         disabled={syncingId === payment.id}
+                                         onClick={() => handleCheckStatus(payment.id)}
+                                         className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                     >
+                                         <RefreshCw size={12} className={syncingId === payment.id ? 'animate-spin' : ''} />
+                                     </Button>
                                 </>
                             ) : null}
                             
@@ -298,10 +302,11 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                         <Button
                             variant="outline"
                             size="sm"
+                            disabled={syncingId === payment.id}
                             onClick={() => handleCheckStatus(payment.id)}
                             className="text-[10px] h-7 px-2 flex items-center gap-1 text-neutral-500 hover:text-neutral-700 border-neutral-200"
                         >
-                            <RefreshCw size={10} /> Sync Ulang
+                            <RefreshCw size={10} className={syncingId === payment.id ? 'animate-spin' : ''} /> {syncingId === payment.id ? 'Syncing...' : 'Sync Ulang'}
                         </Button>
                     )}
                     {(payment.status === 'cancelled' || payment.status === 'expired') && (
