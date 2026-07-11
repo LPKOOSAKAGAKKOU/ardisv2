@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Mail;
+
+use App\Models\Payment;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
+
+class PaymentExpiredMail extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public Payment $payment;
+    public string $studentName;
+    public string $categoryName;
+
+    /**
+     * Create a new message instance.
+     */
+    public function __construct(Payment $payment)
+    {
+        $this->payment = $payment;
+        $this->studentName = $payment->user?->name ?? 'Siswa';
+        $this->categoryName = $payment->payment_category === 'biaya_lulus_job' 
+            ? 'Kelulusan Wawancara (Biaya Lulus Job)' 
+            : 'Penurunan COE (Biaya COE Turun)';
+    }
+
+    /**
+     * Get the message envelope.
+     */
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            subject: 'Pemberitahuan: Batas Waktu Pembayaran Kedaluwarsa - ' . $this->categoryName,
+        );
+    }
+
+    /**
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            markdown: 'emails.payment_expired',
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     */
+    public function attachments(): array
+    {
+        return [];
+    }
+}

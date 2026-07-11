@@ -80,6 +80,20 @@ class AulaaWebhookController extends Controller
 
         $payment->save();
 
+        // Kirim email notifikasi ke siswa
+        try {
+            $user = $payment->user;
+            if ($user && $user->email) {
+                if ($status === 'paid') {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentPaidMail($payment));
+                } elseif ($status === 'expired') {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentExpiredMail($payment));
+                }
+            }
+        } catch (\Exception $mailEx) {
+            Log::error("Gagal mengirim email notifikasi status ({$status}) ke siswa: " . $mailEx->getMessage());
+        }
+
         return response()->json(['received' => true], 200);
     }
 }
