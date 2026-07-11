@@ -73,14 +73,19 @@ class PaymentController extends Controller
                             try {
                                 $statusData = $this->aulaa->getPaymentStatus($payment->aulaa_payment_id);
                                 $newStatus = $statusData['status'] ?? 'pending';
+                                
+                                if (isset($statusData['expired_at'])) {
+                                    $payment->expired_at = date('Y-m-d H:i:s', strtotime($statusData['expired_at']));
+                                }
+
                                 if ($newStatus !== $payment->status) {
                                     $payment->status = $newStatus;
                                     if ($newStatus === 'paid') {
                                         $payment->payment_date = isset($statusData['paid_at']) ? date('Y-m-d', strtotime($statusData['paid_at'])) : now();
                                         $payment->payment_method = $statusData['payment_method'] ?? 'aulaa';
                                     }
-                                    $payment->save();
                                 }
+                                $payment->save();
                             } catch (\Exception $e) {
                                 Log::warning("Auto-sync admin failed for payment ID {$payment->id}: " . $e->getMessage());
                             }
@@ -99,6 +104,7 @@ class PaymentController extends Controller
                             'amount' => $payment->amount,
                             'status' => $payment->status,
                             'payment_url' => $payment->payment_url,
+                            'expired_at' => $payment->expired_at?->toIso8601String(),
                             'payment_method' => $payment->payment_method,
                             'payment_date' => $payment->payment_date?->toDateString(),
                             'description' => $payment->description,
@@ -183,6 +189,7 @@ class PaymentController extends Controller
             // Call Aulaa Payment Gateway
             $aulaaResponse = $this->aulaa->createPaymentLink($invoiceNumber, $finalAmount);
             $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
+            $expiredAt = isset($aulaaResponse['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse['expired_at'])) : now()->addHours(24);
 
             $payment = Payment::create([
                 'user_id' => $user->id,
@@ -195,6 +202,7 @@ class PaymentController extends Controller
                 'status' => 'pending',
                 'aulaa_payment_id' => $aulaaResponse['id'],
                 'payment_url' => $paymentUrl,
+                'expired_at' => $expiredAt,
                 'description' => $request->description,
                 'additional_items' => $additionalItems,
             ]);
@@ -315,6 +323,10 @@ class PaymentController extends Controller
             $newStatus = $aulaaData['status']; // paid, pending, expired, cancelled, failed
 
             $payment->status = $newStatus;
+
+            if (isset($aulaaData['expired_at'])) {
+                $payment->expired_at = date('Y-m-d H:i:s', strtotime($aulaaData['expired_at']));
+            }
 
             if ($newStatus === 'paid') {
                 $payment->payment_date = $aulaaData['paid_at'] ? date('Y-m-d', strtotime($aulaaData['paid_at'])) : now();

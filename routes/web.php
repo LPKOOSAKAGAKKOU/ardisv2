@@ -288,6 +288,7 @@ Route::middleware([
     ->group(function () {
 
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::post('payments/{id}/regenerate', [DashboardController::class, 'regeneratePayment'])->name('payment.regenerate');
         Route::get('interviews', [StudentInterviewController::class, 'index'])->name('interviews.index');
         // Rute Baru
         Route::post('interviews/{id}/apply', [StudentInterviewController::class, 'apply'])->name('interviews.apply');

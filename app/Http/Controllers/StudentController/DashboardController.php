@@ -9,6 +9,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Interview;
+use App\Models\Payment;
+use App\Services\AulaaPaymentService;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PaymentBillingMail;
 
 class DashboardController extends Controller
 {
@@ -56,14 +62,19 @@ class DashboardController extends Controller
                 try {
                     $statusData = $aulaa->getPaymentStatus($payment->aulaa_payment_id);
                     $newStatus = $statusData['status'] ?? 'pending';
+                    
+                    if (isset($statusData['expired_at'])) {
+                        $payment->expired_at = date('Y-m-d H:i:s', strtotime($statusData['expired_at']));
+                    }
+
                     if ($newStatus !== $payment->status) {
                         $payment->status = $newStatus;
                         if ($newStatus === 'paid') {
                             $payment->payment_date = isset($statusData['paid_at']) ? date('Y-m-d', strtotime($statusData['paid_at'])) : now();
                             $payment->payment_method = $statusData['payment_method'] ?? 'aulaa';
                         }
-                        $payment->save();
                     }
+                    $payment->save();
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::warning("Auto-sync failed for payment ID {$payment->id}: " . $e->getMessage());
                 }
@@ -82,5 +93,58 @@ class DashboardController extends Controller
                 'user' => $user
             ]
         ]);
+    }
+
+    /**
+     * Regenerate a new payment link for an expired or cancelled payment.
+     */
+    public function regeneratePayment($id, AulaaPaymentService $aulaa)
+    {
+        $user = Auth::user();
+        
+        $oldPayment = Payment::where('id', $id)
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['expired', 'cancelled', 'failed'])
+            ->firstOrFail();
+
+        $catPrefix = $oldPayment->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
+        $studentNameSlug = strtoupper(Str::slug($user->name));
+        $invoiceNumber = 'INV-' . $catPrefix . '-' . $oldPayment->interview_detail_id . '-' . $studentNameSlug . '-' . time();
+
+        try {
+            $aulaaResponse = $aulaa->createPaymentLink($invoiceNumber, $oldPayment->amount);
+            $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
+            $expiredAt = isset($aulaaResponse['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse['expired_at'])) : now()->addHours(24);
+
+            $newPayment = Payment::create([
+                'user_id' => $user->id,
+                'interview_detail_id' => $oldPayment->interview_detail_id,
+                'invoice_number' => $invoiceNumber,
+                'original_amount' => $oldPayment->original_amount,
+                'discount' => $oldPayment->discount,
+                'amount' => $oldPayment->amount,
+                'payment_category' => $oldPayment->payment_category,
+                'status' => 'pending',
+                'aulaa_payment_id' => $aulaaResponse['id'],
+                'payment_url' => $paymentUrl,
+                'expired_at' => $expiredAt,
+                'description' => $oldPayment->description,
+                'additional_items' => $oldPayment->additional_items,
+            ]);
+
+            try {
+                if ($user->email) {
+                    Mail::to($user->email)->send(new PaymentBillingMail($newPayment));
+                }
+            } catch (\Exception $mailEx) {
+                Log::error('Gagal mengirim email tagihan baru ke siswa: ' . $mailEx->getMessage());
+            }
+
+            return back()->with('success', 'Link pembayaran baru berhasil dibuat.');
+
+        } catch (\Exception $e) {
+            Log::error('Gagal regenerasi pembayaran oleh siswa: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membuat link pembayaran baru: ' . $e->getMessage());
+        }
     }
 }

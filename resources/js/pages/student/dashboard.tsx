@@ -13,8 +13,9 @@ import {
     Trash2,
     CreditCard,
     ExternalLink,
+    RefreshCw,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
 
@@ -71,7 +72,61 @@ interface Props {
     } | null;
 }
 
+function Countdown({ expiredAt, onExpire }: { expiredAt: string; onExpire?: () => void }) {
+    const calculateTimeLeft = () => {
+        const difference = +new Date(expiredAt) - +new Date();
+        let timeLeft = '';
+
+        if (difference > 0) {
+            const hours = Math.floor(difference / (1000 * 60 * 60));
+            const minutes = Math.floor((difference / 1000 / 60) % 60);
+            const seconds = Math.floor((difference / 1000) % 60);
+
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}j`);
+            parts.push(`${minutes}m`);
+            parts.push(`${seconds}d`);
+            timeLeft = parts.join(' ');
+        } else {
+            timeLeft = 'Kedaluwarsa';
+        }
+
+        return { difference, text: timeLeft };
+    };
+
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const calculated = calculateTimeLeft();
+            setTimeLeft(calculated);
+            if (calculated.difference <= 0) {
+                clearInterval(timer);
+                if (onExpire) onExpire();
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [expiredAt]);
+
+    return (
+        <span className={timeLeft.difference <= 0 ? "text-red-500 font-bold text-xs" : "text-amber-600 font-bold text-xs"}>
+            {timeLeft.text}
+        </span>
+    );
+}
+
 export default function StudentDashboard({ student, interviews, passedApplication, paymentJob, paymentCoe }: Props) {
+    const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
+
+    const handleRegeneratePayment = (id: number) => {
+        router.post(route('student.payment.regenerate', id), {}, {
+            onStart: () => setRegeneratingId(id),
+            onFinish: () => setRegeneratingId(null),
+            preserveScroll: true,
+        });
+    };
+
     // 1. Breadcrumbs
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: route('student.dashboard') },
@@ -433,6 +488,12 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                     <p className="text-[10px] text-muted-foreground font-mono mt-1">
                                                         No. Invoice: {paymentJob.invoice_number}
                                                     </p>
+                                                    {paymentJob.status === 'pending' && paymentJob.expired_at && (
+                                                        <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
+                                                            <span>Batas Waktu Bayar:</span>
+                                                            <Countdown expiredAt={paymentJob.expired_at} />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -462,9 +523,21 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                         <p>Tanggal Bayar: <strong className="text-foreground">{paymentJob.payment_date}</strong></p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground italic">
-                                                        Tagihan dibatalkan atau kedaluwarsa. Silakan hubungi admin LPK.
-                                                    </p>
+                                                    <div className="flex flex-col gap-2">
+                                                        <p className="text-xs text-muted-foreground italic">
+                                                            Tagihan {paymentJob.status === 'expired' ? 'kedaluwarsa' : 'dibatalkan'}.
+                                                        </p>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={regeneratingId === paymentJob.id}
+                                                            onClick={() => handleRegeneratePayment(paymentJob.id)}
+                                                            className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                                        >
+                                                            <RefreshCw size={12} className={regeneratingId === paymentJob.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentJob.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                        </Button>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -520,13 +593,19 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                                 ))}
                                                             </ul>
                                                         </div>
+                                                     )}
+                                                     <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                         No. Invoice: {paymentCoe.invoice_number}
+                                                     </p>
+                                                    {paymentCoe.status === 'pending' && paymentCoe.expired_at && (
+                                                        <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
+                                                            <span>Batas Waktu Bayar:</span>
+                                                            <Countdown expiredAt={paymentCoe.expired_at} />
+                                                        </div>
                                                     )}
-                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
-                                                        No. Invoice: {paymentCoe.invoice_number}
-                                                    </p>
                                                 </div>
                                             </div>
-
+ 
                                             <div className="w-full md:w-auto">
                                                 {paymentCoe.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
@@ -553,9 +632,21 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                         <p>Tanggal Bayar: <strong className="text-foreground">{paymentCoe.payment_date}</strong></p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground italic">
-                                                        Tagihan dibatalkan atau kedaluwarsa. Silakan hubungi admin LPK.
-                                                    </p>
+                                                    <div className="flex flex-col gap-2">
+                                                        <p className="text-xs text-muted-foreground italic">
+                                                            Tagihan {paymentCoe.status === 'expired' ? 'kedaluwarsa' : 'dibatalkan'}.
+                                                        </p>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={regeneratingId === paymentCoe.id}
+                                                            onClick={() => handleRegeneratePayment(paymentCoe.id)}
+                                                            className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                                        >
+                                                            <RefreshCw size={12} className={regeneratingId === paymentCoe.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentCoe.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                        </Button>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

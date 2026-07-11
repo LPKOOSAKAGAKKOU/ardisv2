@@ -20,6 +20,7 @@ class Payment extends Model
         'status',
         'aulaa_payment_id',
         'payment_url',
+        'expired_at',
         'discount',
         'original_amount',
         'additional_items',
@@ -27,6 +28,7 @@ class Payment extends Model
 
     protected $casts = [
         'payment_date' => 'date:Y-m-d',
+        'expired_at' => 'datetime',
         'amount' => 'integer',
         'discount' => 'integer',
         'original_amount' => 'integer',
