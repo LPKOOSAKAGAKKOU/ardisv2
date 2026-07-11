@@ -31,7 +31,7 @@ import {
 export default function PaymentIndex({ students, filters }: any) {
     const [search, setSearch] = useState(filters?.search || '');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    const [selectedStudent, setSelectedStudent] = useState<any>({});
     const [discount, setDiscount] = useState<number>(0);
     const [description, setDescription] = useState<string>('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function PaymentIndex({ students, filters }: any) {
         router.post(
             '/admin/payments',
             {
-                user_id: selectedStudent.id,
+                user_id: selectedStudent?.id,
                 discount: discount,
                 description: description,
             },
