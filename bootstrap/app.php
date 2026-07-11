@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'whatsapp/webhook', // Sesuaikan dengan path rute Anda
             'webhook/aulaa',
+            'payment/webhook',
         ]);
 
         // TAMBAHKAN BARIS INI

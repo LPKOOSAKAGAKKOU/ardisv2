@@ -34,6 +34,7 @@ use App\Http\Controllers\AulaaWebhookController;
 
 Route::post('/whatsapp/webhook', [WhatsAppChatController::class, 'handleWebhook'])->name('whatsapp.webhook');
 Route::post('/webhook/aulaa', [AulaaWebhookController::class, 'handleWebhook'])->name('webhook.aulaa');
+Route::post('/payment/webhook', [AulaaWebhookController::class, 'handleWebhook'])->name('payment.webhook');
 
 Route::get('/', function () {
     $user = Auth::user();
