@@ -53,4 +53,21 @@ class AulaaPaymentService
 
         return $response->json();
     }
+
+    /**
+     * Cancel payment link in Aulaa.co
+     */
+    public function cancelPaymentLink(string $aulaaPaymentId)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->apiKey,
+        ])->post($this->baseUrl . '/payments/' . $aulaaPaymentId . '/cancel');
+
+        if ($response->failed()) {
+            Log::error('Aulaa Payment cancellation failed for ID ' . $aulaaPaymentId . ': ' . $response->body());
+            throw new \Exception('Gagal membatalkan pembayaran di Aulaa: ' . ($response->json('error') ?? $response->reason()));
+        }
+
+        return $response->json();
+    }
 }

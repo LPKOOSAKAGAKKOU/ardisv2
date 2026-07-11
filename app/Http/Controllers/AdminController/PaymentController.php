@@ -320,6 +320,19 @@ class PaymentController extends Controller
             return back()->with('error', 'Hanya tagihan pending yang dapat dibatalkan.');
         }
 
+        // Jika tagihan dibuat melalui Aulaa (memiliki ID pembayaran Aulaa), batalkan di gateway juga
+        if ($payment->aulaa_payment_id) {
+            try {
+                $this->aulaa->cancelPaymentLink($payment->aulaa_payment_id);
+            } catch (\Exception $e) {
+                Log::error('Gagal membatalkan tagihan di Aulaa Gateway: ' . $e->getMessage());
+                // Tetap lanjutkan pembatalan lokal, tetapi beri tahu admin lewat warning/notifikasi
+                $payment->status = 'cancelled';
+                $payment->save();
+                return back()->with('success', 'Tagihan dibatalkan secara lokal, namun gagal membatalkan di Aulaa Gateway: ' . $e->getMessage());
+            }
+        }
+
         $payment->status = 'cancelled';
         $payment->save();
 
