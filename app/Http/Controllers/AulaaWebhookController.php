@@ -13,6 +13,12 @@ class AulaaWebhookController extends Controller
      */
     public function handleWebhook(Request $request)
     {
+        Log::info('Aulaa Webhook request reached controller!', [
+            'ip' => $request->ip(),
+            'headers' => $request->headers->all(),
+            'content' => $request->getContent()
+        ]);
+
         $signature = $request->header('X-Webhook-Signature');
         
         if (!$signature) {
