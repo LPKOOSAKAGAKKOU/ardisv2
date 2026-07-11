@@ -309,7 +309,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                             <RefreshCw size={10} className={syncingId === payment.id ? 'animate-spin' : ''} /> {syncingId === payment.id ? 'Syncing...' : 'Sync Ulang'}
                         </Button>
                     )}
-                    {(payment.status === 'cancelled' || payment.status === 'expired') && (
+                    {(payment.status === 'cancelled' || payment.status === 'expired' || payment.status === 'failed') && (
                         <Button
                             size="sm"
                             variant="outline"

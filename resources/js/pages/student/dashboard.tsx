@@ -525,7 +525,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 ) : (
                                                     <div className="flex flex-col gap-2">
                                                         <p className="text-xs text-muted-foreground italic">
-                                                            Tagihan {paymentJob.status === 'expired' ? 'kedaluwarsa' : 'dibatalkan'}.
+                                                            Tagihan {paymentJob.status === 'expired' ? 'kedaluwarsa' : (paymentJob.status === 'failed' ? 'gagal' : 'dibatalkan')}.
                                                         </p>
                                                         <Button
                                                             variant="outline"
@@ -634,7 +634,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 ) : (
                                                     <div className="flex flex-col gap-2">
                                                         <p className="text-xs text-muted-foreground italic">
-                                                            Tagihan {paymentCoe.status === 'expired' ? 'kedaluwarsa' : 'dibatalkan'}.
+                                                            Tagihan {paymentCoe.status === 'expired' ? 'kedaluwarsa' : (paymentCoe.status === 'failed' ? 'gagal' : 'dibatalkan')}.
                                                         </p>
                                                         <Button
                                                             variant="outline"
