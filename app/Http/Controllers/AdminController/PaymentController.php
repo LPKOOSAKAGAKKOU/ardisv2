@@ -154,7 +154,8 @@ class PaymentController extends Controller
         $finalAmount = $originalAmount - $discount + $additionalSum;
         
         $catPrefix = $request->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
-        $invoiceNumber = 'INV-' . $catPrefix . '-' . $detail->id . '-' . time();
+        $studentNameSlug = strtoupper(\Illuminate\Support\Str::slug($user->name));
+        $invoiceNumber = 'INV-' . $catPrefix . '-' . $detail->id . '-' . $studentNameSlug . '-' . time();
 
         try {
             // Call Aulaa Payment Gateway
@@ -245,7 +246,8 @@ class PaymentController extends Controller
             ]);
         } else {
             $catPrefix = $request->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
-            $invoiceNumber = 'INV-' . $catPrefix . '-MAN-' . $detail->id . '-' . time();
+            $studentNameSlug = strtoupper(\Illuminate\Support\Str::slug($user->name));
+            $invoiceNumber = 'INV-' . $catPrefix . '-MAN-' . $detail->id . '-' . $studentNameSlug . '-' . time();
 
             Payment::create([
                 'user_id' => $user->id,
