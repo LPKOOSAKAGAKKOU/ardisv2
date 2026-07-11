@@ -55,34 +55,6 @@ class DashboardController extends Controller
             ->latest()
             ->first();
 
-        // Fallback Auto-sync: Jika webhook terhambat firewall, sync status dari Aulaa saat siswa memuat dashboard
-        $aulaa = app(\App\Services\AulaaPaymentService::class);
-        $syncPayment = function ($payment) use ($aulaa) {
-            if ($payment && $payment->status === 'pending' && $payment->aulaa_payment_id) {
-                try {
-                    $statusData = $aulaa->getPaymentStatus($payment->aulaa_payment_id);
-                    $newStatus = $statusData['status'] ?? 'pending';
-                    
-                    if (isset($statusData['expired_at'])) {
-                        $payment->expired_at = date('Y-m-d H:i:s', strtotime($statusData['expired_at']));
-                    }
-
-                    if ($newStatus !== $payment->status) {
-                        $payment->status = $newStatus;
-                        if ($newStatus === 'paid') {
-                            $payment->payment_date = isset($statusData['paid_at']) ? date('Y-m-d', strtotime($statusData['paid_at'])) : now();
-                            $payment->payment_method = $statusData['payment_method'] ?? 'aulaa';
-                        }
-                    }
-                    $payment->save();
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning("Auto-sync failed for payment ID {$payment->id}: " . $e->getMessage());
-                }
-            }
-        };
-        $syncPayment($paymentJob);
-        $syncPayment($paymentCoe);
-
         return Inertia::render('student/dashboard', [
             'student' => $student,
             'passedApplication' => $passedApplication, // Kirim data kelulusan ke frontend
