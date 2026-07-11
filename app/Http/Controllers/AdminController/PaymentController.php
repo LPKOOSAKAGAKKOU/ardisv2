@@ -158,19 +158,12 @@ class PaymentController extends Controller
         $studentNameSlug = strtoupper(\Illuminate\Support\Str::slug($user->name));
         $invoiceNumber = 'INV-' . $catPrefix . '-' . $detail->id . '-' . $studentNameSlug . '-' . time();
 
-        $projectId = config('services.aulaa.project_id');
-        $webhookSecret = config('services.aulaa.webhook_secret');
-
-        if (empty($projectId) || empty($webhookSecret)) {
-            return back()->with('error', 'Konfigurasi AULAA_PROJECT_ID atau AULAA_WEBHOOK_SECRET belum diset di .env!');
-        }
-
-        // Format string: checkout:v1:{ProjectID}:{Amount}:{OrderID}
-        $payload = "checkout:v1:{$projectId}:{$finalAmount}:{$invoiceNumber}";
-        $signature = hash_hmac('sha256', $payload, $webhookSecret);
-        $paymentUrl = "https://payment.aulaa.co/checkout/{$projectId}/{$finalAmount}?order_id={$invoiceNumber}&sig={$signature}";
-
         try {
+            // Call Aulaa Payment Gateway to create the payment invoice
+            $aulaaResponse = $this->aulaa->createPaymentLink($invoiceNumber, $finalAmount);
+            $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
+            $expiredAt = isset($aulaaResponse['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse['expired_at'])) : null;
+
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'interview_detail_id' => $detail->id,
@@ -180,9 +173,9 @@ class PaymentController extends Controller
                 'amount' => $finalAmount,
                 'payment_category' => $request->payment_category,
                 'status' => 'pending',
-                'aulaa_payment_id' => null, // Ditentukan oleh Aulaa ketika siswa memilih metode pembayaran
+                'aulaa_payment_id' => $aulaaResponse['id'],
                 'payment_url' => $paymentUrl,
-                'expired_at' => null, // Kedaluwarsa dihitung dinamis oleh Aulaa saat diakses
+                'expired_at' => $expiredAt,
                 'description' => $request->description,
                 'additional_items' => $additionalItems,
             ]);
@@ -295,7 +288,7 @@ class PaymentController extends Controller
         $payment = Payment::findOrFail($id);
 
         if (!$payment->aulaa_payment_id) {
-            return back()->with('error', 'Tagihan ini menggunakan Signed URL. Status akan diperbarui otomatis saat webhook pembayaran diterima.');
+            return back()->with('error', 'ID pembayaran Aulaa tidak ditemukan.');
         }
 
         try {
