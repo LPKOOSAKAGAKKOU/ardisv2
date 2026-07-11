@@ -41,9 +41,21 @@ interface Props {
             }
         }
     } | null;
+    jobPayment?: {
+        id: number;
+        invoice_number: string;
+        amount: number;
+        original_amount: number;
+        discount: number;
+        status: string;
+        payment_url: string;
+        payment_method?: string;
+        payment_date?: string;
+        description?: string;
+    } | null;
 }
 
-export default function StudentDashboard({ student, interviews, passedApplication }: Props) {
+export default function StudentDashboard({ student, interviews, passedApplication, jobPayment }: Props) {
     // 1. Breadcrumbs
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: route('student.dashboard') },
@@ -266,92 +278,168 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                 {/* --- CARD SECTION: Company Placement OR Interview Schedule --- */}
                 <div className="mt-6">
                     {passedApplication ? (
-                        /* ========== CARD: LULUS SELEKSI - INFO PERUSAHAAN ========== */
-                        <div className="rounded-2xl sm:rounded-[2rem] border bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
-                            {/* Background decoration */}
-                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 sm:w-32 sm:h-32 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
+                        <div className="flex flex-col gap-6">
+                            {/* ========== CARD: LULUS SELEKSI - INFO PERUSAHAAN ========== */}
+                            <div className="rounded-2xl sm:rounded-[2rem] border bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 sm:w-32 sm:h-32 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
 
-                            {/* Header */}
-                            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-                                <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-emerald-700">
-                                    <Building2 className="size-4 sm:size-5" /> Perusahaan Penempatan
-                                </h2>
-                                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
-                                    Lulus Seleksi
-                                </Badge>
-                            </div>
+                                {/* Header */}
+                                <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                    <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-emerald-700">
+                                        <Building2 className="size-4 sm:size-5" /> Perusahaan Penempatan
+                                    </h2>
+                                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                        Lulus Seleksi
+                                    </Badge>
+                                </div>
 
-                            {/* Content Card */}
-                            <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-emerald-100/50 shadow-sm">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                                    {/* Left: Job Position */}
-                                    <div>
-                                        <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Posisi Pekerjaan</p>
-                                        <h3 className="text-xl sm:text-2xl font-black text-foreground mb-2">
-                                            {passedApplication.interview.interviewer_title}
-                                        </h3>
-                                        <p className="text-xs sm:text-sm font-medium text-emerald-600 bg-emerald-100/50 px-3 py-1 rounded-full w-fit">
-                                            Program: {passedApplication.interview.type === 'ginoujisshuu' ? 'Magang (Ginou Jisshuu)' : 'Tokutei Ginou (TG)'}
-                                        </p>
-                                    </div>
-
-                                    {/* Right: Company Details */}
-                                    <div className="space-y-3 sm:space-y-4">
-                                        {/* Company Name */}
-                                        <div className="flex items-start gap-2 sm:gap-3">
-                                            <div className="mt-1 p-1.5 sm:p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
-                                                <Building2 className="size-4 sm:size-5" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Nama Perusahaan</p>
-                                                <p className="font-bold text-base sm:text-lg text-foreground break-words">
-                                                    {passedApplication.interview.company?.name || 'Nama Perusahaan Dirahasiakan'}
-                                                </p>
-                                            </div>
+                                {/* Content Card */}
+                                <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-emerald-100/50 shadow-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                                        {/* Left: Job Position */}
+                                        <div>
+                                            <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Posisi Pekerjaan</p>
+                                            <h3 className="text-xl sm:text-2xl font-black text-foreground mb-2">
+                                                {passedApplication.interview.interviewer_title}
+                                            </h3>
+                                            <p className="text-xs sm:text-sm font-medium text-emerald-600 bg-emerald-100/50 px-3 py-1 rounded-full w-fit">
+                                                Program: {passedApplication.interview.type === 'ginoujisshuu' ? 'Magang (Ginou Jisshuu)' : 'Tokutei Ginou (TG)'}
+                                            </p>
                                         </div>
 
-                                        {/* Location */}
-                                        <div className="flex items-start gap-2 sm:gap-3">
-                                            <div className="mt-1 p-1.5 sm:p-2 bg-orange-50 text-orange-600 rounded-lg flex-shrink-0">
-                                                <MapPin className="size-4 sm:size-5" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Lokasi</p>
-                                                <p className="font-semibold text-sm sm:text-base text-foreground break-words">
-                                                    {passedApplication.interview.company?.address || 'Jepang'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Departure Date */}
-                                        {passedApplication.interview.date_fly_to_japan && (
+                                        {/* Right: Company Details */}
+                                        <div className="space-y-3 sm:space-y-4">
+                                            {/* Company Name */}
                                             <div className="flex items-start gap-2 sm:gap-3">
-                                                <div className="mt-1 p-1.5 sm:p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
-                                                    <PlaneTakeoff className="size-4 sm:size-5" />
+                                                <div className="mt-1 p-1.5 sm:p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
+                                                    <Building2 className="size-4 sm:size-5" />
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Estimasi Keberangkatan</p>
-                                                    <p className="font-bold text-sm sm:text-base text-foreground">
-                                                        {new Date(passedApplication.interview.date_fly_to_japan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                    <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Nama Perusahaan</p>
+                                                    <p className="font-bold text-base sm:text-lg text-foreground break-words">
+                                                        {passedApplication.interview.company?.name || 'Nama Perusahaan Dirahasiakan'}
                                                     </p>
                                                 </div>
                                             </div>
-                                        )}
+
+                                            {/* Location */}
+                                            <div className="flex items-start gap-2 sm:gap-3">
+                                                <div className="mt-1 p-1.5 sm:p-2 bg-orange-50 text-orange-600 rounded-lg flex-shrink-0">
+                                                    <MapPin className="size-4 sm:size-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Lokasi</p>
+                                                    <p className="font-semibold text-sm sm:text-base text-foreground break-words">
+                                                        {passedApplication.interview.company?.address || 'Jepang'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Departure Date */}
+                                            {passedApplication.interview.date_fly_to_japan && (
+                                                <div className="flex items-start gap-2 sm:gap-3">
+                                                    <div className="mt-1 p-1.5 sm:p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
+                                                        <PlaneTakeoff className="size-4 sm:size-5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase">Estimasi Keberangkatan</p>
+                                                        <p className="font-bold text-sm sm:text-base text-foreground">
+                                                            {new Date(passedApplication.interview.date_fly_to_japan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Footer: Action Button */}
+                                    <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-emerald-100 flex justify-end">
+                                        <Button 
+                                            onClick={() => router.visit(route('student.interviews.index'))}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                            <FileText className="size-3.5 sm:size-4 mr-2" /> Lengkapi Dokumen Keberangkatan
+                                        </Button>
                                     </div>
                                 </div>
-
-                                {/* Footer: Action Button */}
-                                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-emerald-100 flex justify-end">
-                                    <Button 
-                                        onClick={() => router.visit(route('student.interviews.index'))}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 text-xs sm:text-sm w-full sm:w-auto"
-                                    >
-                                        <FileText className="size-3.5 sm:size-4 mr-2" /> Lengkapi Dokumen Keberangkatan
-                                    </Button>
-                                </div>
                             </div>
-                        </div>
 
+                            {/* ========== CARD: TAGIHAN PEMBAYARAN LULUS JOB (AULAA) ========== */}
+                            {jobPayment && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
+                                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                        <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
+                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Kelulusan Wawancara
+                                        </h2>
+                                        {jobPayment.status === 'paid' ? (
+                                            <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Lunas
+                                            </Badge>
+                                        ) : jobPayment.status === 'pending' ? (
+                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Belum Dibayar
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                {jobPayment.status.toUpperCase()}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                            <div>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl sm:text-3xl font-black text-foreground">
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(jobPayment.amount)}
+                                                        </span>
+                                                    </div>
+                                                    {jobPayment.discount > 0 && (
+                                                        <p className="text-xs text-red-500 font-medium">
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(jobPayment.discount)}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono">
+                                                        No. Invoice: {jobPayment.invoice_number}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full md:w-auto">
+                                                {jobPayment.status === 'pending' ? (
+                                                    <div className="flex flex-col gap-3">
+                                                        <p className="text-xs text-muted-foreground max-w-sm">
+                                                            Silakan selesaikan pembayaran tagihan lulus wawancara Anda melalui tautan resmi Aulaa di bawah ini.
+                                                        </p>
+                                                        <Button 
+                                                            onClick={() => window.open(jobPayment.payment_url, '_blank')}
+                                                            className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
+                                                        >
+                                                            <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
+                                                        </Button>
+                                                    </div>
+                                                ) : jobPayment.status === 'paid' ? (
+                                                    <div className="space-y-1 text-xs text-muted-foreground">
+                                                        <p className="text-green-650 font-bold flex items-center gap-1">
+                                                            <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
+                                                        </p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{jobPayment.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{jobPayment.payment_date}</strong></p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground italic">
+                                                        Tagihan dibatalkan atau kedaluwarsa. Silakan hubungi admin LPK.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         /* ========== CARD: BELUM LULUS - JADWAL WAWANCARA ========== */
                         <div className="rounded-2xl sm:rounded-[2rem] border bg-card p-4 sm:p-6 lg:p-8 shadow-sm">

@@ -51,4 +51,10 @@ return [
         'secret' => env('WHATSAPP_WEBHOOK_SECRET'),
     ],
 
+    'aulaa' => [
+        'base_url' => env('AULAA_BASE_URL', 'https://api.aulaa.co/v1'),
+        'api_key' => env('AULAA_API_KEY'),
+        'webhook_secret' => env('AULAA_WEBHOOK_SECRET'),
+    ],
+
 ];

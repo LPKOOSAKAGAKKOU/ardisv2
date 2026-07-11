@@ -45,7 +45,7 @@ const adminNavItems = (): NavItem[] => [
     { title: 'Data Keberangkatan', href: route('admin.departures.index'), icon: Plane },
     { title: 'Data Penagihan', href: route('admin.invoices.index'), icon: Receipt },
     { title: 'Data Rekrutmen', href: route('admin.recruitments.index'), icon: Folder },
-    { title: 'Data Pembayaran', href: '#', icon: CreditCard },
+    { title: 'Data Pembayaran', href: route('admin.payments.index'), icon: CreditCard },
 ]
 
 

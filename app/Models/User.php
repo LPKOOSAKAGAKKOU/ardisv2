@@ -81,4 +81,9 @@ class User extends Authenticatable
             'id'                  // Local key di student_profiles
         );
     }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }

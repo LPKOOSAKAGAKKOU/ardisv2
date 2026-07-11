@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // 1. Tambahkan pengecualian CSRF di sini
         $middleware->validateCsrfTokens(except: [
             'whatsapp/webhook', // Sesuaikan dengan path rute Anda
+            'webhook/aulaa',
         ]);
 
         // TAMBAHKAN BARIS INI

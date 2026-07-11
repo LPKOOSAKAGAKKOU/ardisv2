@@ -27,11 +27,13 @@ use App\Http\Controllers\StudentController\ProfileController;
 use App\Http\Controllers\StudentController\StudentInterviewController;
 use App\Http\Controllers\GinouJisshuuDocumentController;
 use App\Http\Controllers\TokuteiGinouDocumentController;
-
 use App\Http\Controllers\AdminController\WhatsAppChatController;
+use App\Http\Controllers\AdminController\PaymentController;
+use App\Http\Controllers\AulaaWebhookController;
 
 
 Route::post('/whatsapp/webhook', [WhatsAppChatController::class, 'handleWebhook'])->name('whatsapp.webhook');
+Route::post('/webhook/aulaa', [AulaaWebhookController::class, 'handleWebhook'])->name('webhook.aulaa');
 
 Route::get('/', function () {
     $user = Auth::user();
@@ -149,6 +151,12 @@ Route::middleware([
     Route::patch('/invoices/{id}/mark-paid', [InvoiceController::class, 'markPaid'])->name('invoices.mark-paid');
     Route::patch('/invoices/{id}/mark-unpaid', [InvoiceController::class, 'markUnpaid'])->name('invoices.mark-unpaid');
     Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
+
+    // --- MANAJEMEN PEMBAYARAN ONLINE (AULAA.CO) ---
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::post('/payments/{id}/check', [PaymentController::class, 'checkStatus'])->name('payments.check');
+    Route::post('/payments/{id}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
 
     // Resource Classrooms
     Route::resource('classrooms', AdminClassroomController::class);
