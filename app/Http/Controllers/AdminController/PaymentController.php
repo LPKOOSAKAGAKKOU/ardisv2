@@ -64,8 +64,8 @@ class PaymentController extends Controller
                 $students = $interview->details->map(function ($detail) {
                     $user = $detail->user;
                     
-                    $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->first();
-                    $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->first();
+                    $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->sortByDesc('id')->first();
+                    $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->sortByDesc('id')->first();
 
                     $formatPayment = function ($payment) {
                         if (!$payment) return null;
