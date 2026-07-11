@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdminController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Payment;
+use App\Models\InterviewDetail;
 use App\Services\AulaaPaymentService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,45 +27,36 @@ class PaymentController extends Controller
     {
         $search = $request->search;
 
-        $students = User::where('role', 'student')
-            ->whereHas('hasManyInterviewDetails', function ($q) {
-                $q->where('result', 'passed');
-            })
+        $students = InterviewDetail::where('result', 'passed')
             ->with([
-                'student_profile',
-                'hasManyInterviewDetails' => function ($q) {
-                    $q->where('result', 'passed')->with('interview.company');
-                },
+                'user.student_profile',
+                'interview.company',
                 'payments' => function ($q) {
-                    $q->where('payment_category', 'sudah_dapat_job')->latest();
+                    $q->whereIn('payment_category', ['biaya_lulus_job', 'biaya_coe_turun']);
                 }
             ])
             ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
+                $query->whereHas('user', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhereHas('student_profile', function ($sp) use ($search) {
                             $sp->where('nik', 'like', "%{$search}%");
                         });
                 });
             })
+            ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(function ($user) {
-                // Get passed interview detail
-                $passedDetail = $user->hasManyInterviewDetails->first();
-                $jobTitle = $passedDetail?->interview?->interviewer_title ?? 'N/A';
-                $companyName = $passedDetail?->interview?->company?->name ?? 'N/A';
+            ->through(function ($detail) {
+                $user = $detail->user;
+                $interview = $detail->interview;
+                
+                // Get payments for this interview detail
+                $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->first();
+                $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->first();
 
-                // Get latest job payment
-                $payment = $user->payments->first();
-
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'nik' => $user->student_profile?->nik ?? '-',
-                    'job_title' => $jobTitle,
-                    'company_name' => $companyName,
-                    'payment' => $payment ? [
+                $formatPayment = function ($payment) {
+                    if (!$payment) return null;
+                    return [
                         'id' => $payment->id,
                         'invoice_number' => $payment->invoice_number,
                         'original_amount' => $payment->original_amount,
@@ -75,7 +67,19 @@ class PaymentController extends Controller
                         'payment_method' => $payment->payment_method,
                         'payment_date' => $payment->payment_date?->toDateString(),
                         'description' => $payment->description,
-                    ] : null
+                        'additional_items' => $payment->additional_items ?? [],
+                    ];
+                };
+
+                return [
+                    'id' => $detail->id, // interview detail ID
+                    'user_id' => $user?->id,
+                    'name' => $user?->name ?? 'N/A',
+                    'nik' => $user?->student_profile?->nik ?? '-',
+                    'job_title' => $interview?->interviewer_title ?? 'N/A',
+                    'company_name' => $interview?->company?->name ?? 'N/A',
+                    'payment_job' => $formatPayment($paymentJob),
+                    'payment_coe' => $formatPayment($paymentCoe),
                 ];
             });
 
@@ -91,61 +95,155 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'interview_detail_id' => 'required|exists:interview_details,id',
+            'payment_category' => 'required|in:biaya_lulus_job,biaya_coe_turun',
             'discount' => 'nullable|integer|min:0|max:15000000',
             'description' => 'nullable|string',
+            'additional_items' => 'nullable|array',
+            'additional_items.*.name' => 'required_with:additional_items|string',
+            'additional_items.*.amount' => 'required_with:additional_items|integer|min:0',
         ]);
 
-        $user = User::findOrFail($request->user_id);
+        $detail = InterviewDetail::findOrFail($request->interview_detail_id);
+        $user = $detail->user;
 
-        // Ensure the student has passed an interview
-        $hasPassed = $user->hasManyInterviewDetails()->where('result', 'passed')->exists();
-        if (!$hasPassed) {
-            return back()->with('error', 'Siswa terpilih belum lulus wawancara kerja.');
+        if (!$user) {
+            return back()->with('error', 'Siswa tidak ditemukan.');
         }
 
-        // Check if student already has a pending or paid job payment
-        $existingPayment = Payment::where('user_id', $user->id)
-            ->where('payment_category', 'sudah_dapat_job')
+        // Check if payment already exists for this category
+        $existingPayment = Payment::where('interview_detail_id', $detail->id)
+            ->where('payment_category', $request->payment_category)
             ->whereIn('status', ['pending', 'paid'])
             ->first();
 
         if ($existingPayment) {
-            return back()->with('error', 'Tagihan untuk siswa ini sudah aktif atau sudah lunas.');
+            return back()->with('error', 'Tagihan untuk kategori ini sudah aktif atau sudah lunas.');
         }
 
         $discount = $request->discount ?? 0;
         $originalAmount = 15000000;
-        $finalAmount = $originalAmount - $discount;
-        $invoiceNumber = 'INV-JOB-' . $user->id . '-' . time();
+        
+        // Sum additional items
+        $additionalItems = $request->additional_items ?? [];
+        $additionalSum = 0;
+        foreach ($additionalItems as $item) {
+            $additionalSum += (int)$item['amount'];
+        }
+
+        $finalAmount = $originalAmount - $discount + $additionalSum;
+        
+        $catPrefix = $request->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
+        $invoiceNumber = 'INV-' . $catPrefix . '-' . $detail->id . '-' . time();
 
         try {
             // Call Aulaa Payment Gateway
             $aulaaResponse = $this->aulaa->createPaymentLink($invoiceNumber, $finalAmount);
-
-            // Store payment link in local database
-            // Redirect URL format is https://payment.aulaa.co/pay/{id}
             $paymentUrl = 'https://payment.aulaa.co/pay/' . $aulaaResponse['id'];
 
             Payment::create([
                 'user_id' => $user->id,
+                'interview_detail_id' => $detail->id,
                 'invoice_number' => $invoiceNumber,
                 'original_amount' => $originalAmount,
                 'discount' => $discount,
                 'amount' => $finalAmount,
-                'payment_category' => 'sudah_dapat_job',
+                'payment_category' => $request->payment_category,
                 'status' => 'pending',
                 'aulaa_payment_id' => $aulaaResponse['id'],
                 'payment_url' => $paymentUrl,
                 'description' => $request->description,
+                'additional_items' => $additionalItems,
             ]);
 
-            return back()->with('success', 'Tagihan pembayaran berhasil dibuat.');
+            return back()->with('success', 'Tagihan pembayaran Aulaa berhasil dibuat.');
 
         } catch (\Exception $e) {
             Log::error('Gagal membuat tagihan Aulaa: ' . $e->getMessage());
             return back()->with('error', 'Gagal memproses pembayaran ke Aulaa.co: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Mark a billing payment as paid manually.
+     */
+    public function markAsPaid(Request $request)
+    {
+        $request->validate([
+            'interview_detail_id' => 'required|exists:interview_details,id',
+            'payment_category' => 'required|in:biaya_lulus_job,biaya_coe_turun',
+            'discount' => 'nullable|integer|min:0|max:15000000',
+            'description' => 'nullable|string',
+            'additional_items' => 'nullable|array',
+            'additional_items.*.name' => 'required_with:additional_items|string',
+            'additional_items.*.amount' => 'required_with:additional_items|integer|min:0',
+        ]);
+
+        $detail = InterviewDetail::findOrFail($request->interview_detail_id);
+        $user = $detail->user;
+
+        if (!$user) {
+            return back()->with('error', 'Siswa tidak ditemukan.');
+        }
+
+        // Check if there is already a paid payment
+        $paidPayment = Payment::where('interview_detail_id', $detail->id)
+            ->where('payment_category', $request->payment_category)
+            ->where('status', 'paid')
+            ->first();
+
+        if ($paidPayment) {
+            return back()->with('error', 'Pembayaran untuk kategori ini sudah lunas.');
+        }
+
+        $discount = $request->discount ?? 0;
+        $originalAmount = 15000000;
+
+        $additionalItems = $request->additional_items ?? [];
+        $additionalSum = 0;
+        foreach ($additionalItems as $item) {
+            $additionalSum += (int)$item['amount'];
+        }
+
+        $finalAmount = $originalAmount - $discount + $additionalSum;
+
+        // If there's an existing pending payment, update it to paid manual
+        $payment = Payment::where('interview_detail_id', $detail->id)
+            ->where('payment_category', $request->payment_category)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($payment) {
+            $payment->update([
+                'status' => 'paid',
+                'payment_method' => 'manual',
+                'payment_date' => now(),
+                'discount' => $discount,
+                'amount' => $finalAmount,
+                'description' => $request->description,
+                'additional_items' => $additionalItems,
+            ]);
+        } else {
+            $catPrefix = $request->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
+            $invoiceNumber = 'INV-' . $catPrefix . '-MAN-' . $detail->id . '-' . time();
+
+            Payment::create([
+                'user_id' => $user->id,
+                'interview_detail_id' => $detail->id,
+                'invoice_number' => $invoiceNumber,
+                'original_amount' => $originalAmount,
+                'discount' => $discount,
+                'amount' => $finalAmount,
+                'payment_category' => $request->payment_category,
+                'status' => 'paid',
+                'payment_method' => 'manual',
+                'payment_date' => now(),
+                'description' => $request->description,
+                'additional_items' => $additionalItems,
+            ]);
+        }
+
+        return back()->with('success', 'Pembayaran berhasil ditandai sebagai LUNAS secara manual.');
     }
 
     /**

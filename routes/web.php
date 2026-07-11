@@ -154,6 +154,7 @@ Route::middleware([
     // --- MANAJEMEN PEMBAYARAN ONLINE (AULAA.CO) ---
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::post('/payments/manual', [PaymentController::class, 'markAsPaid'])->name('payments.manual');
     Route::post('/payments/{id}/check', [PaymentController::class, 'checkStatus'])->name('payments.check');
     Route::post('/payments/{id}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
 

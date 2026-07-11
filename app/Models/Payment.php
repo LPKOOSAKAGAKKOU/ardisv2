@@ -9,6 +9,7 @@ class Payment extends Model
 {
     protected $fillable = [
         'user_id',
+        'interview_detail_id',
         'invoice_number',
         'amount',
         'payment_category',
@@ -21,6 +22,7 @@ class Payment extends Model
         'payment_url',
         'discount',
         'original_amount',
+        'additional_items',
     ];
 
     protected $casts = [
@@ -28,10 +30,16 @@ class Payment extends Model
         'amount' => 'integer',
         'discount' => 'integer',
         'original_amount' => 'integer',
+        'additional_items' => 'array',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function interviewDetail(): BelongsTo
+    {
+        return $this->belongsTo(InterviewDetail::class);
     }
 }
