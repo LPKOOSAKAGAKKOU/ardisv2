@@ -14,6 +14,12 @@ class AulaaWebhookController extends Controller
     public function handleWebhook(Request $request)
     {
         $signature = $request->header('X-Webhook-Signature');
+        
+        if (!$signature) {
+            Log::warning('Aulaa Webhook warning: Missing X-Webhook-Signature header.');
+            return response()->json(['error' => 'Missing signature'], 401);
+        }
+
         $rawPayload = $request->getContent(); // Raw request body is required for signature verification
         
         $webhookSecret = config('services.aulaa.webhook_secret');
