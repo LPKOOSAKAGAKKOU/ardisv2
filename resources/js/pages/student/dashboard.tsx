@@ -11,6 +11,8 @@ import {
     Ban, GraduationCap, Briefcase, Users, Building2, Award, Target, TrendingUp, ChevronDown, PlaneTakeoff,
     FileSpreadsheet,
     Trash2,
+    CreditCard,
+    ExternalLink,
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
