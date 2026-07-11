@@ -214,15 +214,15 @@ export default function PaymentIndex({ students, filters }: any) {
                                             {item.payment ? (
                                                 <div className="flex flex-col text-xs gap-0.5">
                                                     <span className="font-semibold text-foreground">
-                                                        {formatIDR(item.payment.amount)}
+                                                        {formatIDR(item.payment?.amount)}
                                                     </span>
-                                                    {item.payment.discount > 0 && (
+                                                    {item.payment?.discount > 0 && (
                                                         <span className="text-[10px] text-red-500 font-medium">
-                                                            Potongan: -{formatIDR(item.payment.discount)}
+                                                            Potongan: -{formatIDR(item.payment?.discount)}
                                                         </span>
                                                     )}
                                                     <span className="text-[10px] text-muted-foreground font-mono">
-                                                        No: {item.payment.invoice_number}
+                                                        No: {item.payment?.invoice_number}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -241,10 +241,10 @@ export default function PaymentIndex({ students, filters }: any) {
                                         <td className="px-6 py-4">
                                             {item.payment ? (
                                                 <div className="flex flex-col gap-1">
-                                                    {getStatusBadge(item.payment.status)}
-                                                    {item.payment.status === 'paid' && (
+                                                    {getStatusBadge(item.payment?.status)}
+                                                    {item.payment?.status === 'paid' && (
                                                         <span className="text-[10px] text-muted-foreground">
-                                                            via {item.payment.payment_method?.toUpperCase()} ({item.payment.payment_date})
+                                                            via {item.payment?.payment_method?.toUpperCase()} ({item.payment?.payment_date})
                                                         </span>
                                                     )}
                                                 </div>
@@ -256,7 +256,7 @@ export default function PaymentIndex({ students, filters }: any) {
                                         {/* Aksi */}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                {!item.payment || item.payment.status === 'cancelled' || item.payment.status === 'expired' ? (
+                                                {!item.payment || item.payment?.status === 'cancelled' || item.payment?.status === 'expired' ? (
                                                     <Button 
                                                         size="sm"
                                                         onClick={() => handleOpenCreate(item)}
@@ -266,12 +266,12 @@ export default function PaymentIndex({ students, filters }: any) {
                                                     </Button>
                                                 ) : (
                                                     <div className="flex items-center gap-1">
-                                                        {item.payment.status === 'pending' && (
+                                                        {item.payment?.status === 'pending' && (
                                                             <>
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    onClick={() => window.open(item.payment.payment_url, '_blank')}
+                                                                    onClick={() => window.open(item.payment?.payment_url, '_blank')}
                                                                     className="text-xs flex items-center gap-1 border-neutral-300"
                                                                 >
                                                                     <ExternalLink size={14} /> Bayar
@@ -280,16 +280,16 @@ export default function PaymentIndex({ students, filters }: any) {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     title="Salin Link Pembayaran"
-                                                                    onClick={() => copyToClipboard(item.payment.payment_url, item.payment.id)}
+                                                                    onClick={() => copyToClipboard(item.payment?.payment_url || '', item.payment?.id || '')}
                                                                     className="h-8 w-8 text-neutral-500 hover:text-neutral-700"
                                                                 >
-                                                                    {copiedId === item.payment.id ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                                                                    {copiedId === item.payment?.id ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     title="Perbarui Status"
-                                                                    onClick={() => handleCheckStatus(item.payment.id)}
+                                                                    onClick={() => handleCheckStatus(item.payment?.id)}
                                                                     className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                                 >
                                                                     <RefreshCw size={14} />
@@ -298,18 +298,18 @@ export default function PaymentIndex({ students, filters }: any) {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     title="Batalkan Tagihan"
-                                                                    onClick={() => handleCancel(item.payment.id, item.name)}
+                                                                    onClick={() => handleCancel(item.payment?.id, item.name)}
                                                                     className="h-8 w-8 text-red-650 hover:text-red-750 hover:bg-red-50"
                                                                 >
                                                                     <Ban size={14} />
                                                                 </Button>
                                                             </>
                                                         )}
-                                                        {item.payment.status === 'paid' && (
+                                                        {item.payment?.status === 'paid' && (
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => handleCheckStatus(item.payment.id)}
+                                                                onClick={() => handleCheckStatus(item.payment?.id)}
                                                                 className="text-xs flex items-center gap-1 text-neutral-500 hover:text-neutral-700 border-neutral-200"
                                                             >
                                                                 <RefreshCw size={12} /> Sync Ulang

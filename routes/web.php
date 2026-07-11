@@ -53,7 +53,6 @@ Route::get('/', function () {
     };
 })->name('home');
 
-
 Route::middleware(['auth'])->group(function () {
     // Route Global tanpa prefix 'admin' atau 'student'
     Route::get('generate-cv/{userId}/{interviewId?}', [CvGenerator::class, 'generate'])->name('cv.generate');
