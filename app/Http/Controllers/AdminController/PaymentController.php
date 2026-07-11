@@ -67,6 +67,28 @@ class PaymentController extends Controller
                     $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->sortByDesc('id')->first();
                     $paymentCoe = $detail->payments->where('payment_category', 'biaya_coe_turun')->sortByDesc('id')->first();
 
+                    // Fallback Auto-sync: jika webhook terblokir firewall, sinkronkan status langsung dari Aulaa saat admin memuat halaman
+                    $syncPayment = function ($payment) {
+                        if ($payment && $payment->status === 'pending' && $payment->aulaa_payment_id) {
+                            try {
+                                $statusData = $this->aulaa->getPaymentStatus($payment->aulaa_payment_id);
+                                $newStatus = $statusData['status'] ?? 'pending';
+                                if ($newStatus !== $payment->status) {
+                                    $payment->status = $newStatus;
+                                    if ($newStatus === 'paid') {
+                                        $payment->payment_date = isset($statusData['paid_at']) ? date('Y-m-d', strtotime($statusData['paid_at'])) : now();
+                                        $payment->payment_method = $statusData['payment_method'] ?? 'aulaa';
+                                    }
+                                    $payment->save();
+                                }
+                            } catch (\Exception $e) {
+                                Log::warning("Auto-sync admin failed for payment ID {$payment->id}: " . $e->getMessage());
+                            }
+                        }
+                    };
+                    $syncPayment($paymentJob);
+                    $syncPayment($paymentCoe);
+
                     $formatPayment = function ($payment) {
                         if (!$payment) return null;
                         return [
