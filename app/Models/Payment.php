@@ -7,6 +7,43 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    /**
+     * Default amounts per payment category.
+     */
+    const CATEGORY_AMOUNTS = [
+        'biaya_lulus_job' => 15000000,
+        'biaya_pengurusan_dokumen' => 7500000,
+        'biaya_administrasi_coe' => 7500000,
+    ];
+
+    /**
+     * Human-readable labels per payment category.
+     */
+    const CATEGORY_LABELS = [
+        'biaya_lulus_job' => 'Kelulusan Wawancara (Biaya Lulus Job)',
+        'biaya_pengurusan_dokumen' => 'Pengurusan Dokumen Indonesia - Jepang',
+        'biaya_administrasi_coe' => 'Administrasi COE',
+    ];
+
+    /**
+     * Invoice number prefix per payment category.
+     */
+    const CATEGORY_PREFIXES = [
+        'biaya_lulus_job' => 'JOB',
+        'biaya_pengurusan_dokumen' => 'DOC',
+        'biaya_administrasi_coe' => 'ADM',
+    ];
+
+    /**
+     * The two COE sub-categories that are always created as a pair.
+     */
+    const COE_PAIR_CATEGORIES = ['biaya_pengurusan_dokumen', 'biaya_administrasi_coe'];
+
+    /**
+     * All valid payment categories.
+     */
+    const ALL_CATEGORIES = ['biaya_lulus_job', 'biaya_pengurusan_dokumen', 'biaya_administrasi_coe'];
+
     protected $fillable = [
         'user_id',
         'interview_detail_id',

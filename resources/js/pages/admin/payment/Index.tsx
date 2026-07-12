@@ -30,18 +30,43 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 
+type PaymentCategory = 'biaya_lulus_job' | 'biaya_pengurusan_dokumen' | 'biaya_administrasi_coe';
+
+const CATEGORY_AMOUNTS: Record<string, number> = {
+    biaya_lulus_job: 15000000,
+    biaya_pengurusan_dokumen: 7500000,
+    biaya_administrasi_coe: 7500000,
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+    biaya_lulus_job: 'Biaya Lulus Job',
+    biaya_pengurusan_dokumen: 'Pengurusan Dokumen ID-JP',
+    biaya_administrasi_coe: 'Administrasi COE',
+};
+
 export default function PaymentIndex({ students = { data: [], links: [] }, filters }: any) {
     const [search, setSearch] = useState(filters?.search || '');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<any>({});
-    const [paymentCategory, setPaymentCategory] = useState<'biaya_lulus_job' | 'biaya_coe_turun'>('biaya_lulus_job');
+    const [paymentCategory, setPaymentCategory] = useState<PaymentCategory>('biaya_lulus_job');
+    
+    // Single payment fields (biaya_lulus_job)
     const [discount, setDiscount] = useState<number>(0);
     const [additionalItems, setAdditionalItems] = useState<{ name: string, amount: number }[]>([]);
+    
+    // COE dual payment fields
+    const [discount1, setDiscount1] = useState<number>(0);
+    const [additionalItems1, setAdditionalItems1] = useState<{ name: string, amount: number }[]>([]);
+    const [discount2, setDiscount2] = useState<number>(0);
+    const [additionalItems2, setAdditionalItems2] = useState<{ name: string, amount: number }[]>([]);
+    
     const [description, setDescription] = useState<string>('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [syncingId, setSyncingId] = useState<number | null>(null);
     const [expandedIds, setExpandedIds] = useState<number[]>([]);
+
+    const isCoeCategory = paymentCategory === 'biaya_pengurusan_dokumen';
 
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
@@ -64,28 +89,30 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
     };
 
     // Open Billing Dialog
-    const handleOpenCreate = (student: any, category: 'biaya_lulus_job' | 'biaya_coe_turun') => {
+    const handleOpenCreate = (student: any, category: PaymentCategory) => {
         setSelectedStudent(student);
         setPaymentCategory(category);
         setDiscount(0);
         setAdditionalItems([]);
+        setDiscount1(0);
+        setAdditionalItems1([]);
+        setDiscount2(0);
+        setAdditionalItems2([]);
         setDescription(
             category === 'biaya_lulus_job' 
-                ? 'Tagihan pembayaran karena sudah lulus wawancara kerja.' 
-                : 'Tagihan pembayaran karena Certificate of Eligibility (COE) telah turun.'
+                ? 'Tagihan pembayaran karena sudah lulus wawancara kerja.'
+                : 'Tagihan pembayaran COE (Pengurusan Dokumen Indonesia - Jepang & Administrasi COE).'
         );
         setIsCreateOpen(true);
     };
 
-    // Add / Remove / Change custom items
+    // --- Additional Items helpers for single payment ---
     const handleAddAdditionalItem = () => {
         setAdditionalItems([...additionalItems, { name: '', amount: 0 }]);
     };
-
     const handleRemoveAdditionalItem = (index: number) => {
         setAdditionalItems(additionalItems.filter((_, i) => i !== index));
     };
-
     const handleAdditionalItemChange = (index: number, field: 'name' | 'amount', value: any) => {
         const updated = [...additionalItems];
         if (field === 'amount') {
@@ -96,6 +123,24 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
         setAdditionalItems(updated);
     };
 
+    // --- Additional Items helpers for COE payment 1 ---
+    const handleAddItem1 = () => setAdditionalItems1([...additionalItems1, { name: '', amount: 0 }]);
+    const handleRemoveItem1 = (index: number) => setAdditionalItems1(additionalItems1.filter((_, i) => i !== index));
+    const handleItemChange1 = (index: number, field: 'name' | 'amount', value: any) => {
+        const updated = [...additionalItems1];
+        updated[index][field] = field === 'amount' ? Math.max(0, parseInt(value) || 0) : value;
+        setAdditionalItems1(updated);
+    };
+
+    // --- Additional Items helpers for COE payment 2 ---
+    const handleAddItem2 = () => setAdditionalItems2([...additionalItems2, { name: '', amount: 0 }]);
+    const handleRemoveItem2 = (index: number) => setAdditionalItems2(additionalItems2.filter((_, i) => i !== index));
+    const handleItemChange2 = (index: number, field: 'name' | 'amount', value: any) => {
+        const updated = [...additionalItems2];
+        updated[index][field] = field === 'amount' ? Math.max(0, parseInt(value) || 0) : value;
+        setAdditionalItems2(updated);
+    };
+
     // Submit Billing
     const handleSubmit = (e: React.FormEvent, isManual: boolean = false) => {
         e.preventDefault();
@@ -103,15 +148,27 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
 
         const url = isManual ? '/admin/payments/manual' : '/admin/payments';
 
+        const payload: any = {
+            interview_detail_id: selectedStudent?.id,
+            payment_category: paymentCategory,
+            description: description,
+        };
+
+        if (isCoeCategory) {
+            // COE: send dual invoice fields
+            payload.discount = discount1;
+            payload.additional_items = additionalItems1.filter(item => item.name && item.amount > 0);
+            payload.discount_2 = discount2;
+            payload.additional_items_2 = additionalItems2.filter(item => item.name && item.amount > 0);
+        } else {
+            // Single payment
+            payload.discount = discount;
+            payload.additional_items = additionalItems.filter(item => item.name && item.amount > 0);
+        }
+
         router.post(
             url,
-            {
-                interview_detail_id: selectedStudent?.id,
-                payment_category: paymentCategory,
-                discount: discount,
-                description: description,
-                additional_items: additionalItems.filter(item => item.name && item.amount > 0),
-            },
+            payload,
             {
                 onSuccess: () => {
                     setIsCreateOpen(false);
@@ -190,12 +247,40 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
         }
     };
 
-    const additionalTotal = additionalItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const finalAmount = 15000000 - discount + additionalTotal;
+    // Calculate totals for dialog
+    const getSingleTotal = () => {
+        const base = CATEGORY_AMOUNTS[paymentCategory] || 15000000;
+        const addSum = additionalItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+        return base - discount + addSum;
+    };
+
+    const getCoeTotal1 = () => {
+        const base = CATEGORY_AMOUNTS['biaya_pengurusan_dokumen'];
+        const addSum = additionalItems1.reduce((sum, item) => sum + (item.amount || 0), 0);
+        return base - discount1 + addSum;
+    };
+
+    const getCoeTotal2 = () => {
+        const base = CATEGORY_AMOUNTS['biaya_administrasi_coe'];
+        const addSum = additionalItems2.reduce((sum, item) => sum + (item.amount || 0), 0);
+        return base - discount2 + addSum;
+    };
 
     // Render Payment Column Cell helper
-    const renderPaymentCell = (payment: any, category: 'biaya_lulus_job' | 'biaya_coe_turun', item: any) => {
+    const renderPaymentCell = (payment: any, category: PaymentCategory, item: any) => {
         if (!payment) {
+            // For COE sub-categories, only show "Buat Tagihan" on the first column (pengurusan_dokumen)
+            if (category === 'biaya_administrasi_coe') {
+                // Check if the partner (pengurusan_dokumen) also has no payment
+                const partnerPayment = item.payment_coe_dokumen;
+                if (!partnerPayment) {
+                    return (
+                        <span className="text-xs text-muted-foreground italic">
+                            Akan dibuat bersama tagihan dokumen
+                        </span>
+                    );
+                }
+            }
             return (
                 <div className="flex flex-col gap-2">
                     <span className="text-xs text-muted-foreground italic">Belum ada tagihan</span>
@@ -203,11 +288,11 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                         size="sm"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenCreate(item, category);
+                            handleOpenCreate(item, category === 'biaya_administrasi_coe' ? 'biaya_pengurusan_dokumen' : category);
                         }}
                         className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90 text-xs w-fit"
                     >
-                        <Plus className="mr-1 h-3.5 w-3.5" /> Buat Tagihan
+                        <Plus className="mr-1 h-3.5 w-3.5" /> {category === 'biaya_pengurusan_dokumen' || category === 'biaya_administrasi_coe' ? 'Buat Tagihan COE' : 'Buat Tagihan'}
                     </Button>
                 </div>
             );
@@ -313,12 +398,222 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                         <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleOpenCreate(item, category)}
+                            onClick={() => handleOpenCreate(item, category === 'biaya_administrasi_coe' ? 'biaya_pengurusan_dokumen' : category)}
                             className="text-[10px] h-7 px-2 border-neutral-300 hover:bg-neutral-50"
                         >
                             <Plus className="mr-0.5 h-3 w-3" /> Buat Ulang
                         </Button>
                     )}
+                </div>
+            </div>
+        );
+    };
+
+    // Render additional items editor
+    const renderAdditionalItemsEditor = (
+        items: { name: string, amount: number }[],
+        onAdd: () => void,
+        onChange: (i: number, f: 'name' | 'amount', v: any) => void,
+        onRemove: (i: number) => void,
+    ) => (
+        <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
+            <div className="flex justify-between items-center mb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Item Tambahan (Opsional)</h4>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onAdd}
+                    className="h-7 text-xs flex items-center gap-1 border-neutral-355"
+                >
+                    <Plus size={12} /> Tambah Item
+                </Button>
+            </div>
+            {items.length > 0 ? (
+                <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-1">
+                    {items.map((item, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                            <Input
+                                placeholder="Nama Item"
+                                value={item.name}
+                                onChange={(e) => onChange(idx, 'name', e.target.value)}
+                                className="flex-1 h-9 text-xs"
+                            />
+                            <Input
+                                type="number"
+                                placeholder="Nominal (Rp)"
+                                value={item.amount || ''}
+                                onChange={(e) => onChange(idx, 'amount', e.target.value)}
+                                className="w-32 h-9 text-xs"
+                            />
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onRemove(idx)}
+                                className="h-8 w-8 text-red-500 hover:bg-red-50"
+                            >
+                                <span className="text-lg">×</span>
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-xs text-muted-foreground italic text-center py-2 bg-neutral-50/50 rounded-lg">
+                    Belum ada item tambahan.
+                </p>
+            )}
+        </div>
+    );
+
+    // Render Dialog Content
+    const renderDialogBody = () => {
+        if (isCoeCategory) {
+            // COE dual invoice dialog
+            return (
+                <div className="grid gap-4 py-4 text-sm">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right font-medium">Kategori</Label>
+                        <Badge className="col-span-3 w-fit text-xs bg-neutral-900 text-white dark:bg-white dark:text-black">
+                            Tagihan COE (2 Invoice)
+                        </Badge>
+                    </div>
+
+                    {/* --- Tagihan 1: Pengurusan Dokumen --- */}
+                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                            <span className="bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-md">1</span>
+                            Pengurusan Dokumen Indonesia - Jepang
+                        </h3>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right font-medium text-xs">Nominal</Label>
+                            <Input value={formatIDR(7500000)} disabled className="col-span-3 bg-neutral-50 text-xs" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right font-medium text-xs">Potongan</Label>
+                            <Input
+                                type="number" min="0" max="7500000"
+                                value={discount1 || ''}
+                                onChange={(e) => setDiscount1(Math.min(7500000, Math.max(0, parseInt(e.target.value) || 0)))}
+                                placeholder="Masukkan potongan"
+                                className="col-span-3 text-xs"
+                            />
+                        </div>
+                        {renderAdditionalItemsEditor(additionalItems1, handleAddItem1, handleItemChange1, handleRemoveItem1)}
+                        <div className="grid grid-cols-4 items-center gap-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                            <Label className="text-right font-bold text-xs">Subtotal</Label>
+                            <Input value={formatIDR(getCoeTotal1())} disabled className="col-span-3 bg-blue-50 text-blue-700 font-bold border-blue-200 text-xs" />
+                        </div>
+                    </div>
+
+                    {/* --- Tagihan 2: Administrasi COE --- */}
+                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                            <span className="bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded-md">2</span>
+                            Administrasi COE
+                        </h3>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right font-medium text-xs">Nominal</Label>
+                            <Input value={formatIDR(7500000)} disabled className="col-span-3 bg-neutral-50 text-xs" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right font-medium text-xs">Potongan</Label>
+                            <Input
+                                type="number" min="0" max="7500000"
+                                value={discount2 || ''}
+                                onChange={(e) => setDiscount2(Math.min(7500000, Math.max(0, parseInt(e.target.value) || 0)))}
+                                placeholder="Masukkan potongan"
+                                className="col-span-3 text-xs"
+                            />
+                        </div>
+                        {renderAdditionalItemsEditor(additionalItems2, handleAddItem2, handleItemChange2, handleRemoveItem2)}
+                        <div className="grid grid-cols-4 items-center gap-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                            <Label className="text-right font-bold text-xs">Subtotal</Label>
+                            <Input value={formatIDR(getCoeTotal2())} disabled className="col-span-3 bg-purple-50 text-purple-700 font-bold border-purple-200 text-xs" />
+                        </div>
+                    </div>
+
+                    {/* Grand Total */}
+                    <div className="grid grid-cols-4 items-center gap-4 border-t border-neutral-200 dark:border-neutral-700 pt-3">
+                        <Label className="text-right font-black text-foreground">Total COE</Label>
+                        <Input
+                            value={formatIDR(getCoeTotal1() + getCoeTotal2())}
+                            disabled
+                            className="col-span-3 bg-green-50 text-green-700 font-bold border-green-200"
+                        />
+                    </div>
+
+                    {/* Description */}
+                    <div className="grid grid-cols-4 items-start gap-4">
+                        <Label htmlFor="description" className="text-right mt-2 font-medium">Keterangan</Label>
+                        <Textarea
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Keterangan pembayaran..."
+                            className="col-span-3 text-xs"
+                            rows={2}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        // Single payment dialog (biaya_lulus_job)
+        const baseAmount = CATEGORY_AMOUNTS[paymentCategory] || 15000000;
+        return (
+            <div className="grid gap-4 py-4 text-sm">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right font-medium">Kategori</Label>
+                    <Badge className="col-span-3 w-fit text-xs bg-neutral-900 text-white dark:bg-white dark:text-black">
+                        {CATEGORY_LABELS[paymentCategory] || paymentCategory}
+                    </Badge>
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right font-medium">Nominal Utama</Label>
+                    <Input
+                        value={formatIDR(baseAmount)}
+                        disabled
+                        className="col-span-3 bg-neutral-50"
+                    />
+                </div>
+
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="discount" className="text-right font-medium">Potongan (Rp)</Label>
+                    <Input
+                        id="discount"
+                        type="number"
+                        min="0"
+                        max={String(baseAmount)}
+                        value={discount || ''}
+                        onChange={(e) => setDiscount(Math.min(baseAmount, Math.max(0, parseInt(e.target.value) || 0)))}
+                        placeholder="Masukkan potongan"
+                        className="col-span-3"
+                    />
+                </div>
+
+                {renderAdditionalItemsEditor(additionalItems, handleAddAdditionalItem, handleAdditionalItemChange, handleRemoveAdditionalItem)}
+
+                <div className="grid grid-cols-4 items-center gap-4 border-t border-neutral-100 dark:border-neutral-800 pt-3">
+                    <Label className="text-right font-bold text-foreground">Total Tagihan</Label>
+                    <Input
+                        value={formatIDR(getSingleTotal())}
+                        disabled
+                        className="col-span-3 bg-green-50 text-green-700 font-bold border-green-200"
+                    />
+                </div>
+
+                <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="description" className="text-right mt-2 font-medium">Keterangan</Label>
+                    <Textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Keterangan pembayaran..."
+                        className="col-span-3 text-xs"
+                        rows={2}
+                    />
                 </div>
             </div>
         );
@@ -337,7 +632,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                         </div>
                         <div>
                             <h1 className="text-xl font-bold tracking-tight">Data Pembayaran Wawancara</h1>
-                            <p className="text-sm text-muted-foreground">Kelola tagihan kelulusan wawancara dan COE turun peserta per event wawancara.</p>
+                            <p className="text-sm text-muted-foreground">Kelola tagihan kelulusan wawancara dan COE peserta per event wawancara.</p>
                         </div>
                     </div>
                 </div>
@@ -374,12 +669,9 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                                 className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/30 transition-colors cursor-pointer"
                                                 onClick={() => toggleExpand(interview.id)}
                                             >
-                                                {/* Toggle Icon */}
                                                 <td className="px-6 py-4 text-center">
                                                     {isExpanded ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronRight size={16} className="text-muted-foreground" />}
                                                 </td>
-
-                                                {/* Wawancara & Perusahaan */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="font-bold text-foreground text-sm">{interview.interviewer_title}</span>
@@ -388,13 +680,9 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                                         </span>
                                                     </div>
                                                 </td>
-
-                                                {/* Tanggal Wawancara */}
                                                 <td className="px-6 py-4 font-mono text-xs">
                                                     {interview.interview_date}
                                                 </td>
-
-                                                {/* Jumlah Siswa Lulus */}
                                                 <td className="px-6 py-4 text-center">
                                                     <Badge variant="secondary" className="px-2.5 py-0.5 rounded-full text-xs font-semibold">
                                                         {interview.students?.length || 0} Orang
@@ -411,15 +699,15 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                                                 <thead className="bg-neutral-50 dark:bg-neutral-900/30 text-[9px] font-bold uppercase tracking-wider text-muted-foreground border-b border-neutral-100 dark:border-neutral-900">
                                                                     <tr>
                                                                         <th className="px-4 py-3">Siswa & NIK</th>
-                                                                        <th className="px-4 py-3 w-1/3">Tagihan Lulus Job (Rp15jt)</th>
-                                                                        <th className="px-4 py-3 w-1/3">Tagihan COE Turun (Rp15jt)</th>
+                                                                        <th className="px-4 py-3 w-1/4">Tagihan Lulus Job (Rp15jt)</th>
+                                                                        <th className="px-4 py-3 w-1/4">Pengurusan Dokumen ID-JP (Rp7,5jt)</th>
+                                                                        <th className="px-4 py-3 w-1/4">Administrasi COE (Rp7,5jt)</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900">
                                                                     {interview.students && interview.students.length > 0 ? (
                                                                         interview.students.map((student: any) => (
                                                                             <tr key={student.id} className="hover:bg-neutral-50/40 transition-colors">
-                                                                                {/* Siswa Info */}
                                                                                 <td className="px-4 py-3 align-top">
                                                                                     <div className="flex flex-col gap-0.5">
                                                                                         <span className="font-semibold text-foreground text-xs">{student.name}</span>
@@ -428,21 +716,20 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                                                                         </span>
                                                                                     </div>
                                                                                 </td>
-
-                                                                                {/* Tagihan Lulus Job */}
                                                                                 <td className="px-4 py-3 align-top">
                                                                                     {renderPaymentCell(student.payment_job, 'biaya_lulus_job', student)}
                                                                                 </td>
-
-                                                                                {/* Tagihan COE Turun */}
                                                                                 <td className="px-4 py-3 align-top">
-                                                                                    {renderPaymentCell(student.payment_coe, 'biaya_coe_turun', student)}
+                                                                                    {renderPaymentCell(student.payment_coe_dokumen, 'biaya_pengurusan_dokumen', student)}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 align-top">
+                                                                                    {renderPaymentCell(student.payment_coe_admin, 'biaya_administrasi_coe', student)}
                                                                                 </td>
                                                                             </tr>
                                                                         ))
                                                                     ) : (
                                                                         <tr>
-                                                                            <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">
+                                                                            <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">
                                                                                 Tidak ada siswa dalam wawancara ini.
                                                                             </td>
                                                                         </tr>
@@ -487,118 +774,19 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
 
             {/* Modal Dialog: Buat Tagihan Baru */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+                <DialogContent className={`${isCoeCategory ? 'sm:max-w-[600px]' : 'sm:max-w-[500px]'} max-h-[85vh] overflow-y-auto`}>
                     <form onSubmit={(e) => e.preventDefault()}>
                         <DialogHeader>
                             <DialogTitle>Kelola Tagihan Pembayaran</DialogTitle>
                             <DialogDescription>
-                                Detail tagihan pembayaran {paymentCategory === 'biaya_lulus_job' ? 'Lulus Wawancara' : 'COE Turun'} untuk **{selectedStudent?.name}**.
+                                {isCoeCategory 
+                                    ? `Buat 2 tagihan COE sekaligus untuk **${selectedStudent?.name}**. Masing-masing tagihan akan dikirim sebagai transaksi terpisah.`
+                                    : `Detail tagihan pembayaran Lulus Wawancara untuk **${selectedStudent?.name}**.`
+                                }
                             </DialogDescription>
                         </DialogHeader>
                         
-                        <div className="grid gap-4 py-4 text-sm">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right font-medium">Kategori</Label>
-                                <Badge className="col-span-3 w-fit text-xs bg-neutral-900 text-white dark:bg-white dark:text-black">
-                                    {paymentCategory === 'biaya_lulus_job' ? 'Biaya Lulus Job' : 'Biaya COE Turun'}
-                                </Badge>
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right font-medium">Nominal Utama</Label>
-                                <Input
-                                    value={formatIDR(15000000)}
-                                    disabled
-                                    className="col-span-3 bg-neutral-50"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="discount" className="text-right font-medium">Potongan (Rp)</Label>
-                                <Input
-                                    id="discount"
-                                    type="number"
-                                    min="0"
-                                    max="15000000"
-                                    value={discount || ''}
-                                    onChange={(e) => setDiscount(Math.min(15000000, Math.max(0, parseInt(e.target.value) || 0)))}
-                                    placeholder="Masukkan potongan"
-                                    className="col-span-3"
-                                />
-                            </div>
-
-                            {/* Additional Custom Items */}
-                            <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Item Tambahan (Opsional)</h4>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleAddAdditionalItem}
-                                        className="h-7 text-xs flex items-center gap-1 border-neutral-355"
-                                    >
-                                        <Plus size={12} /> Tambah Item
-                                    </Button>
-                                </div>
-
-                                {additionalItems.length > 0 ? (
-                                    <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto pr-1">
-                                        {additionalItems.map((item, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center">
-                                                <Input
-                                                    placeholder="Nama Item (misal: Tiket Pesawat)"
-                                                    value={item.name}
-                                                    onChange={(e) => handleAdditionalItemChange(idx, 'name', e.target.value)}
-                                                    className="flex-1 h-9 text-xs"
-                                                />
-                                                <Input
-                                                    type="number"
-                                                    placeholder="Nominal (Rp)"
-                                                    value={item.amount || ''}
-                                                    onChange={(e) => handleAdditionalItemChange(idx, 'amount', e.target.value)}
-                                                    className="w-32 h-9 text-xs"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleRemoveAdditionalItem(idx)}
-                                                    className="h-8 w-8 text-red-500 hover:bg-red-50"
-                                                >
-                                                    <span className="text-lg">×</span>
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-muted-foreground italic text-center py-2 bg-neutral-50/50 rounded-lg">
-                                        Belum ada item tambahan.
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4 border-t border-neutral-100 dark:border-neutral-800 pt-3">
-                                <Label className="text-right font-bold text-foreground">Total Tagihan</Label>
-                                <Input
-                                    value={formatIDR(finalAmount)}
-                                    disabled
-                                    className="col-span-3 bg-green-50 text-green-700 font-bold border-green-200"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-4 items-start gap-4">
-                                <Label htmlFor="description" className="text-right mt-2 font-medium">Keterangan</Label>
-                                <Textarea
-                                    id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Keterangan pembayaran..."
-                                    className="col-span-3 text-xs"
-                                    rows={2}
-                                />
-                            </div>
-                        </div>
+                        {renderDialogBody()}
 
                         <DialogFooter className="flex flex-col sm:flex-row gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-3">
                             <Button 
@@ -626,7 +814,7 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                                     className="bg-neutral-900 text-white dark:bg-white dark:text-black w-full sm:w-auto text-xs"
                                     disabled={processing}
                                 >
-                                    {processing ? 'Memproses...' : 'Buat Link Aulaa'}
+                                    {processing ? 'Memproses...' : isCoeCategory ? 'Buat 2 Link Aulaa' : 'Buat Link Aulaa'}
                                 </Button>
                             </div>
                         </DialogFooter>

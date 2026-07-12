@@ -24,9 +24,7 @@ class PaymentExpiredMail extends Mailable
     {
         $this->payment = $payment;
         $this->studentName = $payment->user?->name ?? 'Siswa';
-        $this->categoryName = $payment->payment_category === 'biaya_lulus_job' 
-            ? 'Kelulusan Wawancara (Biaya Lulus Job)' 
-            : 'Penurunan COE (Biaya COE Turun)';
+        $this->categoryName = Payment::CATEGORY_LABELS[$payment->payment_category] ?? $payment->payment_category;
     }
 
     /**

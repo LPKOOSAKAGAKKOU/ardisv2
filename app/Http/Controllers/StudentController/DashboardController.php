@@ -44,22 +44,29 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // 4. Ambil data tagihan kelulusan job dan COE (jika ada)
-        $paymentJob = \App\Models\Payment::where('user_id', $user->id)
+        // 4. Ambil data tagihan kelulusan job (jika ada)
+        $paymentJob = Payment::where('user_id', $user->id)
             ->where('payment_category', 'biaya_lulus_job')
             ->latest()
             ->first();
 
-        $paymentCoe = \App\Models\Payment::where('user_id', $user->id)
-            ->where('payment_category', 'biaya_coe_turun')
+        // 5. Ambil data tagihan COE baru: Pengurusan Dokumen & Administrasi COE
+        $paymentCoeDokumen = Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_pengurusan_dokumen')
+            ->latest()
+            ->first();
+
+        $paymentCoeAdmin = Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_administrasi_coe')
             ->latest()
             ->first();
 
         return Inertia::render('student/dashboard', [
             'student' => $student,
-            'passedApplication' => $passedApplication, // Kirim data kelulusan ke frontend
-            'paymentJob' => $paymentJob, // Kirim data tagihan lulus job ke frontend
-            'paymentCoe' => $paymentCoe, // Kirim data tagihan coe ke frontend
+            'passedApplication' => $passedApplication,
+            'paymentJob' => $paymentJob,
+            'paymentCoeDokumen' => $paymentCoeDokumen,
+            'paymentCoeAdmin' => $paymentCoeAdmin,
             'interviews' => $interviews,
             'auth' => [
                 'user' => $user
@@ -79,7 +86,7 @@ class DashboardController extends Controller
             ->whereIn('status', ['expired', 'cancelled', 'failed'])
             ->firstOrFail();
 
-        $catPrefix = $oldPayment->payment_category === 'biaya_lulus_job' ? 'JOB' : 'COE';
+        $catPrefix = Payment::CATEGORY_PREFIXES[$oldPayment->payment_category] ?? 'PAY';
         $studentNameSlug = strtoupper(Str::slug($user->name));
         $invoiceNumber = 'INV-' . $catPrefix . '-' . $oldPayment->interview_detail_id . '-' . $studentNameSlug . '-' . time();
 

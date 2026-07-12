@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AulaaWebhookController extends Controller
 {
@@ -85,11 +86,11 @@ class AulaaWebhookController extends Controller
             $user = $payment->user;
             if ($user && $user->email) {
                 if ($status === 'paid') {
-                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentPaidMail($payment));
+                    $this->handlePaidNotification($payment, $user);
                 } elseif ($status === 'expired') {
-                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentExpiredMail($payment));
+                    Mail::to($user->email)->send(new \App\Mail\PaymentExpiredMail($payment));
                 } elseif ($status === 'failed') {
-                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\PaymentFailedMail($payment));
+                    Mail::to($user->email)->send(new \App\Mail\PaymentFailedMail($payment));
                 }
             }
         } catch (\Exception $mailEx) {
@@ -97,5 +98,40 @@ class AulaaWebhookController extends Controller
         }
 
         return response()->json(['received' => true], 200);
+    }
+
+    /**
+     * Handle paid notification logic.
+     * For COE categories, check if the partner payment is also paid.
+     */
+    private function handlePaidNotification(Payment $payment, $user)
+    {
+        $category = $payment->payment_category;
+
+        // Check if this is a COE paired category
+        if (in_array($category, Payment::COE_PAIR_CATEGORIES)) {
+            // Find the partner category
+            $partnerCategory = $category === 'biaya_pengurusan_dokumen'
+                ? 'biaya_administrasi_coe'
+                : 'biaya_pengurusan_dokumen';
+
+            // Find partner payment (same user, same interview detail)
+            $partnerPayment = Payment::where('user_id', $payment->user_id)
+                ->where('interview_detail_id', $payment->interview_detail_id)
+                ->where('payment_category', $partnerCategory)
+                ->latest()
+                ->first();
+
+            if ($partnerPayment && $partnerPayment->status === 'paid') {
+                // Both COE payments are paid → send "all paid" email
+                Mail::to($user->email)->send(new \App\Mail\PaymentCoeAllPaidMail($payment, $partnerPayment));
+            } else {
+                // Only this one is paid → send "partial paid" email with reminder
+                Mail::to($user->email)->send(new \App\Mail\PaymentCoePartialPaidMail($payment, $partnerPayment));
+            }
+        } else {
+            // Standard single payment notification
+            Mail::to($user->email)->send(new \App\Mail\PaymentPaidMail($payment));
+        }
     }
 }

@@ -29,10 +29,24 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+interface PaymentData {
+    id: number;
+    invoice_number: string;
+    amount: number;
+    original_amount: number;
+    discount: number;
+    status: string;
+    payment_url: string;
+    expired_at?: string;
+    payment_method?: string;
+    payment_date?: string;
+    description?: string;
+    additional_items?: { name: string; amount: number }[];
+}
+
 interface Props {
     student: any;
     interviews: any[];
-    // Tambahkan prop baru ini
     passedApplication?: {
         interview: {
             interviewer_title: string;
@@ -44,32 +58,9 @@ interface Props {
             }
         }
     } | null;
-    paymentJob?: {
-        id: number;
-        invoice_number: string;
-        amount: number;
-        original_amount: number;
-        discount: number;
-        status: string;
-        payment_url: string;
-        payment_method?: string;
-        payment_date?: string;
-        description?: string;
-        additional_items?: { name: string; amount: number }[];
-    } | null;
-    paymentCoe?: {
-        id: number;
-        invoice_number: string;
-        amount: number;
-        original_amount: number;
-        discount: number;
-        status: string;
-        payment_url: string;
-        payment_method?: string;
-        payment_date?: string;
-        description?: string;
-        additional_items?: { name: string; amount: number }[];
-    } | null;
+    paymentJob?: PaymentData | null;
+    paymentCoeDokumen?: PaymentData | null;
+    paymentCoeAdmin?: PaymentData | null;
 }
 
 function Countdown({ expiredAt, onExpire }: { expiredAt: string; onExpire?: () => void }) {
@@ -116,7 +107,7 @@ function Countdown({ expiredAt, onExpire }: { expiredAt: string; onExpire?: () =
     );
 }
 
-export default function StudentDashboard({ student, interviews, passedApplication, paymentJob, paymentCoe }: Props) {
+export default function StudentDashboard({ student, interviews, passedApplication, paymentJob, paymentCoeDokumen, paymentCoeAdmin }: Props) {
     const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
 
     const handleRegeneratePayment = (id: number) => {
@@ -545,76 +536,74 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                 </div>
                             )}
 
-                            {/* ========== CARD: TAGIHAN PEMBAYARAN COE TURUN (AULAA) ========== */}
-                            {paymentCoe && (
-                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden mt-6">
+                            {/* ========== CARD: TAGIHAN PENGURUSAN DOKUMEN ID-JP (COE 1) ========== */}
+                            {paymentCoeDokumen && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
                                     <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                                         <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
-                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Penurunan COE (COE Turun)
+                                            <CreditCard className="size-4 sm:size-5 text-blue-600" /> Pengurusan Dokumen Indonesia - Jepang
                                         </h2>
-                                        {paymentCoe.status === 'paid' ? (
+                                        {paymentCoeDokumen.status === 'paid' ? (
                                             <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Lunas
                                             </Badge>
-                                        ) : paymentCoe.status === 'pending' ? (
+                                        ) : paymentCoeDokumen.status === 'pending' ? (
                                             <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Belum Dibayar
                                             </Badge>
                                         ) : (
                                             <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
-                                                {paymentCoe.status.toUpperCase()}
+                                                {paymentCoeDokumen.status.toUpperCase()}
                                             </Badge>
                                         )}
                                     </div>
-
                                     <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                             <div>
-                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran (1 dari 2 Tagihan COE)</p>
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-2xl sm:text-3xl font-black text-foreground">
-                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoe.amount)}
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoeDokumen.amount)}
                                                         </span>
                                                     </div>
-                                                    {paymentCoe.discount > 0 && (
+                                                    {paymentCoeDokumen.discount > 0 && (
                                                         <p className="text-xs text-red-500 font-medium">
-                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoe.discount)}
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoeDokumen.discount)}
                                                         </p>
                                                     )}
-                                                    {paymentCoe.additional_items && paymentCoe.additional_items.length > 0 && (
+                                                    {paymentCoeDokumen.additional_items && paymentCoeDokumen.additional_items.length > 0 && (
                                                         <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
                                                             <span className="font-semibold text-neutral-550">Item Tambahan:</span>
                                                             <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
-                                                                {paymentCoe.additional_items.map((add: any, idx: number) => (
+                                                                {paymentCoeDokumen.additional_items.map((add: any, idx: number) => (
                                                                     <li key={idx}>
                                                                         {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
                                                                     </li>
                                                                 ))}
                                                             </ul>
                                                         </div>
-                                                     )}
-                                                     <p className="text-[10px] text-muted-foreground font-mono mt-1">
-                                                         No. Invoice: {paymentCoe.invoice_number}
-                                                     </p>
-                                                    {paymentCoe.status === 'pending' && paymentCoe.expired_at && (
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                        No. Invoice: {paymentCoeDokumen.invoice_number}
+                                                    </p>
+                                                    {paymentCoeDokumen.status === 'pending' && paymentCoeDokumen.expired_at && (
                                                         <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
                                                             <span>Batas Waktu Bayar:</span>
-                                                            <Countdown expiredAt={paymentCoe.expired_at} />
+                                                            <Countdown expiredAt={paymentCoeDokumen.expired_at} />
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
- 
                                             <div className="w-full md:w-auto">
-                                                {paymentCoe.status === 'pending' ? (
+                                                {paymentCoeDokumen.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
-                                                            Silakan selesaikan pembayaran tagihan penurunan COE Anda melalui tautan resmi Aulaa di bawah ini.
+                                                            Silakan selesaikan pembayaran tagihan pengurusan dokumen melalui tautan resmi Aulaa di bawah ini.
                                                         </p>
-                                                        {paymentCoe.payment_url ? (
+                                                        {paymentCoeDokumen.payment_url ? (
                                                             <Button 
-                                                                onClick={() => window.open(paymentCoe.payment_url, '_blank')}
+                                                                onClick={() => window.open(paymentCoeDokumen.payment_url, '_blank')}
                                                                 className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
                                                             >
                                                                 <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
@@ -623,28 +612,135 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                             <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
                                                         )}
                                                     </div>
-                                                ) : paymentCoe.status === 'paid' ? (
+                                                ) : paymentCoeDokumen.status === 'paid' ? (
                                                     <div className="space-y-1 text-xs text-muted-foreground">
                                                         <p className="text-green-650 font-bold flex items-center gap-1">
                                                             <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
                                                         </p>
-                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentCoe.payment_method?.toUpperCase()}</strong></p>
-                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentCoe.payment_date}</strong></p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentCoeDokumen.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentCoeDokumen.payment_date}</strong></p>
                                                     </div>
                                                 ) : (
                                                     <div className="flex flex-col gap-2">
                                                         <p className="text-xs text-muted-foreground italic">
-                                                            Tagihan {paymentCoe.status === 'expired' ? 'kedaluwarsa' : (paymentCoe.status === 'failed' ? 'gagal' : 'dibatalkan')}.
+                                                            Tagihan {paymentCoeDokumen.status === 'expired' ? 'kedaluwarsa' : (paymentCoeDokumen.status === 'failed' ? 'gagal' : 'dibatalkan')}.
                                                         </p>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            disabled={regeneratingId === paymentCoe.id}
-                                                            onClick={() => handleRegeneratePayment(paymentCoe.id)}
+                                                            disabled={regeneratingId === paymentCoeDokumen.id}
+                                                            onClick={() => handleRegeneratePayment(paymentCoeDokumen.id)}
                                                             className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                                                         >
-                                                            <RefreshCw size={12} className={regeneratingId === paymentCoe.id ? 'animate-spin' : ''} />
-                                                            {regeneratingId === paymentCoe.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                            <RefreshCw size={12} className={regeneratingId === paymentCoeDokumen.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentCoeDokumen.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ========== CARD: TAGIHAN ADMINISTRASI COE (COE 2) ========== */}
+                            {paymentCoeAdmin && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
+                                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                        <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
+                                            <CreditCard className="size-4 sm:size-5 text-purple-600" /> Administrasi COE
+                                        </h2>
+                                        {paymentCoeAdmin.status === 'paid' ? (
+                                            <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Lunas
+                                            </Badge>
+                                        ) : paymentCoeAdmin.status === 'pending' ? (
+                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Belum Dibayar
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                {paymentCoeAdmin.status.toUpperCase()}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                            <div>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran (2 dari 2 Tagihan COE)</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl sm:text-3xl font-black text-foreground">
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoeAdmin.amount)}
+                                                        </span>
+                                                    </div>
+                                                    {paymentCoeAdmin.discount > 0 && (
+                                                        <p className="text-xs text-red-500 font-medium">
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentCoeAdmin.discount)}
+                                                        </p>
+                                                    )}
+                                                    {paymentCoeAdmin.additional_items && paymentCoeAdmin.additional_items.length > 0 && (
+                                                        <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                                            <span className="font-semibold text-neutral-550">Item Tambahan:</span>
+                                                            <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
+                                                                {paymentCoeAdmin.additional_items.map((add: any, idx: number) => (
+                                                                    <li key={idx}>
+                                                                        {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                        No. Invoice: {paymentCoeAdmin.invoice_number}
+                                                    </p>
+                                                    {paymentCoeAdmin.status === 'pending' && paymentCoeAdmin.expired_at && (
+                                                        <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
+                                                            <span>Batas Waktu Bayar:</span>
+                                                            <Countdown expiredAt={paymentCoeAdmin.expired_at} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="w-full md:w-auto">
+                                                {paymentCoeAdmin.status === 'pending' ? (
+                                                    <div className="flex flex-col gap-3">
+                                                        <p className="text-xs text-muted-foreground max-w-sm">
+                                                            Silakan selesaikan pembayaran tagihan administrasi COE melalui tautan resmi Aulaa di bawah ini.
+                                                        </p>
+                                                        {paymentCoeAdmin.payment_url ? (
+                                                            <Button 
+                                                                onClick={() => window.open(paymentCoeAdmin.payment_url, '_blank')}
+                                                                className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
+                                                            >
+                                                                <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
+                                                        )}
+                                                    </div>
+                                                ) : paymentCoeAdmin.status === 'paid' ? (
+                                                    <div className="space-y-1 text-xs text-muted-foreground">
+                                                        <p className="text-green-650 font-bold flex items-center gap-1">
+                                                            <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
+                                                        </p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentCoeAdmin.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentCoeAdmin.payment_date}</strong></p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <p className="text-xs text-muted-foreground italic">
+                                                            Tagihan {paymentCoeAdmin.status === 'expired' ? 'kedaluwarsa' : (paymentCoeAdmin.status === 'failed' ? 'gagal' : 'dibatalkan')}.
+                                                        </p>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={regeneratingId === paymentCoeAdmin.id}
+                                                            onClick={() => handleRegeneratePayment(paymentCoeAdmin.id)}
+                                                            className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                                        >
+                                                            <RefreshCw size={12} className={regeneratingId === paymentCoeAdmin.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentCoeAdmin.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
                                                         </Button>
                                                     </div>
                                                 )}
