@@ -44,9 +44,14 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // 4. Ambil data tagihan kelulusan job (jika ada)
-        $paymentJob = Payment::where('user_id', $user->id)
-            ->where('payment_category', 'biaya_lulus_job')
+        // 4. Ambil data tagihan kelulusan job baru: Lulus Wawancara & Pendidikan Bahasa Jepang
+        $paymentJobWawancara = Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_lulus_wawancara')
+            ->latest()
+            ->first();
+
+        $paymentJobPendidikan = Payment::where('user_id', $user->id)
+            ->where('payment_category', 'biaya_pendidikan_bahasa')
             ->latest()
             ->first();
 
@@ -64,7 +69,8 @@ class DashboardController extends Controller
         return Inertia::render('student/dashboard', [
             'student' => $student,
             'passedApplication' => $passedApplication,
-            'paymentJob' => $paymentJob,
+            'paymentJobWawancara' => $paymentJobWawancara,
+            'paymentJobPendidikan' => $paymentJobPendidikan,
             'paymentCoeDokumen' => $paymentCoeDokumen,
             'paymentCoeAdmin' => $paymentCoeAdmin,
             'interviews' => $interviews,

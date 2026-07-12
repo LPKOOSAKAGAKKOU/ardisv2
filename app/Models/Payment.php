@@ -11,7 +11,8 @@ class Payment extends Model
      * Default amounts per payment category.
      */
     const CATEGORY_AMOUNTS = [
-        'biaya_lulus_job' => 15000000,
+        'biaya_lulus_wawancara' => 7500000,
+        'biaya_pendidikan_bahasa' => 7500000,
         'biaya_pengurusan_dokumen' => 7500000,
         'biaya_administrasi_coe' => 7500000,
     ];
@@ -20,7 +21,8 @@ class Payment extends Model
      * Human-readable labels per payment category.
      */
     const CATEGORY_LABELS = [
-        'biaya_lulus_job' => 'Kelulusan Wawancara (Biaya Lulus Job)',
+        'biaya_lulus_wawancara' => 'Biaya Lulus Wawancara',
+        'biaya_pendidikan_bahasa' => 'Biaya Pendidikan Bahasa Jepang Setelah Wawancara',
         'biaya_pengurusan_dokumen' => 'Pengurusan Dokumen Indonesia - Jepang',
         'biaya_administrasi_coe' => 'Administrasi COE',
     ];
@@ -29,10 +31,16 @@ class Payment extends Model
      * Invoice number prefix per payment category.
      */
     const CATEGORY_PREFIXES = [
-        'biaya_lulus_job' => 'JOB',
+        'biaya_lulus_wawancara' => 'LAW',
+        'biaya_pendidikan_bahasa' => 'PEN',
         'biaya_pengurusan_dokumen' => 'DOC',
         'biaya_administrasi_coe' => 'ADM',
     ];
+
+    /**
+     * The two Job sub-categories that are always created as a pair.
+     */
+    const JOB_PAIR_CATEGORIES = ['biaya_lulus_wawancara', 'biaya_pendidikan_bahasa'];
 
     /**
      * The two COE sub-categories that are always created as a pair.
@@ -42,7 +50,12 @@ class Payment extends Model
     /**
      * All valid payment categories.
      */
-    const ALL_CATEGORIES = ['biaya_lulus_job', 'biaya_pengurusan_dokumen', 'biaya_administrasi_coe'];
+    const ALL_CATEGORIES = [
+        'biaya_lulus_wawancara',
+        'biaya_pendidikan_bahasa',
+        'biaya_pengurusan_dokumen',
+        'biaya_administrasi_coe'
+    ];
 
     protected $fillable = [
         'user_id',

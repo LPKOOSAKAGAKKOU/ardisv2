@@ -58,7 +58,8 @@ interface Props {
             }
         }
     } | null;
-    paymentJob?: PaymentData | null;
+    paymentJobWawancara?: PaymentData | null;
+    paymentJobPendidikan?: PaymentData | null;
     paymentCoeDokumen?: PaymentData | null;
     paymentCoeAdmin?: PaymentData | null;
 }
@@ -107,7 +108,7 @@ function Countdown({ expiredAt, onExpire }: { expiredAt: string; onExpire?: () =
     );
 }
 
-export default function StudentDashboard({ student, interviews, passedApplication, paymentJob, paymentCoeDokumen, paymentCoeAdmin }: Props) {
+export default function StudentDashboard({ student, interviews, passedApplication, paymentJobWawancara, paymentJobPendidikan, paymentCoeDokumen, paymentCoeAdmin }: Props) {
     const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
 
     const handleRegeneratePayment = (id: number) => {
@@ -427,24 +428,24 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                 </div>
                             </div>
 
-                            {/* ========== CARD: TAGIHAN PEMBAYARAN LULUS JOB (AULAA) ========== */}
-                            {paymentJob && (
+                            {/* ========== CARD: TAGIHAN BIAYA LULUS WAWANCARA (JOB 1) ========== */}
+                            {paymentJobWawancara && (
                                 <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
                                     <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                                         <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
-                                            <CreditCard className="size-4 sm:size-5 text-neutral-700 dark:text-neutral-300" /> Tagihan Kelulusan Wawancara (Lulus Job)
+                                            <CreditCard className="size-4 sm:size-5 text-teal-600" /> Biaya Lulus Wawancara
                                         </h2>
-                                        {paymentJob.status === 'paid' ? (
+                                        {paymentJobWawancara.status === 'paid' ? (
                                             <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Lunas
                                             </Badge>
-                                        ) : paymentJob.status === 'pending' ? (
+                                        ) : paymentJobWawancara.status === 'pending' ? (
                                             <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
                                                 Belum Dibayar
                                             </Badge>
                                         ) : (
                                             <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
-                                                {paymentJob.status.toUpperCase()}
+                                                {paymentJobWawancara.status.toUpperCase()}
                                             </Badge>
                                         )}
                                     </div>
@@ -452,23 +453,23 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                     <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                             <div>
-                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran</p>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran (1 dari 2 Tagihan Lulus Job)</p>
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-2xl sm:text-3xl font-black text-foreground">
-                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJob.amount)}
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJobWawancara.amount)}
                                                         </span>
                                                     </div>
-                                                    {paymentJob.discount > 0 && (
+                                                    {paymentJobWawancara.discount > 0 && (
                                                         <p className="text-xs text-red-500 font-medium">
-                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJob.discount)}
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJobWawancara.discount)}
                                                         </p>
                                                     )}
-                                                    {paymentJob.additional_items && paymentJob.additional_items.length > 0 && (
+                                                    {paymentJobWawancara.additional_items && paymentJobWawancara.additional_items.length > 0 && (
                                                         <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
                                                             <span className="font-semibold text-neutral-550">Item Tambahan:</span>
                                                             <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
-                                                                {paymentJob.additional_items.map((add: any, idx: number) => (
+                                                                {paymentJobWawancara.additional_items.map((add: any, idx: number) => (
                                                                     <li key={idx}>
                                                                         {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
                                                                     </li>
@@ -477,26 +478,26 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                         </div>
                                                     )}
                                                     <p className="text-[10px] text-muted-foreground font-mono mt-1">
-                                                        No. Invoice: {paymentJob.invoice_number}
+                                                        No. Invoice: {paymentJobWawancara.invoice_number}
                                                     </p>
-                                                    {paymentJob.status === 'pending' && paymentJob.expired_at && (
+                                                    {paymentJobWawancara.status === 'pending' && paymentJobWawancara.expired_at && (
                                                         <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
                                                             <span>Batas Waktu Bayar:</span>
-                                                            <Countdown expiredAt={paymentJob.expired_at} />
+                                                            <Countdown expiredAt={paymentJobWawancara.expired_at} />
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
 
                                             <div className="w-full md:w-auto">
-                                                {paymentJob.status === 'pending' ? (
+                                                {paymentJobWawancara.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
                                                             Silakan selesaikan pembayaran tagihan lulus wawancara Anda melalui tautan resmi Aulaa di bawah ini.
                                                         </p>
-                                                        {paymentJob.payment_url ? (
+                                                        {paymentJobWawancara.payment_url ? (
                                                             <Button 
-                                                                onClick={() => window.open(paymentJob.payment_url, '_blank')}
+                                                                onClick={() => window.open(paymentJobWawancara.payment_url, '_blank')}
                                                                 className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
                                                             >
                                                                 <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
@@ -505,28 +506,137 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                             <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
                                                         )}
                                                     </div>
-                                                ) : paymentJob.status === 'paid' ? (
+                                                ) : paymentJobWawancara.status === 'paid' ? (
                                                     <div className="space-y-1 text-xs text-muted-foreground">
                                                         <p className="text-green-650 font-bold flex items-center gap-1">
                                                             <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
                                                         </p>
-                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentJob.payment_method?.toUpperCase()}</strong></p>
-                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentJob.payment_date}</strong></p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentJobWawancara.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentJobWawancara.payment_date}</strong></p>
                                                     </div>
                                                 ) : (
                                                     <div className="flex flex-col gap-2">
                                                         <p className="text-xs text-muted-foreground italic">
-                                                            Tagihan {paymentJob.status === 'expired' ? 'kedaluwarsa' : (paymentJob.status === 'failed' ? 'gagal' : 'dibatalkan')}.
+                                                            Tagihan {paymentJobWawancara.status === 'expired' ? 'kedaluwarsa' : (paymentJobWawancara.status === 'failed' ? 'gagal' : 'dibatalkan')}.
                                                         </p>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            disabled={regeneratingId === paymentJob.id}
-                                                            onClick={() => handleRegeneratePayment(paymentJob.id)}
+                                                            disabled={regeneratingId === paymentJobWawancara.id}
+                                                            onClick={() => handleRegeneratePayment(paymentJobWawancara.id)}
                                                             className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                                                         >
-                                                            <RefreshCw size={12} className={regeneratingId === paymentJob.id ? 'animate-spin' : ''} />
-                                                            {regeneratingId === paymentJob.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                            <RefreshCw size={12} className={regeneratingId === paymentJobWawancara.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentJobWawancara.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ========== CARD: TAGIHAN BIAYA PENDIDIKAN BAHASA JEPANG (JOB 2) ========== */}
+                            {paymentJobPendidikan && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
+                                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                                        <h2 className="flex items-center gap-2 sm:gap-3 font-black uppercase text-xs sm:text-sm tracking-widest text-neutral-800 dark:text-neutral-200">
+                                            <CreditCard className="size-4 sm:size-5 text-indigo-650" /> Biaya Pendidikan Bahasa Jepang Setelah Wawancara
+                                        </h2>
+                                        {paymentJobPendidikan.status === 'paid' ? (
+                                            <Badge className="bg-green-600 hover:bg-green-700 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Lunas
+                                            </Badge>
+                                        ) : paymentJobPendidikan.status === 'pending' ? (
+                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                Belum Dibayar
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-zinc-500 hover:bg-zinc-650 text-white border-none px-3 sm:px-4 py-1 uppercase tracking-wider font-bold text-xs w-fit">
+                                                {paymentJobPendidikan.status.toUpperCase()}
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="relative z-10 bg-neutral-50/50 dark:bg-zinc-900/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-neutral-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                            <div>
+                                                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Rincian Pembayaran (2 dari 2 Tagihan Lulus Job)</p>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl sm:text-3xl font-black text-foreground">
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJobPendidikan.amount)}
+                                                        </span>
+                                                    </div>
+                                                    {paymentJobPendidikan.discount > 0 && (
+                                                        <p className="text-xs text-red-500 font-medium">
+                                                            Potongan (Diskon Admin): -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(paymentJobPendidikan.discount)}
+                                                        </p>
+                                                    )}
+                                                    {paymentJobPendidikan.additional_items && paymentJobPendidikan.additional_items.length > 0 && (
+                                                        <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                                            <span className="font-semibold text-neutral-550">Item Tambahan:</span>
+                                                            <ul className="list-disc pl-4 text-[11px] gap-0.5 mt-0.5">
+                                                                {paymentJobPendidikan.additional_items.map((add: any, idx: number) => (
+                                                                    <li key={idx}>
+                                                                        {add.name}: +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(add.amount)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                                        No. Invoice: {paymentJobPendidikan.invoice_number}
+                                                    </p>
+                                                    {paymentJobPendidikan.status === 'pending' && paymentJobPendidikan.expired_at && (
+                                                        <div className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30 w-fit">
+                                                            <span>Batas Waktu Bayar:</span>
+                                                            <Countdown expiredAt={paymentJobPendidikan.expired_at} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full md:w-auto">
+                                                {paymentJobPendidikan.status === 'pending' ? (
+                                                    <div className="flex flex-col gap-3">
+                                                        <p className="text-xs text-muted-foreground max-w-sm">
+                                                            Silakan selesaikan pembayaran tagihan pendidikan bahasa Jepang Anda melalui tautan resmi Aulaa di bawah ini.
+                                                        </p>
+                                                        {paymentJobPendidikan.payment_url ? (
+                                                            <Button 
+                                                                onClick={() => window.open(paymentJobPendidikan.payment_url, '_blank')}
+                                                                className="bg-neutral-900 text-white dark:bg-white dark:text-black font-bold rounded-xl shadow-lg text-xs sm:text-sm w-full md:w-auto"
+                                                            >
+                                                                <ExternalLink className="size-3.5 sm:size-4 mr-2" /> Bayar Sekarang
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-xs font-semibold text-emerald-600">Silakan lakukan pembayaran langsung ke kantor LPK.</p>
+                                                        )}
+                                                    </div>
+                                                ) : paymentJobPendidikan.status === 'paid' ? (
+                                                    <div className="space-y-1 text-xs text-muted-foreground">
+                                                        <p className="text-green-650 font-bold flex items-center gap-1">
+                                                            <CheckCircle2 size={14} className="text-green-600" /> Pembayaran Anda telah diterima. Terima kasih!
+                                                        </p>
+                                                        <p>Metode Pembayaran: <strong className="text-foreground">{paymentJobPendidikan.payment_method?.toUpperCase()}</strong></p>
+                                                        <p>Tanggal Bayar: <strong className="text-foreground">{paymentJobPendidikan.payment_date}</strong></p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <p className="text-xs text-muted-foreground italic">
+                                                            Tagihan {paymentJobPendidikan.status === 'expired' ? 'kedaluwarsa' : (paymentJobPendidikan.status === 'failed' ? 'gagal' : 'dibatalkan')}.
+                                                        </p>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={regeneratingId === paymentJobPendidikan.id}
+                                                            onClick={() => handleRegeneratePayment(paymentJobPendidikan.id)}
+                                                            className="text-xs font-semibold flex items-center gap-1 border-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                                        >
+                                                            <RefreshCw size={12} className={regeneratingId === paymentJobPendidikan.id ? 'animate-spin' : ''} />
+                                                            {regeneratingId === paymentJobPendidikan.id ? 'Memproses...' : 'Buat Ulang Link Pembayaran'}
                                                         </Button>
                                                     </div>
                                                 )}

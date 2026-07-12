@@ -108,8 +108,30 @@ class AulaaWebhookController extends Controller
     {
         $category = $payment->payment_category;
 
+        // Check if this is a Job paired category
+        if (in_array($category, Payment::JOB_PAIR_CATEGORIES)) {
+            // Find the partner category
+            $partnerCategory = $category === 'biaya_lulus_wawancara'
+                ? 'biaya_pendidikan_bahasa'
+                : 'biaya_lulus_wawancara';
+
+            // Find partner payment (same user, same interview detail)
+            $partnerPayment = Payment::where('user_id', $payment->user_id)
+                ->where('interview_detail_id', $payment->interview_detail_id)
+                ->where('payment_category', $partnerCategory)
+                ->latest()
+                ->first();
+
+            if ($partnerPayment && $partnerPayment->status === 'paid') {
+                // Both Job payments are paid → send "all paid" email
+                Mail::to($user->email)->send(new \App\Mail\PaymentJobAllPaidMail($payment, $partnerPayment));
+            } else {
+                // Only this one is paid → send "partial paid" email with reminder
+                Mail::to($user->email)->send(new \App\Mail\PaymentJobPartialPaidMail($payment, $partnerPayment));
+            }
+        }
         // Check if this is a COE paired category
-        if (in_array($category, Payment::COE_PAIR_CATEGORIES)) {
+        elseif (in_array($category, Payment::COE_PAIR_CATEGORIES)) {
             // Find the partner category
             $partnerCategory = $category === 'biaya_pengurusan_dokumen'
                 ? 'biaya_administrasi_coe'

@@ -66,7 +66,8 @@ class PaymentController extends Controller
                 $students = $interview->details->map(function ($detail) {
                     $user = $detail->user;
                     
-                    $paymentJob = $detail->payments->where('payment_category', 'biaya_lulus_job')->sortByDesc('id')->first();
+                    $paymentJobWawancara = $detail->payments->where('payment_category', 'biaya_lulus_wawancara')->sortByDesc('id')->first();
+                    $paymentJobPendidikan = $detail->payments->where('payment_category', 'biaya_pendidikan_bahasa')->sortByDesc('id')->first();
                     $paymentCoeDokumen = $detail->payments->where('payment_category', 'biaya_pengurusan_dokumen')->sortByDesc('id')->first();
                     $paymentCoeAdmin = $detail->payments->where('payment_category', 'biaya_administrasi_coe')->sortByDesc('id')->first();
 
@@ -93,7 +94,8 @@ class PaymentController extends Controller
                         'user_id' => $user?->id,
                         'name' => $user?->name ?? 'N/A',
                         'nik' => $user?->student_profile?->nik ?? '-',
-                        'payment_job' => $formatPayment($paymentJob),
+                        'payment_job_wawancara' => $formatPayment($paymentJobWawancara),
+                        'payment_job_pendidikan' => $formatPayment($paymentJobPendidikan),
                         'payment_coe_dokumen' => $formatPayment($paymentCoeDokumen),
                         'payment_coe_admin' => $formatPayment($paymentCoeAdmin),
                     ];
@@ -116,7 +118,7 @@ class PaymentController extends Controller
 
     /**
      * Store a newly created billing and request payment link from Aulaa.
-     * For COE categories, creates 2 invoices simultaneously.
+     * For COE and Job categories, creates 2 invoices simultaneously.
      */
     public function store(Request $request)
     {
@@ -128,7 +130,7 @@ class PaymentController extends Controller
             'additional_items' => 'nullable|array',
             'additional_items.*.name' => 'required_with:additional_items|string',
             'additional_items.*.amount' => 'required_with:additional_items|integer|min:0',
-            // COE-specific: second invoice fields
+            // Dual-specific: second invoice fields
             'discount_2' => 'nullable|integer|min:0',
             'additional_items_2' => 'nullable|array',
             'additional_items_2.*.name' => 'required_with:additional_items_2|string',
@@ -144,12 +146,29 @@ class PaymentController extends Controller
 
         $category = $request->payment_category;
 
+        // Backend Validation: Subtotal cannot exceed 9,500,000 per link
+        try {
+            $this->validateAmountsLimit($request, $category);
+        } catch (\Exception $ex) {
+            return back()->with('error', $ex->getMessage());
+        }
+
+        // Block direct individual creation of the second partner categories
+        if (in_array($category, ['biaya_pendidikan_bahasa', 'biaya_administrasi_coe'])) {
+            return back()->with('error', 'Kategori ini harus dibuat bersamaan dengan pasangannya.');
+        }
+
+        // --- JOB: Create 2 invoices at once ---
+        if ($category === 'biaya_lulus_wawancara') {
+            return $this->storeJobPayments($request, $detail, $user);
+        }
+
         // --- COE: Create 2 invoices at once ---
         if ($category === 'biaya_pengurusan_dokumen') {
             return $this->storeCoePayments($request, $detail, $user);
         }
 
-        // --- Standard single payment (biaya_lulus_job) ---
+        // Standard single payment logic (kept as fallback, currently unused since all are paired or blocked)
         $existingPayment = Payment::where('interview_detail_id', $detail->id)
             ->where('payment_category', $category)
             ->whereIn('status', ['pending', 'paid'])
@@ -207,11 +226,102 @@ class PaymentController extends Controller
     }
 
     /**
+     * Create 2 Job payments simultaneously (Lulus Wawancara + Pendidikan Bahasa).
+     */
+    private function storeJobPayments(Request $request, InterviewDetail $detail, User $user)
+    {
+        $existingJob = Payment::where('interview_detail_id', $detail->id)
+            ->whereIn('payment_category', Payment::JOB_PAIR_CATEGORIES)
+            ->whereIn('status', ['pending', 'paid'])
+            ->first();
+
+        if ($existingJob) {
+            return back()->with('error', 'Tagihan kelulusan wawancara/pendidikan bahasa untuk siswa ini sudah aktif atau sudah lunas.');
+        }
+
+        $studentNameSlug = strtoupper(Str::slug($user->name));
+        $timestamp = time();
+
+        // --- Payment 1: Biaya Lulus Wawancara ---
+        $cat1 = 'biaya_lulus_wawancara';
+        $originalAmount1 = Payment::CATEGORY_AMOUNTS[$cat1];
+        $discount1 = $request->discount ?? 0;
+        $additionalItems1 = $request->additional_items ?? [];
+        $additionalSum1 = collect($additionalItems1)->sum(fn($item) => (int)$item['amount']);
+        $finalAmount1 = $originalAmount1 - $discount1 + $additionalSum1;
+        $invoiceNumber1 = 'INV-LAW-' . $detail->id . '-' . $studentNameSlug . '-' . $timestamp;
+
+        // --- Payment 2: Biaya Pendidikan Bahasa Jepang ---
+        $cat2 = 'biaya_pendidikan_bahasa';
+        $originalAmount2 = Payment::CATEGORY_AMOUNTS[$cat2];
+        $discount2 = $request->discount_2 ?? 0;
+        $additionalItems2 = $request->additional_items_2 ?? [];
+        $additionalSum2 = collect($additionalItems2)->sum(fn($item) => (int)$item['amount']);
+        $finalAmount2 = $originalAmount2 - $discount2 + $additionalSum2;
+        $invoiceNumber2 = 'INV-PEN-' . $detail->id . '-' . $studentNameSlug . '-' . $timestamp;
+
+        try {
+            $aulaaResponse1 = $this->aulaa->createPaymentLink($invoiceNumber1, $finalAmount1);
+            $paymentUrl1 = 'https://payment.aulaa.co/pay/' . $aulaaResponse1['id'];
+            $expiredAt1 = isset($aulaaResponse1['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse1['expired_at'])) : null;
+
+            $aulaaResponse2 = $this->aulaa->createPaymentLink($invoiceNumber2, $finalAmount2);
+            $paymentUrl2 = 'https://payment.aulaa.co/pay/' . $aulaaResponse2['id'];
+            $expiredAt2 = isset($aulaaResponse2['expired_at']) ? date('Y-m-d H:i:s', strtotime($aulaaResponse2['expired_at'])) : null;
+
+            $payment1 = Payment::create([
+                'user_id' => $user->id,
+                'interview_detail_id' => $detail->id,
+                'invoice_number' => $invoiceNumber1,
+                'original_amount' => $originalAmount1,
+                'discount' => $discount1,
+                'amount' => $finalAmount1,
+                'payment_category' => $cat1,
+                'status' => 'pending',
+                'aulaa_payment_id' => $aulaaResponse1['id'],
+                'payment_url' => $paymentUrl1,
+                'expired_at' => $expiredAt1,
+                'description' => $request->description,
+                'additional_items' => $additionalItems1,
+            ]);
+
+            $payment2 = Payment::create([
+                'user_id' => $user->id,
+                'interview_detail_id' => $detail->id,
+                'invoice_number' => $invoiceNumber2,
+                'original_amount' => $originalAmount2,
+                'discount' => $discount2,
+                'amount' => $finalAmount2,
+                'payment_category' => $cat2,
+                'status' => 'pending',
+                'aulaa_payment_id' => $aulaaResponse2['id'],
+                'payment_url' => $paymentUrl2,
+                'expired_at' => $expiredAt2,
+                'description' => $request->description,
+                'additional_items' => $additionalItems2,
+            ]);
+
+            try {
+                if ($user->email) {
+                    Mail::to($user->email)->send(new \App\Mail\PaymentJobBillingMail($payment1, $payment2));
+                }
+            } catch (\Exception $mailEx) {
+                Log::error('Gagal mengirim email tagihan lulus job ke siswa: ' . $mailEx->getMessage());
+            }
+
+            return back()->with('success', 'Dua tagihan Kelulusan Job berhasil dibuat (Lulus Wawancara + Pendidikan Bahasa).');
+
+        } catch (\Exception $e) {
+            Log::error('Gagal membuat tagihan Lulus Job di Aulaa: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses tagihan Lulus Job ke Aulaa.co: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Create 2 COE payments simultaneously (Pengurusan Dokumen + Administrasi COE).
      */
     private function storeCoePayments(Request $request, InterviewDetail $detail, User $user)
     {
-        // Check if either COE payment already exists
         $existingCoe = Payment::where('interview_detail_id', $detail->id)
             ->whereIn('payment_category', Payment::COE_PAIR_CATEGORIES)
             ->whereIn('status', ['pending', 'paid'])
@@ -306,7 +416,7 @@ class PaymentController extends Controller
 
     /**
      * Mark a billing payment as paid manually.
-     * For COE, marks both invoices as paid at once.
+     * For COE and Job split, marks both invoices as paid at once.
      */
     public function markAsPaid(Request $request)
     {
@@ -318,7 +428,7 @@ class PaymentController extends Controller
             'additional_items' => 'nullable|array',
             'additional_items.*.name' => 'required_with:additional_items|string',
             'additional_items.*.amount' => 'required_with:additional_items|integer|min:0',
-            // COE-specific
+            // Dual-specific
             'discount_2' => 'nullable|integer|min:0',
             'additional_items_2' => 'nullable|array',
             'additional_items_2.*.name' => 'required_with:additional_items_2|string',
@@ -334,12 +444,24 @@ class PaymentController extends Controller
 
         $category = $request->payment_category;
 
+        // Backend Validation: Subtotal cannot exceed 9,500,000 per link
+        try {
+            $this->validateAmountsLimit($request, $category);
+        } catch (\Exception $ex) {
+            return back()->with('error', $ex->getMessage());
+        }
+
+        // --- JOB: Mark both as paid ---
+        if ($category === 'biaya_lulus_wawancara') {
+            return $this->markJobPaid($request, $detail, $user);
+        }
+
         // --- COE: Mark both as paid ---
         if ($category === 'biaya_pengurusan_dokumen') {
             return $this->markCoePaid($request, $detail, $user);
         }
 
-        // --- Standard single payment ---
+        // Standard single payment (kept as fallback, currently unused since all are paired or blocked)
         $paidPayment = Payment::where('interview_detail_id', $detail->id)
             ->where('payment_category', $category)
             ->where('status', 'paid')
@@ -392,6 +514,76 @@ class PaymentController extends Controller
         }
 
         return back()->with('success', 'Pembayaran berhasil ditandai sebagai LUNAS secara manual.');
+    }
+
+    /**
+     * Mark both Job payments as paid manually.
+     */
+    private function markJobPaid(Request $request, InterviewDetail $detail, User $user)
+    {
+        $paidCount = Payment::where('interview_detail_id', $detail->id)
+            ->whereIn('payment_category', Payment::JOB_PAIR_CATEGORIES)
+            ->where('status', 'paid')
+            ->count();
+
+        if ($paidCount >= 2) {
+            return back()->with('error', 'Kedua tagihan Kelulusan Job sudah lunas.');
+        }
+
+        $studentNameSlug = strtoupper(Str::slug($user->name));
+        $timestamp = time();
+
+        foreach (Payment::JOB_PAIR_CATEGORIES as $index => $cat) {
+            $originalAmount = Payment::CATEGORY_AMOUNTS[$cat];
+            $discount = $index === 0 ? ($request->discount ?? 0) : ($request->discount_2 ?? 0);
+            $additionalItems = $index === 0 ? ($request->additional_items ?? []) : ($request->additional_items_2 ?? []);
+            $additionalSum = collect($additionalItems)->sum(fn($item) => (int)$item['amount']);
+            $finalAmount = $originalAmount - $discount + $additionalSum;
+
+            $existing = Payment::where('interview_detail_id', $detail->id)
+                ->where('payment_category', $cat)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($existing) {
+                $existing->update([
+                    'status' => 'paid',
+                    'payment_method' => 'manual',
+                    'payment_date' => now(),
+                    'discount' => $discount,
+                    'amount' => $finalAmount,
+                    'description' => $request->description,
+                    'additional_items' => $additionalItems,
+                ]);
+            } else {
+                $alreadyPaid = Payment::where('interview_detail_id', $detail->id)
+                    ->where('payment_category', $cat)
+                    ->where('status', 'paid')
+                    ->exists();
+
+                if (!$alreadyPaid) {
+                    $catPrefix = Payment::CATEGORY_PREFIXES[$cat];
+                    $invoiceNumber = 'INV-' . $catPrefix . '-MAN-' . $detail->id . '-' . $studentNameSlug . '-' . $timestamp;
+
+                    Payment::create([
+                        'user_id' => $user->id,
+                        'interview_detail_id' => $detail->id,
+                        'invoice_number' => $invoiceNumber,
+                        'original_amount' => $originalAmount,
+                        'discount' => $discount,
+                        'amount' => $finalAmount,
+                        'payment_category' => $cat,
+                        'status' => 'paid',
+                        'payment_method' => 'manual',
+                        'payment_date' => now(),
+                        'description' => $request->description,
+                        'additional_items' => $additionalItems,
+                    ]);
+                }
+            }
+        }
+
+        return back()->with('success', 'Kedua tagihan Kelulusan Job berhasil ditandai sebagai LUNAS secara manual.');
     }
 
     /**
@@ -462,6 +654,49 @@ class PaymentController extends Controller
         }
 
         return back()->with('success', 'Kedua tagihan COE berhasil ditandai sebagai LUNAS secara manual.');
+    }
+
+    /**
+     * Helper to validate that no payment amount exceeds Rp9.500.000
+     */
+    private function validateAmountsLimit(Request $request, string $category)
+    {
+        $limit = 9500000;
+
+        if ($category === 'biaya_lulus_wawancara' || $category === 'biaya_pengurusan_dokumen') {
+            // Check first payment in pair
+            $originalAmount1 = Payment::CATEGORY_AMOUNTS[$category];
+            $discount1 = (int)($request->discount ?? 0);
+            $additionalItems1 = $request->additional_items ?? [];
+            $additionalSum1 = collect($additionalItems1)->sum(fn($item) => (int)($item['amount'] ?? 0));
+            $finalAmount1 = $originalAmount1 - $discount1 + $additionalSum1;
+
+            $partnerCat = $category === 'biaya_lulus_wawancara' ? 'biaya_pendidikan_bahasa' : 'biaya_administrasi_coe';
+            $originalAmount2 = Payment::CATEGORY_AMOUNTS[$partnerCat];
+            $discount2 = (int)($request->discount_2 ?? 0);
+            $additionalItems2 = $request->additional_items_2 ?? [];
+            $additionalSum2 = collect($additionalItems2)->sum(fn($item) => (int)($item['amount'] ?? 0));
+            $finalAmount2 = $originalAmount2 - $discount2 + $additionalSum2;
+
+            if ($finalAmount1 > $limit) {
+                throw new \Exception("Total tagihan pertama (" . Payment::CATEGORY_LABELS[$category] . ") melebihi batas Rp" . number_format($limit, 0, ',', '.'));
+            }
+
+            if ($finalAmount2 > $limit) {
+                throw new \Exception("Total tagihan kedua (" . Payment::CATEGORY_LABELS[$partnerCat] . ") melebihi batas Rp" . number_format($limit, 0, ',', '.'));
+            }
+        } else {
+            // Check single payment
+            $originalAmount = Payment::CATEGORY_AMOUNTS[$category] ?? 0;
+            $discount = (int)($request->discount ?? 0);
+            $additionalItems = $request->additional_items ?? [];
+            $additionalSum = collect($additionalItems)->sum(fn($item) => (int)($item['amount'] ?? 0));
+            $finalAmount = $originalAmount - $discount + $additionalSum;
+
+            if ($finalAmount > $limit) {
+                throw new \Exception("Total tagihan melebihi batas Rp" . number_format($limit, 0, ',', '.'));
+            }
+        }
     }
 
     /**
