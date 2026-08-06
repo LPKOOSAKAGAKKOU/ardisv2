@@ -30,6 +30,7 @@ use App\Http\Controllers\GinouJisshuuDocumentController;
 use App\Http\Controllers\TokuteiGinouDocumentController;
 use App\Http\Controllers\AdminController\WhatsAppChatController;
 use App\Http\Controllers\AdminController\PaymentController;
+use App\Http\Controllers\AdminController\KemnakerReportController;
 use App\Http\Controllers\AulaaWebhookController;
 
 
@@ -84,6 +85,14 @@ Route::middleware([
 
     // Dashboard
     Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // --- PELAPORAN KEMNAKER (GOOGLE FORM) ---
+    Route::prefix('kemnaker-reports')->name('kemnaker.')->group(function () {
+        Route::get('summary', [KemnakerReportController::class, 'getSummary'])->name('summary');
+        Route::get('download-departure', [KemnakerReportController::class, 'downloadDeparture'])->name('download.departure');
+        Route::get('download-return', [KemnakerReportController::class, 'downloadReturn'])->name('download.return');
+        Route::post('log', [KemnakerReportController::class, 'logSubmission'])->name('log');
+    });
 
     // --- MANAJEMEN WHATSAPP CHAT (ADMIN DASHBOARD) ---
     Route::prefix('whatsapp')->name('whatsapp.')->group(function () {

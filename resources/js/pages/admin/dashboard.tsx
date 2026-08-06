@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import DashboardCalendar, { type CalendarEvent } from '@/components/dashboard-calendar'
+import KemnakerReportCard from '@/components/KemnakerReportCard'
 
 interface Stats {
     total_students: number
@@ -101,6 +102,9 @@ export default function AdminDashboard({ stats, recentInterviews, calendarEvents
                         href={route('admin.teachers.index')}
                     />
                 </div>
+
+                {/* --- WIDGET PELAPORAN KEMNAKER --- */}
+                <KemnakerReportCard />
 
                 {/* --- KALENDER AGENDA --- */}
                 <div>
