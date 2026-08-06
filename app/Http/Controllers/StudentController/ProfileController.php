@@ -57,24 +57,58 @@ class ProfileController extends Controller
         $profile = StudentProfile::where('user_id', $user->id)->first();
 
         $request->validate([
-            'nik' => 'required|string|max:20|unique:student_profiles,nik,' . ($profile->id ?? 'NULL'),
-            'full_name' => 'required|string|max:255',
-            'dob' => 'required|date',
-            'recruitments_id' => 'nullable|exists:recruitments,id',
+            'nik'                 => 'required|string|max:20|unique:student_profiles,nik,' . ($profile->id ?? 'NULL'),
+            'full_name'           => 'required|string|max:255',
+            'full_name_katakana'  => 'nullable|string|max:255',
+            'pob'                 => 'required|string|max:255',
+            'pob_province'        => 'required|string|max:255',
+            'dob'                 => 'required|date',
+            'gender'              => 'required|in:Laki-laki,Perempuan',
+            'address_ktp'         => 'required|string',
+            'phone_student'       => 'required|string|max:50',
+            'phone_parent'        => 'required|string|max:50',
+            'height'              => 'required|numeric|min:50|max:250',
+            'weight'              => 'required|numeric|min:20|max:200',
+            'blood_type'          => 'required|in:A,B,O,AB',
+            'religion'            => 'required|in:Islam,Kristen,Katholik,Hindu,Budha,Kong Hu Chu',
+            'marital_status'      => 'required|in:Belum Menikah,Menikah,Cerai,Cerai Mati',
+            'tattoo'              => 'required|in:ada,tidak',
+            'smoking'             => 'required|in:merokok,tidak merokok',
+            'alcohol'             => 'required|in:minum,tidak minum',
+            'family_in_japan'     => 'required|in:ada,tidak',
+            'tbc_history'         => 'required|in:ada,tidak',
+            'color_blind'         => 'required|in:normal,parsial,biru-kuning,merah-hijau,total',
+            'other_illness'       => 'nullable|string',
+            'has_passport'        => 'required|in:ada,tidak',
+            'passport_number'     => 'nullable|string|max:50',
+            'passport_issue_date' => 'nullable|date',
+            'passport_expiry_date'=> 'nullable|date',
+            'class_level'         => 'nullable|string|max:255',
+            'program_expert'      => 'nullable|string|max:255',
+            'entry_date_lpk'      => 'required|date',
+            'strength'            => 'required|string|max:255',
+            'weakness'            => 'required|string|max:255',
+            'skill_technical'     => 'required|string|max:255',
+            'hobby'               => 'required|string|max:255',
+            'savings_target'      => 'required|string|max:255',
+            'savings_reason'      => 'required|string|max:255',
+            'student_status'      => 'nullable|in:pelatihan,matching,lolos_job,berangkat',
+            'recruitments_id'     => 'nullable|exists:recruitments,id',
+            'educations'          => 'nullable|array',
+            'experiences'         => 'nullable|array',
+            'families'            => 'nullable|array',
         ]);
 
-        // Fungsi pembantu (helper) untuk kapitalisasi string non-Jepang
+        // Helper untuk kapitalisasi string non-Jepang
         $convertToUpper = function ($data) {
             if (!is_array($data)) return $data;
 
             return array_map(function ($value) {
                 if (is_string($value)) {
-                    // Cek apakah string mengandung karakter Jepang (Hiragana/Katakana/Kanji)
-                    // Jika mengandung karakter Jepang, jangan di-upper
                     if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
                         return $value;
                     }
-                    return strtoupper($value);
+                    return strtoupper(trim($value));
                 }
                 return $value;
             }, $data);
@@ -82,50 +116,63 @@ class ProfileController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Ambil data dasar & bersihkan dari field relasi
             $rawValues = $request->except(['email', 'educations', 'experiences', 'families']);
-            
-            // 2. Ubah ke Kapital (kecuali field sensitif atau bahasa Jepang)
             $data = $convertToUpper($rawValues);
-            
-            // Field tambahan yang tidak boleh hilang/berubah case sembarangan
+
             $data['user_id'] = $user->id;
+            $data['height'] = (int) $request->input('height', 0);
+            $data['weight'] = (int) $request->input('weight', 0);
+            $data['passport_issue_date'] = $request->filled('passport_issue_date') ? $request->input('passport_issue_date') : null;
+            $data['passport_expiry_date'] = $request->filled('passport_expiry_date') ? $request->input('passport_expiry_date') : null;
+            $data['passport_number'] = $request->filled('passport_number') ? strtoupper(trim($request->input('passport_number'))) : null;
+            $data['other_illness'] = $request->filled('other_illness') ? strtoupper(trim($request->input('other_illness'))) : null;
+            $data['class_level'] = $data['class_level'] ?: 'SISWA BARU';
+            $data['program_expert'] = $data['program_expert'] ?: 'BAHASA JEPANG';
 
             if (!$profile) {
                 $data['yunerva_file_password'] = Str::random(8);
-                $data['student_status'] = 'matching';
-                $data['program_expert'] = 'BAHASA JEPANG';
+                $data['student_status'] = $data['student_status'] ?: 'matching';
                 $profile = StudentProfile::create($data);
             } else {
                 $profile->update($data);
             }
 
-            // 3. Sync Educations (Kapitalisasi Otomatis)
+            // Sync Educations (filter baris kosong)
             $profile->educations()->delete();
-            if ($request->has('educations')) {
-                $upperEducations = array_map($convertToUpper, $request->educations);
-                $profile->educations()->createMany($upperEducations);
+            if ($request->has('educations') && is_array($request->educations)) {
+                $validEducations = array_filter($request->educations, fn($item) => !empty($item['school_name']));
+                if (!empty($validEducations)) {
+                    $upperEducations = array_map($convertToUpper, array_values($validEducations));
+                    $profile->educations()->createMany($upperEducations);
+                }
             }
 
-            // 4. Sync Experiences (Kapitalisasi Otomatis)
+            // Sync Experiences (filter baris kosong)
             $profile->experiences()->delete();
-            if ($request->has('experiences')) {
-                $upperExperiences = array_map($convertToUpper, $request->experiences);
-                $profile->experiences()->createMany($upperExperiences);
+            if ($request->has('experiences') && is_array($request->experiences)) {
+                $validExperiences = array_filter($request->experiences, fn($item) => !empty($item['company_name']));
+                if (!empty($validExperiences)) {
+                    $upperExperiences = array_map($convertToUpper, array_values($validExperiences));
+                    $profile->experiences()->createMany($upperExperiences);
+                }
             }
 
-            // 5. Sync Families (Kapitalisasi Otomatis)
+            // Sync Families (filter baris kosong)
             $profile->families()->delete();
-            if ($request->has('families')) {
-                $upperFamilies = array_map($convertToUpper, $request->families);
-                $profile->families()->createMany($upperFamilies);
+            if ($request->has('families') && is_array($request->families)) {
+                $validFamilies = array_filter($request->families, fn($item) => !empty($item['name']));
+                if (!empty($validFamilies)) {
+                    $upperFamilies = array_map($convertToUpper, array_values($validFamilies));
+                    $profile->families()->createMany($upperFamilies);
+                }
             }
 
             DB::commit();
             return redirect()->route('student.dashboard')->with('success', 'Biodata berhasil disimpan dengan format rapi.');
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withErrors(['error' => 'Gagal menyimpan data: ' . $e->getMessage()])->withInput();
+            \Illuminate\Support\Facades\Log::error('Error saving student profile: ' . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['error' => 'Gagal menyimpan data profil. Mohon periksa kembali isian form Anda.'])->withInput();
         }
     }
 }

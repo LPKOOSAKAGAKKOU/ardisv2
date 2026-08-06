@@ -74,187 +74,268 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validasi Data
+        // 1. Validasi Data Lengkap
         $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'nik' => 'required|unique:student_profiles,nik',
-            'full_name' => 'required|string|max:255',
-            'dob' => 'required|date',
-            'recruitments_id' => 'nullable|exists:recruitments,id',
+            'email'               => 'required|email|unique:users,email',
+            'nik'                 => 'required|string|max:20|unique:student_profiles,nik',
+            'full_name'           => 'required|string|max:255',
+            'full_name_katakana'  => 'nullable|string|max:255',
+            'pob'                 => 'required|string|max:255',
+            'pob_province'        => 'required|string|max:255',
+            'dob'                 => 'required|date',
+            'gender'              => 'required|in:Laki-laki,Perempuan',
+            'address_ktp'         => 'required|string',
+            'phone_student'       => 'required|string|max:50',
+            'phone_parent'        => 'required|string|max:50',
+            'height'              => 'required|numeric|min:50|max:250',
+            'weight'              => 'required|numeric|min:20|max:200',
+            'blood_type'          => 'required|in:A,B,O,AB',
+            'religion'            => 'required|in:Islam,Kristen,Katholik,Hindu,Budha,Kong Hu Chu',
+            'marital_status'      => 'required|in:Belum Menikah,Menikah,Cerai,Cerai Mati',
+            'tattoo'              => 'required|in:ada,tidak',
+            'smoking'             => 'required|in:merokok,tidak merokok',
+            'alcohol'             => 'required|in:minum,tidak minum',
+            'family_in_japan'     => 'required|in:ada,tidak',
+            'tbc_history'         => 'required|in:ada,tidak',
+            'color_blind'         => 'required|in:normal,parsial,biru-kuning,merah-hijau,total',
+            'other_illness'       => 'nullable|string',
+            'has_passport'        => 'required|in:ada,tidak',
+            'passport_number'     => 'nullable|string|max:50',
+            'passport_issue_date' => 'nullable|date',
+            'passport_expiry_date'=> 'nullable|date',
+            'class_level'         => 'nullable|string|max:255',
+            'program_expert'      => 'nullable|string|max:255',
+            'entry_date_lpk'      => 'required|date',
+            'strength'            => 'required|string|max:255',
+            'weakness'            => 'required|string|max:255',
+            'skill_technical'     => 'required|string|max:255',
+            'hobby'               => 'required|string|max:255',
+            'savings_target'      => 'required|string|max:255',
+            'savings_reason'      => 'required|string|max:255',
+            'student_status'      => 'nullable|in:pelatihan,matching,lolos_job,berangkat',
+            'recruitments_id'     => 'nullable|exists:recruitments,id',
+            'educations'          => 'nullable|array',
+            'experiences'         => 'nullable|array',
+            'families'            => 'nullable|array',
         ]);
 
-        // Fungsi Helper untuk Kapitalisasi (Non-Jepang)
+        // Helper untuk Kapitalisasi (Non-Jepang)
         $makeUpper = function ($value) {
             if (!is_string($value)) return $value;
-            
-            // Cek karakter Jepang (Hiragana, Katakana, Kanji)
             if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
                 return $value;
             }
-            
-            return strtoupper($value);
+            return strtoupper(trim($value));
         };
 
-        // Fungsi Helper untuk memproses array (recursive)
         $processArray = function ($array) use ($makeUpper) {
             return array_map(function ($item) use ($makeUpper) {
-                if (is_array($item)) {
-                    return array_map($makeUpper, $item);
-                }
-                return $makeUpper($item);
+                return is_array($item) ? array_map($makeUpper, $item) : $makeUpper($item);
             }, $array);
         };
 
         DB::beginTransaction();
         try {
-            // 2. Buat User Login (Nama User diset Kapital)
+            // 2. Buat User Login
             $user = User::create([
-                'name'     => strtoupper($request->full_name),
-                'email'    => $request->email, // Email tetap kecil (standar)
+                'name'     => $makeUpper($request->full_name),
+                'email'    => $request->email,
                 'password' => Hash::make('password123'), 
                 'role'     => 'student',
             ]);
 
             // 3. Simpan Data Profil Utama
             $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
-            
-            // Kapitalisasi semua data profil
             $profileData = array_map($makeUpper, $profileData);
             
             $profileData['user_id'] = $user->id;
             $profileData['yunerva_file_password'] = Str::random(8);
+            $profileData['height'] = (int) $request->input('height', 0);
+            $profileData['weight'] = (int) $request->input('weight', 0);
+            $profileData['passport_issue_date'] = $request->filled('passport_issue_date') ? $request->input('passport_issue_date') : null;
+            $profileData['passport_expiry_date'] = $request->filled('passport_expiry_date') ? $request->input('passport_expiry_date') : null;
+            $profileData['passport_number'] = $request->filled('passport_number') ? strtoupper(trim($request->input('passport_number'))) : null;
+            $profileData['other_illness'] = $request->filled('other_illness') ? strtoupper(trim($request->input('other_illness'))) : null;
+            $profileData['class_level'] = $profileData['class_level'] ?: 'SISWA BARU';
+            $profileData['program_expert'] = $profileData['program_expert'] ?: 'BAHASA JEPANG';
+            $profileData['student_status'] = $profileData['student_status'] ?: 'pelatihan';
             
             $profile = StudentProfile::create($profileData);
 
-            // 4. Simpan Relasi (Kapitalisasi Otomatis)
-            if (!empty($request->educations)) {
-                $profile->educations()->createMany($processArray($request->educations));
+            // 4. Simpan Relasi
+            if ($request->has('educations') && is_array($request->educations)) {
+                $validEducations = array_filter($request->educations, fn($item) => !empty($item['school_name']));
+                if (!empty($validEducations)) {
+                    $profile->educations()->createMany($processArray(array_values($validEducations)));
+                }
             }
 
-            if (!empty($request->experiences)) {
-                $profile->experiences()->createMany($processArray($request->experiences));
+            if ($request->has('experiences') && is_array($request->experiences)) {
+                $validExperiences = array_filter($request->experiences, fn($item) => !empty($item['company_name']));
+                if (!empty($validExperiences)) {
+                    $profile->experiences()->createMany($processArray(array_values($validExperiences)));
+                }
             }
 
-            if (!empty($request->families)) {
-                $profile->families()->createMany($processArray($request->families));
+            if ($request->has('families') && is_array($request->families)) {
+                $validFamilies = array_filter($request->families, fn($item) => !empty($item['name']));
+                if (!empty($validFamilies)) {
+                    $profile->families()->createMany($processArray(array_values($validFamilies)));
+                }
             }
 
             DB::commit();
-
-            return redirect('/admin/students')->with('success', 'Siswa berhasil didaftarkan dengan format kapital.');
-
+            return redirect('/admin/students')->with('success', 'Siswa berhasil didaftarkan.');
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withErrors(['error' => 'Gagal menyimpan: ' . $e->getMessage()])->withInput();
+            \Illuminate\Support\Facades\Log::error('Error storing student: ' . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['error' => 'Gagal menyimpan data siswa. Mohon periksa kembali isian form Anda.'])->withInput();
         }
     }
 
     public function edit($id)
     {
-        // Mengambil data lengkap beserta relasinya
         $student = StudentProfile::with(['user', 'educations', 'experiences', 'families'])
             ->findOrFail($id);
 
-        // Ambil data provinces dan jobSectors seperti di method create()
-        $provinces = Province::all(); // Contoh tabel provinsi
-        $jobSectors = JobSector::all(); // Contoh tabel sektor kerja (Kaigo, dll)
-        $majors = Major::all(); // Contoh tabel jurusan
-        $recruitments = Recruitment::where('is_active', true)->orderBy('date', 'desc')->get(); // TAMBAHKAN INI
+        $provinces = Province::all();
+        $jobSectors = JobSector::all();
+        $majors = Major::all();
+        $recruitments = Recruitment::where('is_active', true)->orderBy('date', 'desc')->get();
 
-
-        // Inertia akan mengirimkan objek $student sebagai PROPS ke React
         return Inertia::render('admin/student/StudentForm', [
             'student' => $student,
-            'provinces' => $provinces,      // TAMBAHKAN INI
-            'jobSectors' => $jobSectors,    // TAMBAHKAN INI
-            'majors' => $majors,            // TAMBAHKAN INI
-            'recruitments' => $recruitments, // TAMBAHKAN INI
+            'provinces' => $provinces,
+            'jobSectors' => $jobSectors,
+            'majors' => $majors,
+            'recruitments' => $recruitments,
         ]);
     }
 
     public function update(Request $request, $id)
     {
-        // Mengambil profil beserta relasi user-nya
         $profile = StudentProfile::with('user')->findOrFail($id);
         
         // 1. Validasi Data
         $request->validate([
-            'email' => 'required|email|unique:users,email,' . $profile->user_id,
-            'nik'   => 'required|unique:student_profiles,nik,' . $profile->id,
-            'full_name' => 'required|string|max:255',
-            'dob'   => 'required|date',
-            'recruitments_id' => 'nullable|exists:recruitments,id',
+            'email'               => 'required|email|unique:users,email,' . $profile->user_id,
+            'nik'                 => 'required|string|max:20|unique:student_profiles,nik,' . $profile->id,
+            'full_name'           => 'required|string|max:255',
+            'full_name_katakana'  => 'nullable|string|max:255',
+            'pob'                 => 'required|string|max:255',
+            'pob_province'        => 'required|string|max:255',
+            'dob'                 => 'required|date',
+            'gender'              => 'required|in:Laki-laki,Perempuan',
+            'address_ktp'         => 'required|string',
+            'phone_student'       => 'required|string|max:50',
+            'phone_parent'        => 'required|string|max:50',
+            'height'              => 'required|numeric|min:50|max:250',
+            'weight'              => 'required|numeric|min:20|max:200',
+            'blood_type'          => 'required|in:A,B,O,AB',
+            'religion'            => 'required|in:Islam,Kristen,Katholik,Hindu,Budha,Kong Hu Chu',
+            'marital_status'      => 'required|in:Belum Menikah,Menikah,Cerai,Cerai Mati',
+            'tattoo'              => 'required|in:ada,tidak',
+            'smoking'             => 'required|in:merokok,tidak merokok',
+            'alcohol'             => 'required|in:minum,tidak minum',
+            'family_in_japan'     => 'required|in:ada,tidak',
+            'tbc_history'         => 'required|in:ada,tidak',
+            'color_blind'         => 'required|in:normal,parsial,biru-kuning,merah-hijau,total',
+            'other_illness'       => 'nullable|string',
+            'has_passport'        => 'required|in:ada,tidak',
+            'passport_number'     => 'nullable|string|max:50',
+            'passport_issue_date' => 'nullable|date',
+            'passport_expiry_date'=> 'nullable|date',
+            'class_level'         => 'nullable|string|max:255',
+            'program_expert'      => 'nullable|string|max:255',
+            'entry_date_lpk'      => 'required|date',
+            'strength'            => 'required|string|max:255',
+            'weakness'            => 'required|string|max:255',
+            'skill_technical'     => 'required|string|max:255',
+            'hobby'               => 'required|string|max:255',
+            'savings_target'      => 'required|string|max:255',
+            'savings_reason'      => 'required|string|max:255',
+            'student_status'      => 'nullable|in:pelatihan,matching,lolos_job,berangkat',
+            'recruitments_id'     => 'nullable|exists:recruitments,id',
+            'educations'          => 'nullable|array',
+            'experiences'         => 'nullable|array',
+            'families'            => 'nullable|array',
         ]);
 
-        // --- LOGIKA KAPITALISASI ---
         $makeUpper = function ($value) {
             if (!is_string($value)) return $value;
-            // Abaikan jika mengandung karakter Jepang (Hiragana/Katakana/Kanji)
             if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $value)) {
                 return $value;
             }
-            return strtoupper($value);
+            return strtoupper(trim($value));
         };
 
         $processArray = function ($array) use ($makeUpper) {
             return array_map(function ($item) use ($makeUpper) {
-                // Jika item di dalam array adalah array lagi (seperti di educations), proses setiap value-nya
                 return is_array($item) ? array_map($makeUpper, $item) : $makeUpper($item);
             }, $array);
         };
-        // ----------------------------
 
         DB::beginTransaction();
         try {
-            // 2. Update Data di Tabel Users (Nama User jadi kapital)
+            // Update User
             $profile->user->update([
                 'name'  => $makeUpper($request->full_name),
-                'email' => $request->email // Email tetap biarkan sesuai input (lowercase)
+                'email' => $request->email
             ]);
 
-            // 3. Update Data Profil Utama (Kecuali email dan relasi)
             $profileData = $request->except(['email', 'educations', 'experiences', 'families']);
             $profileData = array_map($makeUpper, $profileData);
             
+            $profileData['height'] = (int) $request->input('height', 0);
+            $profileData['weight'] = (int) $request->input('weight', 0);
+            $profileData['passport_issue_date'] = $request->filled('passport_issue_date') ? $request->input('passport_issue_date') : null;
+            $profileData['passport_expiry_date'] = $request->filled('passport_expiry_date') ? $request->input('passport_expiry_date') : null;
+            $profileData['passport_number'] = $request->filled('passport_number') ? strtoupper(trim($request->input('passport_number'))) : null;
+            $profileData['other_illness'] = $request->filled('other_illness') ? strtoupper(trim($request->input('other_illness'))) : null;
+            $profileData['class_level'] = $profileData['class_level'] ?: 'SISWA BARU';
+            $profileData['program_expert'] = $profileData['program_expert'] ?: 'BAHASA JEPANG';
+
             $profile->update($profileData);
 
-            // 4. Update Riwayat Pendidikan (Re-sync + Kapitalisasi)
-            if ($request->has('educations')) {
-                $profile->educations()->delete(); 
-                if (!empty($request->educations)) {
-                    $profile->educations()->createMany($processArray($request->educations));
+            // Update Educations
+            $profile->educations()->delete(); 
+            if ($request->has('educations') && is_array($request->educations)) {
+                $validEducations = array_filter($request->educations, fn($item) => !empty($item['school_name']));
+                if (!empty($validEducations)) {
+                    $profile->educations()->createMany($processArray(array_values($validEducations)));
                 }
             }
 
-            // 5. Update Riwayat Pekerjaan (Re-sync + Kapitalisasi)
-            if ($request->has('experiences')) {
-                $profile->experiences()->delete();
-                if (!empty($request->experiences)) {
-                    $profile->experiences()->createMany($processArray($request->experiences));
+            // Update Experiences
+            $profile->experiences()->delete();
+            if ($request->has('experiences') && is_array($request->experiences)) {
+                $validExperiences = array_filter($request->experiences, fn($item) => !empty($item['company_name']));
+                if (!empty($validExperiences)) {
+                    $profile->experiences()->createMany($processArray(array_values($validExperiences)));
                 }
             }
 
-            // 6. Update Riwayat Keluarga (Re-sync + Kapitalisasi)
-            if ($request->has('families')) {
-                $profile->families()->delete();
-                if (!empty($request->families)) {
-                    $profile->families()->createMany($processArray($request->families));
+            // Update Families
+            $profile->families()->delete();
+            if ($request->has('families') && is_array($request->families)) {
+                $validFamilies = array_filter($request->families, fn($item) => !empty($item['name']));
+                if (!empty($validFamilies)) {
+                    $profile->families()->createMany($processArray(array_values($validFamilies)));
                 }
             }
 
             DB::commit();
             
-                // --- DEFINISI PESAN SUKSES ---
             $message = 'Data profil ' . $profile->full_name . ' berhasil diperbarui.';
             if (str_contains(url()->previous(), '/edit')) {
                 return redirect()->route('admin.students.show', $profile->id)->with('success', $message);
             }
-
-            return back()->with('success', $message);
+            return redirect()->route('admin.students.index')->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollback();
-            return back()->withInput()->withErrors(['error' => 'Gagal memperbarui data: ' . $e->getMessage()]);
+            \Illuminate\Support\Facades\Log::error('Error updating student: ' . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['error' => 'Gagal memperbarui data siswa. Mohon periksa kembali isian form Anda.'])->withInput();
         }
     }
 

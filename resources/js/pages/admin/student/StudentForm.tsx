@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { 
     User as UserIcon, Activity, GraduationCap, Briefcase, 
     Users as FamilyIcon, ChevronRight, ChevronLeft, Plus, Trash2, Save,
-    ShieldCheck, HeartPulse, FileText, Target, Info, MapPin
+    ShieldCheck, HeartPulse, FileText, Target, Info, MapPin, AlertCircle
 } from 'lucide-react';
 
 // Shadcn UI Components
@@ -22,7 +22,7 @@ interface Props {
     student?: any;
     provinces: { id: number; name: string }[];
     jobSectors: { id: number; name: string; code: string }[];
-    majors: { id: number; name: string }[]; // Tambahkan baris ini
+    majors: { id: number; name: string }[];
     recruitments: { id: number; name: string; date: string; type: string }[];
     isModal?: boolean; 
     onSuccess?: () => void;
@@ -31,35 +31,27 @@ interface Props {
 export default function StudentForm({ student, provinces, jobSectors, majors, recruitments, isModal = false, onSuccess }: Props) {
     const [step, setStep] = useState(1);
     const isEdit = !!student;
+
+    const getStepForErrorKey = (key: string): number => {
+        if (['nik', 'email', 'full_name', 'full_name_katakana', 'pob', 'pob_province', 'dob', 'gender', 'address_ktp', 'phone_student', 'phone_parent'].includes(key)) return 1;
+        if (['height', 'weight', 'blood_type', 'religion', 'marital_status', 'tbc_history', 'color_blind', 'other_illness', 'has_passport', 'passport_number', 'passport_issue_date', 'passport_expiry_date', 'tattoo', 'smoking', 'alcohol', 'family_in_japan'].includes(key)) return 2;
+        if (key.startsWith('educations')) return 3;
+        if (key.startsWith('experiences')) return 4;
+        return 5;
+    };
+
     const validateStep = (currentStep: number) => {
         switch (currentStep) {
             case 1:
-                return (data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
+                return !!(data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
             case 2:
-                return (data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
+                return !!(data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
             case 3:
-                // Validasi: minimal 1 pendidikan wajib diisi
                 return data.educations.length > 0;
             case 4:
-                // Validasi: minimal 1 pengalaman kerja wajib diisi
-                return data.experiences.length > 0;
+                return true; // Pengalaman kerja opsional untuk fresh graduate
             case 5:
-                const isValid = !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
-                if (!isValid) {
-                    console.log("Field yang kosong:", {
-                        status: !!data.student_status,
-                        expert: !!data.program_expert,
-                        level: !!data.class_level,
-                        date: !!data.entry_date_lpk,
-                        strength: !!data.strength,
-                        weakness: !!data.weakness,
-                        skill: !!data.skill_technical,
-                        hobby: !!data.hobby,
-                        target: !!data.savings_target,
-                        reason: !!data.savings_reason
-                    });
-                }
-                return isValid;
+                return !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
             default:
                 return true;
         }
@@ -102,7 +94,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
         // 4. Data LPK Internal
         class_level: student?.class_level || 'SISWA BARU',
         program_expert: student?.program_expert || 'BAHASA JEPANG',
-        entry_date_lpk: student?.entry_date_lpk || new Date().toISOString().split('T')[0], // Default tgl hari ini
+        entry_date_lpk: student?.entry_date_lpk || new Date().toISOString().split('T')[0],
         strength: student?.strength || '',
         weakness: student?.weakness || '',
         skill_technical: student?.skill_technical || '',
@@ -118,21 +110,22 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
         families: student?.families || [],
     });
         
-    // Ganti fungsi submit menjadi lebih sederhana:
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         
         const options = {
             preserveScroll: true,
             onSuccess: () => {
-                // JIKA MODAL: Panggil callback onSuccess untuk menutup modal
                 if (isModal && onSuccess) {
                     onSuccess();
                 }
             },
-            onError: (err: any) => {
-                console.error("Gagal Simpan:", err);
-                alert("Gagal menyimpan. Cek kembali isian form.");
+            onError: (errs: any) => {
+                console.error("Gagal Simpan:", errs);
+                const firstErrorField = Object.keys(errs)[0];
+                if (firstErrorField) {
+                    setStep(getStepForErrorKey(firstErrorField));
+                }
             }
         };
 
@@ -182,6 +175,23 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
 
                 <form onSubmit={submit} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
                     
+                    {/* Top Error Banner */}
+                    {Object.keys(errors).length > 0 && (
+                        <div className="lg:col-span-12 bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl dark:bg-red-950/50 dark:border-red-900 dark:text-red-300">
+                            <div className="flex items-center gap-2 font-bold text-sm mb-1 text-red-900 dark:text-red-200">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                                <span>Gagal menyimpan data siswa! Mohon periksa kembali {Object.keys(errors).length} kesalahan berikut:</span>
+                            </div>
+                            <ul className="list-disc list-inside text-xs space-y-1 ml-6 mt-2">
+                                {Object.entries(errors).map(([key, msg]) => (
+                                    <li key={key}>
+                                        <span className="font-semibold capitalize">{key.replace(/_/g, ' ')}:</span> {String(msg)}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    
                     {/* Main Content Area */}
                     <div className={isModal ? "col-span-12 space-y-4" : "lg:col-span-8 space-y-6"}>
                         
@@ -212,9 +222,9 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                         />
                                         </FormItem>
 
-                                        <FormItem label="Nama Lengkap" required><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} className="text-sm" /></FormItem>
-                                        <FormItem label="Nama Katakana" required><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" className="text-sm" /></FormItem>
-                                        <FormItem label="Tempat Lahir" required><Input value={data.pob} onChange={e => setData('pob', e.target.value)} className="text-sm" /></FormItem>
+                                        <FormItem label="Nama Lengkap" required error={errors.full_name}><Input value={data.full_name} onChange={e => setData('full_name', e.target.value)} className="text-sm" /></FormItem>
+                                        <FormItem label="Nama Katakana" required error={errors.full_name_katakana}><Input value={data.full_name_katakana} onChange={e => setData('full_name_katakana', e.target.value)} placeholder="フリガナ" className="text-sm" /></FormItem>
+                                        <FormItem label="Tempat Lahir" required error={errors.pob}><Input value={data.pob} onChange={e => setData('pob', e.target.value)} className="text-sm" /></FormItem>
                                         <FormItem label="Provinsi Lahir" required error={errors.pob_province}>
                                             <Select 
                                                 value={data.pob_province} 
@@ -232,14 +242,14 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="Tgl Lahir" required><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} className="text-sm" /></FormItem>
-                                        <FormItem label="Jenis Kelamin" required>
+                                        <FormItem label="Tgl Lahir" required error={errors.dob}><Input type="date" value={data.dob} onChange={e => setData('dob', e.target.value)} className="text-sm" /></FormItem>
+                                        <FormItem label="Jenis Kelamin" required error={errors.gender}>
                                             <Select value={data.gender} onValueChange={v => setData('gender', v as any)}>
                                                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                                                 <SelectContent><SelectItem value="Laki-laki" className="text-sm">Laki-laki</SelectItem><SelectItem value="Perempuan" className="text-sm">Perempuan</SelectItem></SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="HP Siswa" required>
+                                        <FormItem label="HP Siswa" required error={errors.phone_student}>
                                             <Input 
                                                 type="tel"
                                                 value={data.phone_student} 
@@ -257,7 +267,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                             />
                                         </FormItem>
 
-                                        <FormItem label="HP Orang Tua" required>
+                                        <FormItem label="HP Orang Tua" required error={errors.phone_parent}>
                                             <Input 
                                                 type="tel"
                                                 value={data.phone_parent} 
@@ -275,7 +285,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                             />
                                         </FormItem>
                                     </div>
-                                    <FormItem label="Alamat KTP" required><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} className="text-sm" /></FormItem>
+                                    <FormItem label="Alamat KTP" required error={errors.address_ktp}><Textarea value={data.address_ktp} onChange={e => setData('address_ktp', e.target.value)} rows={3} className="text-sm" /></FormItem>
                                 </CardContent>
                             </Card>
                         )}
@@ -289,15 +299,15 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                 </CardHeader>
                                 <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                                        <FormItem label="Tinggi (cm)" required><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} className="text-sm" /></FormItem>
-                                        <FormItem label="Berat (kg)" required><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} className="text-sm" /></FormItem>
-                                        <FormItem label="Gol. Darah" required>
+                                        <FormItem label="Tinggi (cm)" required error={errors.height}><Input type="number" value={data.height} onChange={e => setData('height', e.target.value)} className="text-sm" /></FormItem>
+                                        <FormItem label="Berat (kg)" required error={errors.weight}><Input type="number" value={data.weight} onChange={e => setData('weight', e.target.value)} className="text-sm" /></FormItem>
+                                        <FormItem label="Gol. Darah" required error={errors.blood_type}>
                                             <Select value={data.blood_type} onValueChange={v => setData('blood_type', v as any)}>
                                                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['A','B','O','AB'].map(v => <SelectItem key={v} value={v} className="text-sm">{v}</SelectItem>)}</SelectContent>
                                             </Select>
                                         </FormItem>
-                                        <FormItem label="Agama" required>
+                                        <FormItem label="Agama" required error={errors.religion}>
                                             <Select value={data.religion} onValueChange={v => setData('religion', v as any)}>
                                                 <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                                                 <SelectContent>{['Islam','Kristen','Katholik','Hindu','Budha','Kong Hu Chu'].map(v => <SelectItem key={v} value={v} className="text-sm">{v}</SelectItem>)}</SelectContent>
@@ -305,16 +315,16 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                         </FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 border p-3 sm:p-4 rounded-xl bg-muted/20">
-                                        <FormItem label="Tato" required><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Ada</SelectItem><SelectItem value="tidak" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Merokok" required><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok" className="text-sm">Ya</SelectItem><SelectItem value="tidak merokok" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Alkohol" required><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum" className="text-sm">Ya</SelectItem><SelectItem value="tidak minum" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Status Nikah" required><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v} className="text-sm">{v}</SelectItem>)}</SelectContent></Select></FormItem>
-                                        <FormItem label="Buta Warna" required><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal" className="text-sm">Normal</SelectItem><SelectItem value="parsial" className="text-sm">Parsial</SelectItem><SelectItem value="total" className="text-sm">Total</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Keluarga di Jepang" required><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Ada</SelectItem><SelectItem value="tidak" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Tato" required error={errors.tattoo}><Select value={data.tattoo} onValueChange={v => setData('tattoo', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Ada</SelectItem><SelectItem value="tidak" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Merokok" required error={errors.smoking}><Select value={data.smoking} onValueChange={v => setData('smoking', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merokok" className="text-sm">Ya</SelectItem><SelectItem value="tidak merokok" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Alkohol" required error={errors.alcohol}><Select value={data.alcohol} onValueChange={v => setData('alcohol', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minum" className="text-sm">Ya</SelectItem><SelectItem value="tidak minum" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Status Nikah" required error={errors.marital_status}><Select value={data.marital_status} onValueChange={v => setData('marital_status', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{['Belum Menikah','Menikah','Cerai','Cerai Mati'].map(v => <SelectItem key={v} value={v} className="text-sm">{v}</SelectItem>)}</SelectContent></Select></FormItem>
+                                        <FormItem label="Buta Warna" required error={errors.color_blind}><Select value={data.color_blind} onValueChange={v => setData('color_blind', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="normal" className="text-sm">Normal</SelectItem><SelectItem value="parsial" className="text-sm">Parsial</SelectItem><SelectItem value="total" className="text-sm">Total</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Keluarga di Jepang" required error={errors.family_in_japan}><Select value={data.family_in_japan} onValueChange={v => setData('family_in_japan', v as any)}><SelectTrigger className="bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Ada</SelectItem><SelectItem value="tidak" className="text-sm">Tidak</SelectItem></SelectContent></Select></FormItem>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                        <FormItem label="Riwayat TBC" required><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Pernah</SelectItem><SelectItem value="tidak" className="text-sm">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
-                                        <FormItem label="Penyakit Lainnya"><Textarea value={data.other_illness} onChange={e => setData('other_illness', e.target.value)} placeholder="Sebutkan jika ada riwayat operasi/penyakit berat" className="text-sm" /></FormItem>
+                                        <FormItem label="Riwayat TBC" required error={errors.tbc_history}><Select value={data.tbc_history} onValueChange={v => setData('tbc_history', v as any)}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ada" className="text-sm">Pernah</SelectItem><SelectItem value="tidak" className="text-sm">Tidak Pernah</SelectItem></SelectContent></Select></FormItem>
+                                        <FormItem label="Penyakit Lainnya" error={errors.other_illness}><Textarea value={data.other_illness} onChange={e => setData('other_illness', e.target.value)} placeholder="Sebutkan jika ada riwayat operasi/penyakit berat" className="text-sm" /></FormItem>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -946,10 +956,10 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                                 </Select>
                                             </FormItem>
                                             <FormItem label="Skill Teknis" required error={errors.skill_technical}>
-                                                <Input maxLength={15} value={data.skill_technical} onChange={e => setData('skill_technical', e.target.value)} placeholder="Maks 15 huruf" className="text-sm" />
+                                                <Input maxLength={255} value={data.skill_technical} onChange={e => setData('skill_technical', e.target.value)} placeholder="Contoh: Mengoperasikan Mesin Bubut, Las Listrik" className="text-sm" />
                                             </FormItem>
                                             <FormItem label="Hobi" required error={errors.hobby}>
-                                                <Input maxLength={15} value={data.hobby} onChange={e => setData('hobby', e.target.value)} placeholder="Maks 15 huruf" className="text-sm" />
+                                                <Input maxLength={255} value={data.hobby} onChange={e => setData('hobby', e.target.value)} placeholder="Contoh: Olahraga, Membaca Buku" className="text-sm" />
                                             </FormItem>
                                             <FormItem label="Target Tabungan (Yen)" required error={errors.savings_target}>
                                                 <Input 
@@ -969,7 +979,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                                 />
                                             </FormItem>
                                             <FormItem label="Alasan Menabung" required error={errors.savings_reason}>
-                                                <Input maxLength={15} value={data.savings_reason} onChange={e => setData('savings_reason', e.target.value)} placeholder="Maks 15 huruf" className="text-sm" />
+                                                <Input maxLength={255} value={data.savings_reason} onChange={e => setData('savings_reason', e.target.value)} placeholder="Contoh: Modal Usaha / Membantu Orang Tua" className="text-sm" />
                                             </FormItem>
                                         </div>
                                     </CardContent>
@@ -1008,8 +1018,6 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                         } else {
                                             if (step === 3) {
                                                 alert("Mohon tambahkan minimal 1 riwayat pendidikan terakhir Anda.");
-                                            } else if (step === 4) {
-                                                alert("Mohon tambahkan minimal 1 pengalaman kerja Anda.");
                                             } else {
                                                 alert("Mohon lengkapi semua field yang wajib diisi pada tahap ini.");
                                             }
