@@ -31,32 +31,30 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
     const validateStep = (currentStep: number) => {
         switch (currentStep) {
             case 1:
-                return (data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
+                return !!(data.nik && data.full_name && data.pob && data.pob_province && data.dob && data.gender && data.phone_student && data.phone_parent && data.address_ktp);
             case 2:
-                return (data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
+                return !!(data.height && data.weight && data.blood_type && data.religion && data.marital_status && data.tbc_history && data.color_blind);
             case 3:
-                // Validasi: minimal 1 pendidikan wajib diisi
-                return data.educations.length > 0;
+                if (!data.educations || data.educations.length === 0) return false;
+                return data.educations.every((edu: any) => 
+                    edu.level && edu.level.trim() !== '' &&
+                    edu.school_name && edu.school_name.trim() !== ''
+                );
             case 4:
-                // Validasi: minimal 1 pengalaman kerja wajib diisi
-                return data.experiences.length > 0;
+                if (!data.experiences || data.experiences.length === 0) return true;
+                return data.experiences.every((exp: any) => 
+                    exp.company_name && exp.company_name.trim() !== ''
+                );
             case 5:
-                const isValid = !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
-                if (!isValid) {
-                    console.log("Field yang kosong:", {
-                        status: !!data.student_status,
-                        expert: !!data.program_expert,
-                        level: !!data.class_level,
-                        date: !!data.entry_date_lpk,
-                        strength: !!data.strength,
-                        weakness: !!data.weakness,
-                        skill: !!data.skill_technical,
-                        hobby: !!data.hobby,
-                        target: !!data.savings_target,
-                        reason: !!data.savings_reason
-                    });
+                const isStep5BaseValid = !!(data.student_status && data.program_expert && data.class_level && data.entry_date_lpk && data.strength && data.weakness && data.skill_technical && data.hobby && data.savings_target && data.savings_reason);
+                if (!isStep5BaseValid) return false;
+                if (data.families && data.families.length > 0) {
+                    return data.families.every((fam: any) => 
+                        fam.relationship && fam.relationship.trim() !== '' &&
+                        fam.name && fam.name.trim() !== ''
+                    );
                 }
-                return isValid;
+                return true;
             default:
                 return true;
         }
@@ -373,7 +371,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                         
                                                         {/* Grid Form Pendidikan */}
                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4 sm:gap-y-5">
-                                                            <FormItem label="Tingkat / Jenjang">
+                                                            <FormItem label="Tingkat / Jenjang" required error={errors[`educations.${idx}.level`] || errors.educations}>
                                                                 <Select value={edu.level} onValueChange={v => { const updated = [...data.educations]; updated[idx].level = v; setData('educations', updated); }}>
                                                                     <SelectTrigger className="text-sm"><SelectValue placeholder="Pilih Jenjang" /></SelectTrigger>
                                                                     <SelectContent>
@@ -395,7 +393,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 </Select>
                                                             </FormItem>
 
-                                                            <FormItem label="Nama Sekolah / Universitas">
+                                                            <FormItem label="Nama Sekolah / Universitas" required error={errors[`educations.${idx}.school_name`] || errors.educations}>
                                                                 <Input 
                                                                     placeholder="Masukkan nama lengkap instansi" 
                                                                     value={edu.school_name} 

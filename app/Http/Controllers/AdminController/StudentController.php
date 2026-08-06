@@ -114,9 +114,18 @@ class StudentController extends Controller
             'savings_reason'      => 'required|string|max:255',
             'student_status'      => 'nullable|in:pelatihan,matching,lolos_job,berangkat',
             'recruitments_id'     => 'nullable|exists:recruitments,id',
-            'educations'          => 'nullable|array',
+            'educations'          => 'required|array|min:1',
+            'educations.*.level'  => 'required|string',
+            'educations.*.school_name' => 'required|string',
             'experiences'         => 'nullable|array',
+            'experiences.*.company_name' => 'nullable|string',
             'families'            => 'nullable|array',
+            'families.*.name'     => 'nullable|string',
+        ], [
+            'educations.required' => 'Wajib mengisi minimal 1 data riwayat sekolah/pendidikan (misal SMA/SMK).',
+            'educations.min'      => 'Wajib mengisi minimal 1 data riwayat sekolah/pendidikan (misal SMA/SMK).',
+            'educations.*.level.required' => 'Jenjang pendidikan wajib dipilih.',
+            'educations.*.school_name.required' => 'Nama sekolah / instansi pendidikan wajib diisi.',
         ]);
 
         // Helper untuk Kapitalisasi (Non-Jepang)
@@ -256,9 +265,18 @@ class StudentController extends Controller
             'savings_reason'      => 'required|string|max:255',
             'student_status'      => 'nullable|in:pelatihan,matching,lolos_job,berangkat',
             'recruitments_id'     => 'nullable|exists:recruitments,id',
-            'educations'          => 'nullable|array',
+            'educations'          => 'required|array|min:1',
+            'educations.*.level'  => 'required|string',
+            'educations.*.school_name' => 'required|string',
             'experiences'         => 'nullable|array',
+            'experiences.*.company_name' => 'nullable|string',
             'families'            => 'nullable|array',
+            'families.*.name'     => 'nullable|string',
+        ], [
+            'educations.required' => 'Wajib mengisi minimal 1 data riwayat sekolah/pendidikan (misal SMA/SMK).',
+            'educations.min'      => 'Wajib mengisi minimal 1 data riwayat sekolah/pendidikan (misal SMA/SMK).',
+            'educations.*.level.required' => 'Jenjang pendidikan wajib dipilih.',
+            'educations.*.school_name.required' => 'Nama sekolah / instansi pendidikan wajib diisi.',
         ]);
 
         $makeUpper = function ($value) {
