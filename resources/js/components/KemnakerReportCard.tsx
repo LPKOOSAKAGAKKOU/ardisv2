@@ -200,11 +200,11 @@ export default function KemnakerReportCard() {
                                 </div>
                                 <a 
                                     href={`/admin/kemnaker-reports/download-departure?year=${selectedYear}&month=${selectedMonth}`}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 bg-white dark:bg-emerald-900 px-2.5 py-1.5 rounded-md border border-emerald-200 dark:border-emerald-800 shadow-sm transition-colors"
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 dark:text-emerald-200 bg-white dark:bg-emerald-900 px-3 py-2 rounded-md border border-emerald-300 dark:border-emerald-700 shadow-sm transition-colors"
                                     title="Download File Excel Keberangkatan"
                                 >
                                     <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                                    <span>Download Excel</span>
+                                    <span>Langkah 1: Download Excel</span>
                                 </a>
                             </div>
 
@@ -215,13 +215,23 @@ export default function KemnakerReportCard() {
                                 </div>
                                 <a 
                                     href={`/admin/kemnaker-reports/download-return?year=${selectedYear}&month=${selectedMonth}`}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300 bg-white dark:bg-blue-900 px-2.5 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 shadow-sm transition-colors"
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-800 hover:text-blue-950 dark:text-blue-200 bg-white dark:bg-blue-900 px-3 py-2 rounded-md border border-blue-300 dark:border-blue-700 shadow-sm transition-colors"
                                     title="Download File Excel Kepulangan"
                                 >
                                     <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                                    <span>Download Excel</span>
+                                    <span>Download Excel Kepulangan</span>
                                 </a>
                             </div>
+                        </div>
+
+                        {/* Petunjuk Ringkas 3 Langkah */}
+                        <div className="p-3 rounded-lg border bg-muted/40 text-xs space-y-1">
+                            <p className="font-bold text-muted-foreground">💡 Cara Upload File Excel Keberangkatan / Kepulangan ke Google Form:</p>
+                            <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground pl-1">
+                                <li>Klik <strong>Langkah 1: Download Excel</strong> di atas *(file .xlsx otomatis tersimpan di folder Downloads)*.</li>
+                                <li>Klik <strong>Langkah 2: Buka Google Form</strong> di bawah *(form terbuka dengan semua teks/angka sudah terisi otomatis)*.</li>
+                                <li>Pada Google Form di bagian <strong>File Rekapitulasi - Keberangkatan</strong>, klik <strong>"Tambahkan file"</strong> ➔ pilih file Excel dari folder Downloads ➔ klik <strong>Kirim</strong>.</li>
+                            </ol>
                         </div>
 
                         {/* Action Buttons */}
@@ -232,7 +242,7 @@ export default function KemnakerReportCard() {
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-xs h-9 shadow-sm"
                             >
                                 <ExternalLink className="w-4 h-4" />
-                                <span>Buka Google Form (Auto-Fill {summary?.month_name} {selectedYear})</span>
+                                <span>Langkah 2: Buka Google Form (Auto-Fill {summary?.month_name} {selectedYear})</span>
                             </Button>
 
                             <div className="flex items-center gap-2">
