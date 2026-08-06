@@ -7,12 +7,36 @@ use App\Models\AcceptingOrganization;
 use App\Models\Departure;
 use App\Models\StudentReturn;
 use App\Models\User;
+use App\Services\ReturnReportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ReturnController extends Controller
 {
+    public function __construct(
+        private ReturnReportService $report,
+    ) {
+    }
+
+    /**
+     * Unduh laporan kepulangan alumni bulanan (format Kemnaker) untuk satu bulan.
+     */
+    public function monthlyReport(Request $request)
+    {
+        $month = $this->resolveMonth($request->input('month'));
+
+        $spreadsheet = $this->report->build($month);
+        $filename = $this->report->filename($month);
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            IOFactory::createWriter($spreadsheet, 'Xlsx')->save('php://output');
+        }, $filename, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0, must-revalidate',
+        ]);
+    }
     public function index(Request $request)
     {
         $month = $this->resolveMonth($request->input('month'));

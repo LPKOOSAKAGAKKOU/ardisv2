@@ -148,6 +148,7 @@ Route::middleware([
     Route::resource('departures', DepartureController::class);
 
     // --- MANAJEMEN KEPULANGAN ---
+    Route::get('/returns/report', [ReturnController::class, 'monthlyReport'])->name('returns.report');
     Route::resource('returns', ReturnController::class);
 
     // --- MANAJEMEN PENAGIHAN (INVOICE) ---

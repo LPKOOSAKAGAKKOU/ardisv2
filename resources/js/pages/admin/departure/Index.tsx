@@ -117,14 +117,6 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                                 <FileSpreadsheet className="mr-2 h-4 w-4" /> Laporan {month.label}
                             </Button>
                         </a>
-                        <Link href="/admin/returns">
-                            <Button
-                                variant="outline"
-                                className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
-                            >
-                                <PlaneLanding className="mr-2 h-4 w-4" /> Data Kepulangan
-                            </Button>
-                        </Link>
                         <Link href="/admin/departures/create">
                             <Button className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
                                 <Plus className="mr-2 h-4 w-4" /> Tambah Keberangkatan

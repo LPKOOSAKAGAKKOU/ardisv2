@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, Link, router } from '@inertiajs/react'
-import { PlaneLanding, Plus, Search, Edit, Trash2, Users, Building2, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, AlertCircle } from 'lucide-react'
+import { PlaneLanding, Plus, Search, Edit, Trash2, Users, Building2, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, AlertCircle, FileSpreadsheet } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -102,6 +102,15 @@ export default function ReturnIndex({ returns, organizations, filters, month, su
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        <a href={`/admin/returns/report?month=${month.value}`}>
+                            <Button
+                                variant="outline"
+                                className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                title={`Unduh laporan kepulangan alumni ${month.label} (format Kemnaker)`}
+                            >
+                                <FileSpreadsheet className="mr-2 h-4 w-4" /> Laporan Alumni {month.label}
+                            </Button>
+                        </a>
                         <Link href="/admin/returns/create">
                             <Button className="bg-emerald-700 text-white dark:bg-emerald-600 hover:bg-emerald-800">
                                 <Plus className="mr-2 h-4 w-4" /> Catat Kepulangan
