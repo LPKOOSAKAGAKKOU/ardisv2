@@ -224,14 +224,32 @@ export default function KemnakerReportCard() {
                             </div>
                         </div>
 
-                        {/* Petunjuk Ringkas 3 Langkah */}
-                        <div className="p-3 rounded-lg border bg-muted/40 text-xs space-y-1">
-                            <p className="font-bold text-muted-foreground">💡 Cara Upload File Excel Keberangkatan / Kepulangan ke Google Form:</p>
-                            <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground pl-1">
-                                <li>Klik <strong>Langkah 1: Download Excel</strong> di atas *(file .xlsx otomatis tersimpan di folder Downloads)*.</li>
-                                <li>Klik <strong>Langkah 2: Buka Google Form</strong> di bawah *(form terbuka dengan semua teks/angka sudah terisi otomatis)*.</li>
-                                <li>Pada Google Form di bagian <strong>File Rekapitulasi - Keberangkatan</strong>, klik <strong>"Tambahkan file"</strong> ➔ pilih file Excel dari folder Downloads ➔ klik <strong>Kirim</strong>.</li>
-                            </ol>
+                        {/* Petunjuk Ringkas 3 Langkah dengan Bookmarklet Helper */}
+                        <div className="p-3.5 rounded-lg border bg-gradient-to-r from-emerald-50/70 to-teal-50/70 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                                <p className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">1x</span>
+                                    <span>Pasang Bookmarklet Helper (Otomatisasi 1-Klik di Browser Admin)</span>
+                                </p>
+                            </div>
+                            <p className="text-muted-foreground text-[11px]">
+                                Drag (tarik) tombol di bawah ini lalu lepas ke <strong>Bookmarks Bar</strong> browser Chrome/Edge Anda:
+                            </p>
+                            <div className="pt-0.5 pb-1">
+                                <a
+                                    href={`javascript:(function(){if(window.__ardisKemnakerLoaded)return;window.__ardisKemnakerLoaded=true;var m=document.createElement('div');m.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;width:340px;background:#ffffff;border:2px solid #059669;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.15);padding:16px;font-family:sans-serif;color:#1e293b;';m.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><strong style="color:#059669;font-size:14px;">🚀 ARDIS v2 Kemnaker Helper</strong><span onclick="this.parentElement.parentElement.remove();window.__ardisKemnakerLoaded=false;" style="cursor:pointer;font-size:18px;color:#64748b;font-weight:bold;">×</span></div><p style="font-size:12px;margin:0 0 12px 0;color:#475569;">Pilih file Excel Keberangkatan yang sudah Anda review dari folder Downloads:</p><label style="display:block;border:2px dashed #10b981;border-radius:8px;padding:18px 12px;text-align:center;background:#ecfdf5;cursor:pointer;"><input type="file" id="ardisExcelInput" accept=".xlsx,.xls" style="display:none;"/><span id="ardisStatusText" style="font-size:12px;font-weight:bold;color:#047857;">📁 Drag / Klik untuk Attach Excel</span></label>';document.body.appendChild(m);var inp=document.getElementById('ardisExcelInput');inp.addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;document.getElementById('ardisStatusText').innerText='✅ '+f.name+' Terpilih!';var btn=document.querySelector('div[role="button"][aria-label*="Tambahkan file"]')||document.querySelector('.jyLEF');if(btn)btn.click();});})();`}
+                                    onClick={(e) => e.preventDefault()}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-emerald-600 bg-emerald-600 text-white font-bold text-xs shadow hover:bg-emerald-700 cursor-grab active:cursor-grabbing transition-colors"
+                                    title="Tarik tombol ini ke Bookmarks Bar browser Anda"
+                                >
+                                    <span>🚀 Auto-Attach Kemnaker</span>
+                                </a>
+                                <span className="ml-2 text-[11px] text-muted-foreground italic">← Tarik tombol hijau ini ke Bookmarks Bar browser!</span>
+                            </div>
+
+                            <div className="border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2 text-muted-foreground text-[11px]">
+                                <strong>Alur Pelaporan:</strong> 1. Download & Review Excel ➔ 2. Buka Google Form ➔ 3. Klik Bookmarklet <strong>[🚀 Auto-Attach Kemnaker]</strong> di Bookmarks Bar.
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
