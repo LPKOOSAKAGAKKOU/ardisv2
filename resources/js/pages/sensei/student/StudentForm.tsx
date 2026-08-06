@@ -22,7 +22,7 @@ interface Props {
     student?: any;
     provinces: { id: number; name: string; name_id?: string }[];
     jobSectors: { id: number; name: string; name_id?: string; code: string }[];
-    majors: { id: number; name: string }[];
+    majors: { id: number; name: string; name_id?: string }[];
 }
 
 export default function StudentForm({ student, provinces, jobSectors, majors }: Props) {
@@ -417,8 +417,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         {majors.map((m) => (
-                                                                            <SelectItem key={m.id} value={m.name_id} className="text-sm">
-                                                                                {m.name_id}
+                                                                            <SelectItem key={m.id} value={m.name_id || m.name} className="text-sm">
+                                                                                {m.name_id || m.name}
                                                                             </SelectItem>
                                                                         ))}
                                                                     </SelectContent>
@@ -775,8 +775,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                     <SelectContent>
                                                                         {/* Menggunakan daftar yang sama dengan jobSectors */}
                                                                         {jobSectors.map((job) => (
-                                                                            <SelectItem key={job.id} value={job.name_id} className="text-sm">
-                                                                                {job.name_id}
+                                                                            <SelectItem key={job.id} value={job.name_id || job.name} className="text-sm">
+                                                                                {job.name_id || job.name}
                                                                             </SelectItem>
                                                                         ))}
                                                                     </SelectContent>
