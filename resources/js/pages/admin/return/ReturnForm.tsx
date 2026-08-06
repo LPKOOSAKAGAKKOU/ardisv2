@@ -1,10 +1,12 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, Link, useForm } from '@inertiajs/react'
-import { PlaneLanding, ArrowLeft, Save, CheckCircle2, AlertCircle, Building2, Calendar, UserCheck } from 'lucide-react'
+import { ArrowLeft, Save, Building2, Calendar, Search, ChevronsUpDown, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 interface StudentItem {
     id: number
@@ -58,11 +60,20 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
     })
 
     const [currentDeparture, setCurrentDeparture] = useState<DepartureOption | null>(null)
+    const [openCombobox, setOpenCombobox] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
         const found = departures.find((d) => d.id === Number(data.departure_id))
         setCurrentDeparture(found || null)
     }, [data.departure_id, departures])
+
+    const filteredDepartures = departures.filter((d) => {
+        const q = searchQuery.toLowerCase().trim()
+        if (!q) return true
+        const label = `${d.company_name} ${d.organization || ''} ${d.departure_date || ''}`.toLowerCase()
+        return label.includes(q)
+    })
 
     const handleStudentToggle = (userId: number) => {
         if (data.user_ids.includes(userId)) {
@@ -123,25 +134,79 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                         </div>
 
                         <div>
-                            <Label htmlFor="departure_id">Keberangkatan / Perusahaan</Label>
-                            <select
-                                id="departure_id"
-                                value={data.departure_id}
-                                disabled={isEdit}
-                                onChange={(e) => {
-                                    setData('departure_id', Number(e.target.value))
-                                    setData('user_ids', [])
-                                }}
-                                className="mt-1.5 w-full rounded-md border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-emerald-500"
-                            >
-                                <option value="">-- Pilih Keberangkatan --</option>
-                                {departures.map((d) => (
-                                    <option key={d.id} value={d.id}>
-                                        {d.company_name} ({d.organization || 'Tanpa Org'}) — Tgl Berangkat:{' '}
-                                        {d.departure_date || '-'} ({d.people_count} orang)
-                                    </option>
-                                ))}
-                            </select>
+                            <Label htmlFor="departure_combobox" className="mb-1.5 block">Keberangkatan / Perusahaan</Label>
+                            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        id="departure_combobox"
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={openCombobox}
+                                        disabled={isEdit}
+                                        className="w-full justify-between h-auto min-h-[46px] py-2.5 px-3.5 text-left font-normal border-input bg-background hover:bg-neutral-50 dark:hover:bg-zinc-900 shadow-sm"
+                                    >
+                                        {currentDeparture ? (
+                                            <div className="flex flex-col truncate pr-2">
+                                                <span className="font-bold text-foreground font-japanese truncate text-sm">
+                                                    {currentDeparture.company_name}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground truncate mt-0.5">
+                                                    {currentDeparture.organization ? `(${currentDeparture.organization})` : '(Tanpa Organisasi)'} — Tgl Berangkat: {currentDeparture.departure_date || '-'} ({currentDeparture.people_count} orang)
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground">-- Pilih Keberangkatan --</span>
+                                        )}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2 shadow-xl border-sidebar-border" align="start">
+                                    <div className="relative mb-2">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Cari perusahaan atau organisasi..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-8 h-9 text-xs"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                                        {filteredDepartures.length > 0 ? (
+                                            filteredDepartures.map((d) => {
+                                                const isSelected = Number(data.departure_id) === d.id
+                                                return (
+                                                    <div
+                                                        key={d.id}
+                                                        onClick={() => {
+                                                            setData('departure_id', d.id)
+                                                            setData('user_ids', [])
+                                                            setOpenCombobox(false)
+                                                            setSearchQuery('')
+                                                        }}
+                                                        className={cn(
+                                                            "flex items-center justify-between p-2.5 rounded-lg cursor-pointer text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-zinc-800/80",
+                                                            isSelected && "bg-emerald-50 text-emerald-900 font-semibold dark:bg-emerald-950/50 dark:text-emerald-300"
+                                                        )}
+                                                    >
+                                                        <div className="flex flex-col truncate pr-2">
+                                                            <span className="font-bold font-japanese text-sm text-foreground truncate">{d.company_name}</span>
+                                                            <span className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                                {d.organization || 'Tanpa Org'} — Tgl Berangkat: {d.departure_date || '-'} ({d.people_count} orang)
+                                                            </span>
+                                                        </div>
+                                                        {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
+                                                    </div>
+                                                )
+                                            })
+                                        ) : (
+                                            <p className="p-4 text-xs italic text-center text-muted-foreground">
+                                                Keberangkatan tidak ditemukan.
+                                            </p>
+                                        )}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                             {errors.departure_id && <p className="text-xs text-red-500 mt-1">{errors.departure_id}</p>}
                         </div>
 

@@ -84,55 +84,12 @@ class ReturnController extends Controller
 
     public function create(Request $request)
     {
-        $selectedDepartureId = $request->query('departure_id');
-
-        $departures = Departure::query()
-            ->with([
-                'acceptingOrganization:id,name',
-                'company:id,name,name_in_japanese',
-                'interview.details.user:id,name',
-                'interview.details.user.student_profile:id,user_id,full_name,nik',
-                'returns:id,departure_id,user_id',
-            ])
-            ->where('status', '!=', 'cancelled')
-            ->orderByDesc('departure_date')
-            ->get()
-            ->map(function (Departure $d) {
-                $returnedUserIds = $d->returns->pluck('user_id')->filter()->all();
-
-                $students = $d->interview?->details
-                    ->where('result', 'passed')
-                    ->map(function ($detail) use ($returnedUserIds) {
-                        $user = $detail->user;
-                        if (! $user) {
-                            return null;
-                        }
-
-                        return [
-                            'id'          => $user->id,
-                            'name'        => $user->student_profile?->full_name ?: $user->name,
-                            'nik'         => $user->student_profile?->nik ?: '',
-                            'is_returned' => in_array($user->id, $returnedUserIds, true),
-                        ];
-                    })
-                    ->filter()
-                    ->values()
-                    ->all() ?? [];
-
-                return [
-                    'id'           => $d->id,
-                    'company_name' => $d->company_name,
-                    'organization' => $d->acceptingOrganization?->name,
-                    'departure_date' => $d->departure_date?->toDateString(),
-                    'people_count' => $d->people_count,
-                    'status'       => $d->status,
-                    'students'     => $students,
-                ];
-            });
+        $selectedDepartureId = $request->query('departure_id') ? (int) $request->query('departure_id') : null;
+        $departures = $this->getAvailableDepartures($selectedDepartureId);
 
         return Inertia::render('admin/return/ReturnForm', [
             'departures'           => $departures,
-            'selected_departure_id'=> $selectedDepartureId ? (int) $selectedDepartureId : null,
+            'selected_departure_id'=> $selectedDepartureId,
         ]);
     }
 
@@ -191,7 +148,27 @@ class ReturnController extends Controller
             'user.student_profile:id,user_id,full_name,nik',
         ])->findOrFail($id);
 
-        $departures = Departure::query()
+        $departures = $this->getAvailableDepartures($returnRecord->departure_id);
+
+        return Inertia::render('admin/return/ReturnForm', [
+            'returnRecord' => [
+                'id'           => $returnRecord->id,
+                'departure_id' => $returnRecord->departure_id,
+                'user_id'      => $returnRecord->user_id,
+                'return_date'  => $returnRecord->return_date?->toDateString(),
+                'reason'       => $returnRecord->reason,
+                'notes'        => $returnRecord->notes,
+            ],
+            'departures' => $departures,
+        ]);
+    }
+
+    /**
+     * Ambil daftar keberangkatan yang masih memiliki siswa aktif (belum semua pulang).
+     */
+    private function getAvailableDepartures(?int $selectedDepartureId = null)
+    {
+        return Departure::query()
             ->with([
                 'acceptingOrganization:id,name',
                 'company:id,name,name_in_japanese',
@@ -233,19 +210,24 @@ class ReturnController extends Controller
                     'status'       => $d->status,
                     'students'     => $students,
                 ];
-            });
+            })
+            ->filter(function ($d) use ($selectedDepartureId) {
+                // Pertahankan jika ini adalah keberangkatan yang terpilih (edit / query param)
+                if ($selectedDepartureId && $d['id'] === $selectedDepartureId) {
+                    return true;
+                }
+                // Sembunyikan jika status sudah completed (selesai)
+                if ($d['status'] === 'completed') {
+                    return false;
+                }
+                // Sembunyikan jika seluruh siswa dalam list sudah tercatat pulang
+                if (! empty($d['students']) && collect($d['students'])->every(fn ($s) => $s['is_returned'])) {
+                    return false;
+                }
 
-        return Inertia::render('admin/return/ReturnForm', [
-            'returnRecord' => [
-                'id'           => $returnRecord->id,
-                'departure_id' => $returnRecord->departure_id,
-                'user_id'      => $returnRecord->user_id,
-                'return_date'  => $returnRecord->return_date?->toDateString(),
-                'reason'       => $returnRecord->reason,
-                'notes'        => $returnRecord->notes,
-            ],
-            'departures' => $departures,
-        ]);
+                return true;
+            })
+            ->values();
     }
 
     public function update(Request $request, $id)
