@@ -52,11 +52,12 @@ class KemnakerReportController extends Controller
         $googleFormBaseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfTr13NEBcReV9eCsrNpwDmNQHhsMdgvK2expo8B4MZgEdy5g/viewform";
         $queryParams = http_build_query([
             'usp' => 'pp_url',
-            'entry.2024986366' => 'PT OOSAKA GAKKOU',
-            'entry.638972208'  => $monthNameEn,
-            'entry.1319946884' => (string) $year,
-            'entry.1714157754' => (string) $departureCount,
-            'entry.537604297'  => self::DEFAULT_WA,
+            'entry.2024986366' => 'PT OOSAKA GAKKOU',        // Nama LPK SO
+            'entry.638972208'  => $monthNameEn,              // Bulan (English)
+            'entry.262379175'  => (string) $year,            // Tahun
+            'entry.1319946884' => (string) $departureCount,  // Realisasi Keberangkatan
+            'entry.1714157754' => (string) $returnCount,     // Realisasi Kepulangan
+            'entry.537604297'  => self::DEFAULT_WA,          // Nomor WhatsApp
         ]);
         $prefilledUrl = $googleFormBaseUrl . '?' . $queryParams;
 
