@@ -53,6 +53,11 @@ class Departure extends Model
         return $this->belongsTo(Interview::class);
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(StudentReturn::class);
+    }
+
     /**
      * Tarif efektif: override per keberangkatan, jika null pakai default organisasi penerima.
      */
@@ -69,5 +74,48 @@ class Departure extends Model
     public function isTokuteiGinou(): bool
     {
         return $this->program_type === 'tokutei_ginou';
+    }
+
+    /**
+     * Hitung jumlah siswa aktif (belum pulang) pada bulan/tanggal tertentu.
+     * Jika $month diberikan, siswa yang pulang sebelum atau pada bulan tersebut tidak dihitung.
+     */
+    public function activePeopleCount(?\Illuminate\Support\Carbon $month = null): int
+    {
+        $total = max(1, (int) $this->people_count);
+
+        if (! $this->relationLoaded('returns')) {
+            $this->load('returns');
+        }
+
+        $returnedCount = $this->returns
+            ->filter(function (StudentReturn $ret) use ($month) {
+                if (! $month) {
+                    return true;
+                }
+
+                // Pulang pada atau sebelum bulan penagihan
+                return $ret->return_date && $ret->return_date->endOfMonth()->lte($month->endOfMonth());
+            })
+            ->count();
+
+        return max(0, $total - $returnedCount);
+    }
+
+    /**
+     * Otomatis perbarui status keberangkatan: jika seluruh siswa sudah pulang, status = completed.
+     */
+    public function syncStatusWithReturns(): void
+    {
+        if ($this->status === 'cancelled') {
+            return;
+        }
+
+        $active = $this->activePeopleCount();
+        if ($active === 0) {
+            $this->update(['status' => 'completed']);
+        } else {
+            $this->update(['status' => 'managing']);
+        }
     }
 }

@@ -17,6 +17,7 @@ use App\Http\Controllers\AdminController\AdminClassroomController;
 use App\Http\Controllers\AdminController\RecruitmentsController;
 use App\Http\Controllers\AdminController\AdminDashboardController;
 use App\Http\Controllers\AdminController\DepartureController;
+use App\Http\Controllers\AdminController\ReturnController;
 use App\Http\Controllers\AdminController\InvoiceController;
 use App\Http\Controllers\SenseiController\SenseiDashboardController;
 use App\Http\Controllers\SenseiController\ClassroomController;
@@ -145,6 +146,9 @@ Route::middleware([
     Route::get('/departures/report', [DepartureController::class, 'monthlyReport'])->name('departures.report');
     Route::post('/departures/{id}/billings', [DepartureController::class, 'saveBillings'])->name('departures.billings.save');
     Route::resource('departures', DepartureController::class);
+
+    // --- MANAJEMEN KEPULANGAN ---
+    Route::resource('returns', ReturnController::class);
 
     // --- MANAJEMEN PENAGIHAN (INVOICE) ---
     Route::get('/invoices/{id}/print', [InvoiceController::class, 'print'])->name('invoices.print');

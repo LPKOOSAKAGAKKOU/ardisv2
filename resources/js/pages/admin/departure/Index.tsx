@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, Link, router } from '@inertiajs/react'
-import { Plane, Plus, Search, Edit, Trash2, Eye, Users, Building2, ChevronLeft, ChevronRight, FileSpreadsheet, CalendarDays } from 'lucide-react'
+import { Plane, Plus, Search, Edit, Trash2, Eye, Users, Building2, ChevronLeft, ChevronRight, FileSpreadsheet, CalendarDays, PlaneLanding } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,6 +117,14 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                                 <FileSpreadsheet className="mr-2 h-4 w-4" /> Laporan {month.label}
                             </Button>
                         </a>
+                        <Link href="/admin/returns">
+                            <Button
+                                variant="outline"
+                                className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                            >
+                                <PlaneLanding className="mr-2 h-4 w-4" /> Data Kepulangan
+                            </Button>
+                        </Link>
                         <Link href="/admin/departures/create">
                             <Button className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
                                 <Plus className="mr-2 h-4 w-4" /> Tambah Keberangkatan
@@ -295,8 +303,13 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <Link href={`/admin/departures/${d.id}`}>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-sky-600 hover:bg-sky-50">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-sky-600 hover:bg-sky-50" title="Detail Keberangkatan">
                                                             <Eye size={16} />
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/admin/returns/create?departure_id=${d.id}`}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Catat Kepulangan">
+                                                            <PlaneLanding size={16} />
                                                         </Button>
                                                     </Link>
                                                     <Link href={`/admin/departures/${d.id}/edit`}>

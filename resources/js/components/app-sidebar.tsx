@@ -24,6 +24,7 @@ import {
     GraduationCap,
     CreditCard,
     Plane,
+    PlaneLanding,
     Receipt,
 } from 'lucide-react'
 import AppLogo from './app-logo'
@@ -43,6 +44,7 @@ const adminNavItems = (): NavItem[] => [
     { title: 'Data Perusahaan', href: route('admin.companies.index'), icon: Building2 },
     { title: 'Data Organisasi Penerima', href: route('admin.organizations.index'), icon: Network },
     { title: 'Data Keberangkatan', href: route('admin.departures.index'), icon: Plane },
+    { title: 'Data Kepulangan', href: route('admin.returns.index'), icon: PlaneLanding },
     { title: 'Data Penagihan', href: route('admin.invoices.index'), icon: Receipt },
     { title: 'Data Rekrutmen', href: route('admin.recruitments.index'), icon: Folder },
     { title: 'Data Pembayaran', href: route('admin.payments.index'), icon: CreditCard },

@@ -131,7 +131,7 @@ class BillingService
     {
         $departures = $organization->departures()
             ->where('status', 'managing')
-            ->with(['interview.details.user', 'billings'])
+            ->with(['interview.details.user', 'billings', 'returns'])
             ->get();
 
         $items = collect();
@@ -185,17 +185,27 @@ class BillingService
             // Penagihan management fee per siklus (jika jatuh tempo bulan ini).
             $block = $this->blockDueInMonth($departure, $month);
             if ($block) {
-                $items->push([
-                    'departure_id' => $departure->id,
-                    'kind'         => 'management',
-                    'company_name' => $departure->company_name,
-                    'description'  => $this->itemDescription($block),
-                    'students'     => $students,
-                    'people'       => $block['people'],
-                    'months'       => $block['months'],
-                    'unit_price'   => $block['unit_price'],
-                    'amount'       => $block['amount'],
-                ]);
+                $calculated = $this->activePersonMonthsForBlock($departure, $block);
+                $totalPersonMonths = $calculated['total_person_months'];
+                $activeStudents = $calculated['active_students'];
+
+                if ($totalPersonMonths > 0) {
+                    // Total tagihan = tarif per bulan * jumlah total bulan-orang aktif dalam siklus 3 bulan ini
+                    $amount = $block['unit_price'] * $totalPersonMonths;
+                    $effectivePeople = (int) ceil($totalPersonMonths / $block['months']);
+
+                    $items->push([
+                        'departure_id' => $departure->id,
+                        'kind'         => 'management',
+                        'company_name' => $departure->company_name,
+                        'description'  => $this->itemDescription($block),
+                        'students'     => $activeStudents,
+                        'people'       => $effectivePeople,
+                        'months'       => $block['months'],
+                        'unit_price'   => $block['unit_price'],
+                        'amount'       => $amount,
+                    ]);
+                }
             }
         }
 
@@ -356,17 +366,107 @@ class BillingService
     }
 
     /**
+     * Hitung total bulan aktif (person-months) untuk suatu keberangkatan selama periode siklus penagihan.
+     * Siswa yang pulang pada pertengahan bulan tetap dihitung aktif untuk bulan tersebut (bulan kepulangan dihitung 1 bulan penuh).
+     * Siswa hanya menjadi tidak aktif pada bulan-bulan SETELAH tanggal kepulangannya.
+     *
+     * @return array{total_person_months: int, active_students: array<int, string>}
+     */
+    public function activePersonMonthsForBlock(Departure $departure, array $block): array
+    {
+        $departure->loadMissing(['interview.details.user.student_profile', 'returns']);
+
+        $periodFrom = $block['period_from']->copy()->startOfMonth();
+        $periodTo = $block['period_to']->copy()->startOfMonth();
+
+        // Kumpulkan bulan-bulan kalender dalam siklus ini (mis. April, Mei, Juni)
+        $cycleMonths = [];
+        $curr = $periodFrom->copy();
+        while ($curr->lte($periodTo)) {
+            $cycleMonths[] = $curr->copy();
+            $curr->addMonthNoOverflow();
+        }
+
+        $blockTotalMonths = max(1, count($cycleMonths));
+        $totalPersonMonths = 0;
+        $activeStudentNamesMap = [];
+
+        if ($passedDetails->isNotEmpty()) {
+            foreach ($passedDetails as $detail) {
+                $user = $detail->user;
+                $userId = $user?->id;
+                $studentName = $user?->student_profile?->full_name ?: $user?->name ?: 'Siswa';
+
+                $studentReturn = $departure->returns->firstWhere('user_id', $userId);
+                $returnDate = $studentReturn?->return_date;
+
+                $studentActiveMonths = 0;
+                foreach ($cycleMonths as $cMonth) {
+                    // Siswa aktif jika tidak ada tanggal pulang ATAU tanggal pulang >= awal bulan cMonth
+                    // Contoh: pulang 15 Mei -> untuk bulan Mei (1 Mei), 15 Mei >= 1 Mei -> AKTIF di bulan Mei.
+                    // Untuk bulan Juni (1 Juni), 15 Mei < 1 Juni -> TIDAK AKTIF di bulan Juni.
+                    if (! $returnDate || $returnDate->gte($cMonth->copy()->startOfMonth())) {
+                        $studentActiveMonths++;
+                    }
+                }
+
+                if ($studentActiveMonths > 0) {
+                    // Jika siswa hanya aktif sebagian bulan dalam siklus ini, tambahkan keterangan （〇〇ヶ月分）
+                    if ($studentActiveMonths < $blockTotalMonths) {
+                        $formattedName = sprintf('%s（%dヶ月分）', $studentName, $studentActiveMonths);
+                    } else {
+                        $formattedName = $studentName;
+                    }
+                    $activeStudentNamesMap[$formattedName] = true;
+                }
+
+                $totalPersonMonths += $studentActiveMonths;
+            }
+        } else {
+            // Fallback jika tidak ada link detail siswa (hitung berbasis data kepulangan tanpa user_id)
+            $unlinkedReturns = $departure->returns->whereNull('user_id');
+            for ($i = 0; $i < $totalStudentsCount; $i++) {
+                $returnRecord = $unlinkedReturns->skip($i)->first();
+                $returnDate = $returnRecord?->return_date;
+
+                foreach ($cycleMonths as $cMonth) {
+                    if (! $returnDate || $returnDate->gte($cMonth->copy()->startOfMonth())) {
+                        $totalPersonMonths++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'total_person_months' => $totalPersonMonths,
+            'active_students'     => array_keys($activeStudentNamesMap),
+        ];
+    }
+
+    /**
      * Nama siswa keberangkatan, diambil dari peserta wawancara yang lulus.
      *
      * @return array<int, string>
      */
-    private function studentNames(Departure $departure): array
+    private function studentNames(Departure $departure, ?Carbon $month = null): array
     {
-        $departure->loadMissing('interview.details.user');
+        $departure->loadMissing(['interview.details.user.student_profile', 'returns']);
+
+        $returnedUserIds = [];
+        if ($month) {
+            $returnedUserIds = $departure->returns
+                ->filter(function ($ret) use ($month) {
+                    return $ret->return_date && $ret->return_date->endOfMonth()->lte($month->endOfMonth());
+                })
+                ->pluck('user_id')
+                ->filter()
+                ->all();
+        }
 
         return $departure->interview?->details
             ->where('result', 'passed')
-            ->map(fn ($detail) => $detail->user?->name)
+            ->filter(fn ($detail) => ! $detail->user_id || ! in_array($detail->user_id, $returnedUserIds, true))
+            ->map(fn ($detail) => $detail->user?->student_profile?->full_name ?: $detail->user?->name)
             ->filter()
             ->values()
             ->all() ?? [];
