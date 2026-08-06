@@ -18,6 +18,20 @@ return [
     |
     */
 
+    /*
+    | Jenjang pendidikan (`student_educations.level`) juga tersimpan dalam
+    | kanji. Pendidikan terakhir dipilih dari tanggal kelulusan terbaru, dengan
+    | `rank` hanya sebagai pemecah seri bila tanggalnya sama atau kosong. Jenjang
+    | baru (D3, S2, dsb.) cukup ditambahkan di sini tanpa mengubah kode; yang
+    | belum terdaftar pun tetap terbaca dan ditulis apa adanya.
+    */
+    'educations' => [
+        '小学校' => ['name' => 'SD', 'rank' => 1],
+        '中学校' => ['name' => 'SMP', 'rank' => 2],
+        '高校'  => ['name' => 'SMA/SMK', 'rank' => 3],
+        '大学'  => ['name' => 'S1', 'rank' => 4],
+    ],
+
     'job_types' => [
 
         // PERTANIAN

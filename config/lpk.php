@@ -19,4 +19,7 @@ return [
 
     // Negara tujuan pemagangan (kolom 12 laporan).
     'destination_country' => env('LPK_DESTINATION_COUNTRY', 'JEPANG'),
+
+    // Kabupaten/Kota domisili LPK, dipakai untuk kolom 21 laporan.
+    'city' => env('LPK_CITY', 'KAB. KEDIRI'),
 ];

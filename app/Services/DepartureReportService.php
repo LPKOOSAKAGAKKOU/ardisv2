@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Membuat "Laporan Keberangkatan Peserta Magang Luar Negeri" bulanan
@@ -27,14 +28,6 @@ class DepartureReportService
     private const FIRST_DATA_ROW = 3;
 
     private const LAST_COLUMN = 'AA';
-
-    /** Urutan jenjang pendidikan untuk menentukan pendidikan terakhir. */
-    private const EDUCATION_RANK = [
-        'SD'               => 1,
-        'SMP'              => 2,
-        'SMA/SMK'          => 3,
-        'Perguruan Tinggi' => 4,
-    ];
 
     private const MONTHS_ID = [
         1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
@@ -125,15 +118,12 @@ class DepartureReportService
             $sheet->removeRow($first + 1, $lastRow - $first);
         }
 
-        $styleRange = 'A' . $first . ':' . self::LAST_COLUMN . $first;
-
         if (count($rows) > 1) {
             $sheet->insertNewRowBefore($first + 1, count($rows) - 1);
-            $sheet->duplicateStyle(
-                $sheet->getStyle($styleRange),
-                'A' . ($first + 1) . ':' . self::LAST_COLUMN . ($first + count($rows) - 1)
-            );
+            $this->copyRowStyleDown($sheet, $first, $first + count($rows) - 1);
         }
+
+        $this->normalizeFontSize($sheet, $first, $first + max(count($rows), 1) - 1);
 
         if ($rows === []) {
             // Tidak ada keberangkatan: kosongkan baris contoh, pertahankan format.
@@ -162,6 +152,49 @@ class DepartureReportService
         }
 
         return $spreadsheet;
+    }
+
+    /**
+     * Salin gaya baris donor ke seluruh baris data, KOLOM PER KOLOM.
+     *
+     * duplicateStyle() menerapkan satu gaya ke seluruh range, jadi menyalin
+     * 'A3:AA3' sekaligus akan menimpa semua kolom dengan gaya kolom A saja
+     * (lebar/perataan/format angka kolom lain ikut hilang).
+     */
+    private function copyRowStyleDown(Worksheet $sheet, int $sourceRow, int $lastRow): void
+    {
+        foreach ($this->columns() as $column) {
+            $sheet->duplicateStyle(
+                $sheet->getStyle($column . $sourceRow),
+                $column . ($sourceRow + 1) . ':' . $column . $lastRow
+            );
+        }
+    }
+
+    /**
+     * Samakan ukuran font seluruh sel data dengan ukuran yang paling banyak
+     * dipakai baris donor. Pada template, kolom "Alamat Perusahaan Magang"
+     * dikecilkan manual (8pt) sehingga baris pertama tampak berbeda sendiri.
+     */
+    private function normalizeFontSize(Worksheet $sheet, int $firstRow, int $lastRow): void
+    {
+        $sizes = [];
+        foreach ($this->columns() as $column) {
+            $size = $sheet->getStyle($column . $firstRow)->getFont()->getSize();
+            if ($size !== null) {
+                $sizes[(string) $size] = ($sizes[(string) $size] ?? 0) + 1;
+            }
+        }
+
+        if ($sizes === []) {
+            return;
+        }
+
+        arsort($sizes);
+
+        $sheet->getStyle('A' . $firstRow . ':' . self::LAST_COLUMN . $lastRow)
+            ->getFont()
+            ->setSize((float) array_key_first($sizes));
     }
 
     /**
@@ -228,7 +261,7 @@ class DepartureReportService
             'R'  => config('lpk.provider_type'),
             'S'  => $this->upper(config('lpk.name')),
             'T'  => $this->upper($profile?->pob_province),
-            'U'  => '', // Kabupaten/Kota asal peserta belum tersimpan terpisah.
+            'U'  => $this->upper(config('lpk.city')),
             'V'  => $date ? self::MONTHS_ID[$date->month] : '',
             'W'  => $job['group'],
             'X'  => $job['name'],
@@ -282,13 +315,32 @@ class DepartureReportService
         };
     }
 
+    /**
+     * Pendidikan terakhir dalam istilah Indonesia. `student_educations.level`
+     * tersimpan sebagai kanji (小学校/中学校/高校/大学, lihat form data diri siswa).
+     *
+     * Penentu utama adalah tanggal kelulusan terbaru, dengan `rank` sebagai
+     * pemecah seri bila tanggalnya sama atau kosong. Dengan begitu jenjang di
+     * luar peta (mis. D3 atau S2 yang ditambahkan kemudian) tetap terpilih dan
+     * ditulis apa adanya — tidak pernah dipaksa turun ke SMA/SMK.
+     */
     private function lastEducation(?StudentProfile $profile): string
     {
-        $level = $profile?->educations
-            ->sortByDesc(fn ($education) => self::EDUCATION_RANK[$education->level] ?? 0)
-            ->first()?->level;
+        $map = config('laporan_keberangkatan.educations');
 
-        return $this->upper($level);
+        $last = $profile?->educations
+            ->sortBy(fn ($education) => sprintf(
+                '%s-%02d',
+                $education->graduation_date?->format('Ymd') ?? '00000000',
+                $map[$education->level]['rank'] ?? 0,
+            ))
+            ->last();
+
+        if ($last === null) {
+            return '';
+        }
+
+        return $this->upper($map[$last->level]['name'] ?? $last->level);
     }
 
     private function upper(?string $value): string
