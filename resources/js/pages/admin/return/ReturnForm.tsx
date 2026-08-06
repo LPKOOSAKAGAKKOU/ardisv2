@@ -369,43 +369,6 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                             />
                             {errors.return_date && <p className="text-xs text-red-500 mt-1">{errors.return_date}</p>}
                         </div>
-
-                        {/* Tampilkan opsi umum hanya jika tidak ada akun siswa spesifik pada batch ini */}
-                        {(!currentDeparture || currentDeparture.students.length === 0) && (
-                            <div className="space-y-4 pt-2 border-t border-sidebar-border">
-                                <div>
-                                    <Label htmlFor="reason">Status / Alasan Kepulangan</Label>
-                                    <select
-                                        id="reason"
-                                        value={data.reason}
-                                        onChange={(e) => setData('reason', e.target.value)}
-                                        className="mt-1.5 w-full rounded-md border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-emerald-500"
-                                    >
-                                        <option value="finished">Selesai Kontrak</option>
-                                        <option value="working_indonesia">Bekerja di Indonesia</option>
-                                        <option value="wirausaha">Wirausaha</option>
-                                        <option value="education">Lanjut Pendidikan</option>
-                                        <option value="ssw">SSW (Tokutei Ginou)</option>
-                                        <option value="early_return">Pulang Awal / Resign / Medis</option>
-                                        <option value="other">Lainnya</option>
-                                    </select>
-                                    {errors.reason && <p className="text-xs text-red-500 mt-1">{errors.reason}</p>}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="notes">Catatan Tambahan (Opsional)</Label>
-                                    <textarea
-                                        id="notes"
-                                        rows={3}
-                                        value={data.notes}
-                                        onChange={(e) => setData('notes', e.target.value)}
-                                        placeholder="Catatan umum kepulangan..."
-                                        className="mt-1.5 w-full rounded-md border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-emerald-500"
-                                    />
-                                    {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* ACTIONS */}
