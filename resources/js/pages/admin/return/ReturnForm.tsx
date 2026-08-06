@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
-import { Head, Link, useForm } from '@inertiajs/react'
-import { ArrowLeft, Save, Building2, Calendar, Search, ChevronsUpDown, Check } from 'lucide-react'
+import { Head, Link, useForm, router } from '@inertiajs/react'
+import { ArrowLeft, Save, Building2, Calendar, Search, ChevronsUpDown, Check, UserCheck } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,7 +51,7 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
 
     const initialDepartureId = returnRecord?.departure_id || selected_departure_id || (departures[0]?.id ?? '')
 
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, processing, errors } = useForm({
         departure_id: initialDepartureId,
         user_ids: returnRecord?.user_id ? [returnRecord.user_id] : ([] as number[]),
         return_date: returnRecord?.return_date || new Date().toISOString().split('T')[0],
@@ -63,10 +63,24 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
     const [openCombobox, setOpenCombobox] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
 
+    // Detail spesifik per-siswa jika ada beberapa siswa pulang bersamaan
+    const [studentDetailsMap, setStudentDetailsMap] = useState<Record<number, { reason: string; notes: string }>>({})
+
     useEffect(() => {
         const found = departures.find((d) => d.id === Number(data.departure_id))
         setCurrentDeparture(found || null)
     }, [data.departure_id, departures])
+
+    useEffect(() => {
+        if (isEdit && returnRecord?.user_id) {
+            setStudentDetailsMap({
+                [returnRecord.user_id]: {
+                    reason: returnRecord.reason || 'finished',
+                    notes: returnRecord.notes || '',
+                },
+            })
+        }
+    }, [isEdit, returnRecord])
 
     const filteredDepartures = departures.filter((d) => {
         const q = searchQuery.toLowerCase().trim()
@@ -91,12 +105,35 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
         setData('user_ids', activeStudentIds)
     }
 
+    const updateStudentDetail = (userId: number, field: 'reason' | 'notes', value: string) => {
+        setStudentDetailsMap((prev) => ({
+            ...prev,
+            [userId]: {
+                reason: prev[userId]?.reason || data.reason,
+                notes: prev[userId]?.notes ?? '',
+                [field]: value,
+            },
+        }))
+    }
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+
+        const student_details = data.user_ids.map((id) => ({
+            user_id: id,
+            reason: studentDetailsMap[id]?.reason || data.reason,
+            notes: studentDetailsMap[id]?.notes !== undefined ? studentDetailsMap[id].notes : data.notes,
+        }))
+
+        const payload = {
+            ...data,
+            student_details,
+        }
+
         if (isEdit) {
-            put(`/admin/returns/${returnRecord.id}`)
+            router.put(`/admin/returns/${returnRecord.id}`, payload)
         } else {
-            post('/admin/returns')
+            router.post('/admin/returns', payload)
         }
     }
 
@@ -126,7 +163,7 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* CARD 1: PILIH KEBERANGKATAN */}
+                    {/* CARD 1: PILIH KEBERANGKATAN & SISWA */}
                     <div className="rounded-2xl border border-sidebar-border bg-white p-6 shadow-sm dark:bg-zinc-950 space-y-4">
                         <div className="flex items-center gap-2 border-b border-sidebar-border pb-3">
                             <Building2 className="text-emerald-600" size={18} />
@@ -181,6 +218,7 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                                                         onClick={() => {
                                                             setData('departure_id', d.id)
                                                             setData('user_ids', [])
+                                                            setStudentDetailsMap({})
                                                             setOpenCombobox(false)
                                                             setSearchQuery('')
                                                         }}
@@ -231,39 +269,76 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                                 </div>
 
                                 {currentDeparture.students.length > 0 ? (
-                                    <div className="grid gap-2 sm:grid-cols-2">
+                                    <div className="grid gap-3 sm:grid-cols-1">
                                         {currentDeparture.students.map((student) => {
                                             const isChecked = data.user_ids.includes(student.id)
                                             const alreadyReturned = student.is_returned && (!isEdit || student.id !== returnRecord?.user_id)
 
                                             return (
-                                                <label
+                                                <div
                                                     key={student.id}
-                                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                                    className={`p-3.5 rounded-xl border transition-all ${
                                                         alreadyReturned
                                                             ? 'opacity-60 bg-neutral-100 border-neutral-200 cursor-not-allowed dark:bg-zinc-800'
                                                             : isChecked
-                                                            ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30'
+                                                            ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
                                                             : 'border-sidebar-border bg-white dark:bg-zinc-950'
                                                     }`}
                                                 >
-                                                    <input
-                                                        type="checkbox"
-                                                        disabled={alreadyReturned}
-                                                        checked={isChecked}
-                                                        onChange={() => handleStudentToggle(student.id)}
-                                                        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold">{student.name}</span>
-                                                        {student.nik && (
-                                                            <span className="text-[11px] text-muted-foreground">NIK: {student.nik}</span>
-                                                        )}
-                                                        {alreadyReturned && (
-                                                            <span className="text-[10px] font-bold text-amber-600">Sudah Dicatat Pulang</span>
-                                                        )}
-                                                    </div>
-                                                </label>
+                                                    <label className="flex items-center gap-3 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            disabled={alreadyReturned}
+                                                            checked={isChecked}
+                                                            onChange={() => handleStudentToggle(student.id)}
+                                                            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-semibold">{student.name}</span>
+                                                            {student.nik && (
+                                                                <span className="text-[11px] text-muted-foreground">NIK: {student.nik}</span>
+                                                            )}
+                                                            {alreadyReturned && (
+                                                                <span className="text-[10px] font-bold text-amber-600">Sudah Dicatat Pulang</span>
+                                                            )}
+                                                        </div>
+                                                    </label>
+
+                                                    {/* SPESIFIK DETAIL SISWA JIKA TERCENTANG */}
+                                                    {isChecked && !alreadyReturned && (
+                                                        <div className="mt-3 pt-3 border-t border-emerald-200/60 dark:border-emerald-800/60 grid gap-3 sm:grid-cols-2 text-xs">
+                                                            <div>
+                                                                <Label className="text-[11px] text-muted-foreground block mb-1">
+                                                                    Status Selesai ({student.name})
+                                                                </Label>
+                                                                <select
+                                                                    value={studentDetailsMap[student.id]?.reason || data.reason}
+                                                                    onChange={(e) => updateStudentDetail(student.id, 'reason', e.target.value)}
+                                                                    className="w-full rounded-md border border-input bg-background p-2 text-xs focus:ring-1 focus:ring-emerald-500"
+                                                                >
+                                                                    <option value="finished">Selesai Kontrak</option>
+                                                                    <option value="working_indonesia">Bekerja di Indonesia</option>
+                                                                    <option value="wirausaha">Wirausaha</option>
+                                                                    <option value="education">Lanjut Pendidikan</option>
+                                                                    <option value="ssw">SSW (Tokutei Ginou)</option>
+                                                                    <option value="early_return">Pulang Awal / Resign</option>
+                                                                    <option value="other">Lainnya</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <Label className="text-[11px] text-muted-foreground block mb-1">
+                                                                    Keterangan / Perusahaan Baru ({student.name})
+                                                                </Label>
+                                                                <Input
+                                                                    placeholder="Contoh: PT MAJU JAYA / PT HINODE / Toko Kelontong"
+                                                                    value={studentDetailsMap[student.id]?.notes ?? ''}
+                                                                    onChange={(e) => updateStudentDetail(student.id, 'notes', e.target.value)}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )
                                         })}
                                     </div>
@@ -276,11 +351,11 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                         )}
                     </div>
 
-                    {/* CARD 2: DETAIL KEPULANGAN */}
+                    {/* CARD 2: DETAIL UMUM KEPULANGAN */}
                     <div className="rounded-2xl border border-sidebar-border bg-white p-6 shadow-sm dark:bg-zinc-950 space-y-4">
                         <div className="flex items-center gap-2 border-b border-sidebar-border pb-3">
                             <Calendar className="text-emerald-600" size={18} />
-                            <h2 className="font-bold text-foreground">2. Tanggal & Alasan Kepulangan</h2>
+                            <h2 className="font-bold text-foreground">2. Tanggal & Default Status Kepulangan</h2>
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -297,14 +372,18 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                             </div>
 
                             <div>
-                                <Label htmlFor="reason">Status / Alasan Kepulangan</Label>
+                                <Label htmlFor="reason">Default Status / Alasan Selesai</Label>
                                 <select
                                     id="reason"
                                     value={data.reason}
                                     onChange={(e) => setData('reason', e.target.value)}
                                     className="mt-1.5 w-full rounded-md border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-emerald-500"
                                 >
-                                    <option value="finished">Selesai Kontrak (3 Tahun / 5 Tahun)</option>
+                                    <option value="finished">Selesai Kontrak</option>
+                                    <option value="working_indonesia">Bekerja di Indonesia</option>
+                                    <option value="wirausaha">Wirausaha</option>
+                                    <option value="education">Lanjut Pendidikan</option>
+                                    <option value="ssw">SSW (Tokutei Ginou)</option>
                                     <option value="early_return">Pulang Awal / Resign / Medis</option>
                                     <option value="other">Lainnya</option>
                                 </select>
@@ -313,13 +392,13 @@ export default function ReturnForm({ departures, selected_departure_id, returnRe
                         </div>
 
                         <div>
-                            <Label htmlFor="notes">Catatan Tambahan (Opsional)</Label>
+                            <Label htmlFor="notes">Catatan Tambahan Umum (Opsional)</Label>
                             <textarea
                                 id="notes"
                                 rows={3}
                                 value={data.notes}
                                 onChange={(e) => setData('notes', e.target.value)}
-                                placeholder="Contoh: Pulang awal karena alasan keluarga, atau selesai kontrak magang..."
+                                placeholder="Catatan umum kepulangan jika siswa tidak diisi keterangan spesifik..."
                                 className="mt-1.5 w-full rounded-md border border-input bg-background p-3 text-sm focus:ring-2 focus:ring-emerald-500"
                             />
                             {errors.notes && <p className="text-xs text-red-500 mt-1">{errors.notes}</p>}

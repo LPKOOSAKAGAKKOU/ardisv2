@@ -32,9 +32,13 @@ class StudentReturn extends Model
     public function reasonLabel(): string
     {
         return match ($this->reason) {
-            'finished'     => 'Selesai Kontrak',
-            'early_return' => 'Pulang Awal / Resign',
-            default        => 'Lainnya',
+            'working_indonesia' => 'Bekerja di Indonesia',
+            'wirausaha'         => 'Wirausaha',
+            'education'         => 'Lanjut Pendidikan',
+            'ssw'               => 'SSW',
+            'finished'          => 'Selesai Kontrak',
+            'early_return'      => 'Pulang Awal / Resign',
+            default             => $this->reason ?: 'Selesai Kontrak',
         };
     }
 }

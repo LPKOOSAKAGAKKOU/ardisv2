@@ -120,16 +120,21 @@ class ReturnController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'departure_id' => 'required|exists:departures,id',
-            'user_ids'     => 'nullable|array',
-            'user_ids.*'   => 'exists:users,id',
-            'return_date'  => 'required|date',
-            'reason'       => 'required|in:finished,early_return,other',
-            'notes'        => 'nullable|string',
+            'departure_id'              => 'required|exists:departures,id',
+            'user_ids'                  => 'nullable|array',
+            'user_ids.*'                => 'exists:users,id',
+            'student_details'           => 'nullable|array',
+            'student_details.*.user_id' => 'required|exists:users,id',
+            'student_details.*.reason'  => 'nullable|string',
+            'student_details.*.notes'   => 'nullable|string',
+            'return_date'               => 'required|date',
+            'reason'                    => 'required|string',
+            'notes'                     => 'nullable|string',
         ]);
 
         $departure = Departure::findOrFail($validated['departure_id']);
         $userIds = $validated['user_ids'] ?? [];
+        $studentDetails = collect($validated['student_details'] ?? [])->keyBy('user_id');
 
         if (empty($userIds)) {
             // Pencatatan kepulangan tanpa tautan siswa spesifik (mis. data historis)
@@ -142,6 +147,10 @@ class ReturnController extends Controller
             ]);
         } else {
             foreach ($userIds as $userId) {
+                $detail = $studentDetails->get($userId);
+                $reason = ! empty($detail['reason']) ? $detail['reason'] : $validated['reason'];
+                $notes = isset($detail['notes']) && $detail['notes'] !== '' ? $detail['notes'] : ($validated['notes'] ?? null);
+
                 // Hindari duplikasi kepulangan untuk siswa & keberangkatan yang sama
                 StudentReturn::firstOrCreate(
                     [
@@ -150,8 +159,8 @@ class ReturnController extends Controller
                     ],
                     [
                         'return_date' => $validated['return_date'],
-                        'reason'      => $validated['reason'],
-                        'notes'       => $validated['notes'] ?? null,
+                        'reason'      => $reason,
+                        'notes'       => $notes,
                     ]
                 );
             }

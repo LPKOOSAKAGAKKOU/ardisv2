@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('departure_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->date('return_date');
-            $table->enum('reason', ['finished', 'early_return', 'other'])->default('finished');
+            $table->string('reason')->default('finished');
             $table->text('notes')->nullable();
             $table->timestamps();
         });
