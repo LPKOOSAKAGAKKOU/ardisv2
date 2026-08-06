@@ -112,6 +112,8 @@ class DepartureReportService
 
         abort_unless($sheet !== null, 500, 'Sheet "' . self::SHEET_NAME . '" tidak ada pada template.');
 
+        $this->dropBrokenDefinedNames($spreadsheet);
+
         $spreadsheet->setActiveSheetIndex($spreadsheet->getIndex($sheet));
 
         $rows = $this->rows($month);
@@ -160,6 +162,24 @@ class DepartureReportService
         }
 
         return $spreadsheet;
+    }
+
+    /**
+     * Template memuat defined name warisan yang menunjuk workbook lain
+     * (mis. Jenis_Kelamin = '[1]DROPDOWN'!$A$1:$A$2). PhpSpreadsheet tidak
+     * ikut menulis bagian externalLinks, sehingga indeks "[1]" jadi menggantung
+     * dan Excel menolak file dengan pesan "We found a problem with some content".
+     * Nama-nama tersebut tidak dipakai rumus mana pun, jadi aman dibuang.
+     */
+    private function dropBrokenDefinedNames(Spreadsheet $spreadsheet): void
+    {
+        foreach ($spreadsheet->getDefinedNames() as $definedName) {
+            if (preg_match('/\[\d+\]|#REF!/', $definedName->getValue()) !== 1) {
+                continue;
+            }
+
+            $spreadsheet->removeDefinedName($definedName->getName(), $definedName->getScope());
+        }
     }
 
     public function filename(Carbon $month): string
