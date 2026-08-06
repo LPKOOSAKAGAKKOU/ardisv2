@@ -53,15 +53,6 @@ export default function KemnakerReportCard() {
     const [logging, setLogging] = useState<boolean>(false);
     const [summary, setSummary] = useState<SummaryData | null>(null);
     const [showLogsModal, setShowLogsModal] = useState<boolean>(false);
-    const [copiedBookmarklet, setCopiedBookmarklet] = useState<boolean>(false);
-
-    const bookmarkletCode = `javascript:(function(){if(window.__ardisKemnakerLoaded)return;window.__ardisKemnakerLoaded=true;var m=document.createElement('div');m.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;width:340px;background:#ffffff;border:2px solid #059669;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.15);padding:16px;font-family:sans-serif;color:#1e293b;';m.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><strong style="color:#059669;font-size:14px;">🚀 ARDIS v2 Kemnaker Helper</strong><span onclick="this.parentElement.parentElement.remove();window.__ardisKemnakerLoaded=false;" style="cursor:pointer;font-size:18px;color:#64748b;font-weight:bold;">×</span></div><p style="font-size:12px;margin:0 0 12px 0;color:#475569;">Pilih file Excel Keberangkatan yang sudah Anda review dari folder Downloads:</p><label style="display:block;border:2px dashed #10b981;border-radius:8px;padding:18px 12px;text-align:center;background:#ecfdf5;cursor:pointer;"><input type="file" id="ardisExcelInput" accept=".xlsx,.xls" style="display:none;"/><span id="ardisStatusText" style="font-size:12px;font-weight:bold;color:#047857;">📁 Drag / Klik untuk Attach Excel</span></label>';document.body.appendChild(m);var inp=document.getElementById('ardisExcelInput');inp.addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;document.getElementById('ardisStatusText').innerText='✅ '+f.name+' Terpilih!';var btn=document.querySelector('div[role="button"][aria-label*="Tambahkan file"]')||document.querySelector('.jyLEF');if(btn)btn.click();});})();`;
-
-    const handleCopyBookmarklet = () => {
-        navigator.clipboard.writeText(bookmarkletCode);
-        setCopiedBookmarklet(true);
-        setTimeout(() => setCopiedBookmarklet(false), 3000);
-    };
 
     const months = [
         { value: 1, label: 'Januari' },
@@ -233,47 +224,16 @@ export default function KemnakerReportCard() {
                             </div>
                         </div>
 
-                        {/* Petunjuk Ringkas 3 Langkah dengan Bookmarklet Helper */}
-                        <div className="p-3.5 rounded-lg border bg-gradient-to-r from-emerald-50/70 to-teal-50/70 dark:from-emerald-950/30 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800 text-xs space-y-2.5">
-                            <div className="flex items-center justify-between">
-                                <p className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">1x</span>
-                                    <span>Pasang Bookmarklet Helper (Otomatisasi 1-Klik di Browser Admin)</span>
-                                </p>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={handleCopyBookmarklet}
-                                    className="h-7 text-[11px] font-semibold bg-emerald-700 hover:bg-emerald-800 text-white gap-1 px-2.5 shadow-xs"
-                                >
-                                    {copiedBookmarklet ? (
-                                        <>
-                                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                                            <span>Kode Tersalin!</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                            <span>Salin Kode Bookmarklet</span>
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                            
-                            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                                <span 
-                                    dangerouslySetInnerHTML={{
-                                        __html: `<a href="${bookmarkletCode.replace(/"/g, '&quot;')}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-emerald-600 bg-emerald-600 text-white font-bold text-xs shadow hover:bg-emerald-700 cursor-grab active:cursor-grabbing transition-colors" title="Tarik tombol ini ke Bookmarks Bar browser Anda">🚀 Auto-Attach Kemnaker</a>`
-                                    }}
-                                />
-                                <span className="text-[11px] text-muted-foreground">
-                                    ← <strong>Tarik ke Bookmarks Bar</strong> (atau klik <i>Salin Kode</i> ➔ Tambah Bookmark ➔ Paste URL).
-                                </span>
-                            </div>
-
-                            <div className="border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2 text-muted-foreground text-[11px]">
-                                <strong>Alur Pelaporan Bulanan:</strong> 1. Download & Review Excel ➔ 2. Buka Google Form ➔ 3. Klik Bookmarklet <strong>[🚀 Auto-Attach Kemnaker]</strong> di Bookmarks Bar.
-                            </div>
+                        {/* Petunjuk Ringkas 3 Langkah Pelaporan */}
+                        <div className="p-3 rounded-lg border bg-muted/40 text-xs space-y-1.5">
+                            <p className="font-bold text-foreground flex items-center gap-1.5">
+                                💡 Alur Cepat Pelaporan Bulanan Kemnaker (3 Langkah):
+                            </p>
+                            <ol className="list-decimal list-inside space-y-1 text-muted-foreground text-[11px]">
+                                <li>Klik <strong>Langkah 1: Download Excel</strong> ➔ Buka file untuk review data peserta.</li>
+                                <li>Klik <strong>Langkah 2: Buka Google Form</strong> ➔ Seluruh teks & angka sudah terisi otomatis (0-ketik).</li>
+                                <li>Di Google Form bagian <strong>File Rekapitulasi</strong>, klik <strong>"Tambahkan file"</strong> ➔ pilih file Excel ➔ klik <strong>Kirim</strong>.</li>
+                            </ol>
                         </div>
 
                         {/* Action Buttons */}
