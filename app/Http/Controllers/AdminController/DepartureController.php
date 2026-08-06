@@ -9,17 +9,24 @@ use App\Models\Departure;
 use App\Models\Interview;
 use App\Models\InterviewDetail;
 use App\Services\BillingService;
+use App\Services\DepartureReportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class DepartureController extends Controller
 {
-    public function __construct(private BillingService $billing)
-    {
+    public function __construct(
+        private BillingService $billing,
+        private DepartureReportService $report,
+    ) {
     }
 
     public function index(Request $request)
     {
+        $month = $this->resolveMonth($request->input('month'));
+
         $query = Departure::query()
             ->with([
                 'acceptingOrganization:id,name,pre_education_fee,management_fee',
@@ -28,7 +35,10 @@ class DepartureController extends Controller
                 'interview.details:id,interview_id,user_id,result',
                 'interview.details.user:id,name',
             ])
-            ->orderByDesc('id');
+            ->whereYear('departure_date', $month->year)
+            ->whereMonth('departure_date', $month->month)
+            ->orderBy('departure_date')
+            ->orderBy('id');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -45,7 +55,7 @@ class DepartureController extends Controller
             $query->where('accepting_organization_id', $request->organization_id);
         }
 
-        $departures = $query->paginate(15)->withQueryString()
+        $departures = $query->paginate(10)->withQueryString()
             ->through(function (Departure $d) {
                 $summary = $this->billing->summary($d);
 
@@ -70,7 +80,66 @@ class DepartureController extends Controller
             'organizations' => AcceptingOrganization::orderBy('name')->get(['id', 'name']),
             'filters'       => $request->only(['search', 'status', 'organization_id']),
             'summary'       => $this->departedSummary(),
+            'month'         => $this->monthMeta($month),
         ]);
+    }
+
+    /**
+     * Unduh laporan keberangkatan bulanan (format Kemnaker) untuk satu bulan.
+     * Laporan selalu mencakup seluruh keberangkatan bulan tersebut, terlepas
+     * dari filter pencarian/organisasi di halaman daftar.
+     */
+    public function monthlyReport(Request $request)
+    {
+        $month = $this->resolveMonth($request->input('month'));
+
+        $spreadsheet = $this->report->build($month);
+        $filename = $this->report->filename($month);
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            IOFactory::createWriter($spreadsheet, 'Xlsx')->save('php://output');
+        }, $filename, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0, must-revalidate',
+        ]);
+    }
+
+    /**
+     * Bulan aktif tampilan. Menerima "YYYY-MM"; nilai tidak valid jatuh ke bulan ini.
+     */
+    private function resolveMonth(?string $value): Carbon
+    {
+        if ($value && preg_match('/^\d{4}-\d{2}$/', $value)) {
+            try {
+                return Carbon::createFromFormat('Y-m-d', $value . '-01')->startOfMonth();
+            } catch (\Throwable) {
+                // abaikan, pakai bulan berjalan
+            }
+        }
+
+        return Carbon::now()->startOfMonth();
+    }
+
+    /**
+     * Metadata navigasi bulan + rekap headcount bulan tersebut (tanpa filter).
+     */
+    private function monthMeta(Carbon $month): array
+    {
+        $ofMonth = Departure::query()
+            ->where('status', '!=', 'cancelled')
+            ->whereYear('departure_date', $month->year)
+            ->whereMonth('departure_date', $month->month)
+            ->get(['id', 'people_count']);
+
+        return [
+            'value'      => $month->format('Y-m'),
+            'label'      => $this->report->monthLabel($month),
+            'prev'       => $month->copy()->subMonthNoOverflow()->format('Y-m'),
+            'next'       => $month->copy()->addMonthNoOverflow()->format('Y-m'),
+            'current'    => Carbon::now()->format('Y-m'),
+            'departures' => $ofMonth->count(),
+            'people'     => (int) $ofMonth->sum('people_count'),
+        ];
     }
 
     /**

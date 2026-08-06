@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout'
 import { Head, Link, router } from '@inertiajs/react'
-import { Plane, Plus, Search, Edit, Trash2, Eye, Users, Building2 } from 'lucide-react'
+import { Plane, Plus, Search, Edit, Trash2, Eye, Users, Building2, ChevronLeft, ChevronRight, FileSpreadsheet, CalendarDays } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,11 +32,22 @@ interface Summary {
     total_departures: number
     per_organization: OrgSummary[]
 }
+interface MonthMeta {
+    value: string // YYYY-MM
+    label: string // "April 2026"
+    prev: string
+    next: string
+    current: string
+    departures: number
+    people: number
+}
+
 interface Props {
     departures: { data: DepartureRow[]; links: any[]; from: number; to: number; total: number }
     organizations: { id: number; name: string }[]
     filters: { search?: string; status?: string; organization_id?: string }
     summary: Summary
+    month: MonthMeta
 }
 
 const yen = (n: number) => '¥' + (n ?? 0).toLocaleString('ja-JP')
@@ -49,7 +60,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
     cancelled: { label: 'Batal', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 }
 
-export default function DepartureIndex({ departures, organizations, filters, summary }: Props) {
+export default function DepartureIndex({ departures, organizations, filters, summary, month }: Props) {
     const [search, setSearch] = useState(filters?.search || '')
 
     const breadcrumbs = [
@@ -58,8 +69,15 @@ export default function DepartureIndex({ departures, organizations, filters, sum
     ]
 
     const applyFilter = (extra: Record<string, string>) => {
-        router.get('/admin/departures', { search, ...filters, ...extra }, { preserveState: true, replace: true })
+        router.get(
+            '/admin/departures',
+            { search, month: month.value, ...filters, ...extra },
+            { preserveState: true, replace: true },
+        )
     }
+
+    // Pindah bulan selalu mereset halaman ke 1 (pagination berlaku per bulan).
+    const goToMonth = (value: string) => applyFilter({ month: value, page: '1' })
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
@@ -89,11 +107,71 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                             </p>
                         </div>
                     </div>
-                    <Link href="/admin/departures/create">
-                        <Button className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
-                            <Plus className="mr-2 h-4 w-4" /> Tambah Keberangkatan
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a href={`/admin/departures/report?month=${month.value}`}>
+                            <Button
+                                variant="outline"
+                                className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+                                title={`Unduh laporan keberangkatan ${month.label} (format Kemnaker)`}
+                            >
+                                <FileSpreadsheet className="mr-2 h-4 w-4" /> Laporan {month.label}
+                            </Button>
+                        </a>
+                        <Link href="/admin/departures/create">
+                            <Button className="bg-neutral-900 text-white dark:bg-white dark:text-black hover:opacity-90">
+                                <Plus className="mr-2 h-4 w-4" /> Tambah Keberangkatan
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* NAVIGASI BULAN */}
+                <div className="flex flex-col gap-3 rounded-2xl border border-sidebar-border bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:bg-zinc-950">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 shrink-0"
+                            aria-label="Bulan sebelumnya"
+                            onClick={() => goToMonth(month.prev)}
+                        >
+                            <ChevronLeft size={18} />
                         </Button>
-                    </Link>
+
+                        <div className="min-w-[150px] text-center">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Bulan Keberangkatan</p>
+                            <p className="text-lg font-bold leading-tight">{month.label}</p>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10 shrink-0"
+                            aria-label="Bulan berikutnya"
+                            onClick={() => goToMonth(month.next)}
+                        >
+                            <ChevronRight size={18} />
+                        </Button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-xs text-muted-foreground">
+                            <span className="font-bold text-foreground tabular-nums">{month.departures}</span> keberangkatan ·{' '}
+                            <span className="font-bold text-foreground tabular-nums">{month.people}</span> orang
+                        </span>
+                        <input
+                            type="month"
+                            value={month.value}
+                            onChange={(e) => e.target.value && goToMonth(e.target.value)}
+                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                            aria-label="Pilih bulan"
+                        />
+                        {month.value !== month.current && (
+                            <Button variant="ghost" className="h-10 text-xs" onClick={() => goToMonth(month.current)}>
+                                <CalendarDays className="mr-1.5 h-3.5 w-3.5" /> Bulan Ini
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* RINGKASAN KEBERANGKATAN */}
@@ -241,7 +319,7 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                                 ) : (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-16 text-center text-muted-foreground italic">
-                                            Belum ada data keberangkatan.
+                                            Tidak ada keberangkatan pada {month.label}.
                                         </td>
                                     </tr>
                                 )}
@@ -255,7 +333,7 @@ export default function DepartureIndex({ departures, organizations, filters, sum
                     from={departures?.from}
                     to={departures?.to}
                     total={departures?.total}
-                    label="keberangkatan"
+                    label={`keberangkatan ${month.label}`}
                 />
             </div>
         </AppLayout>

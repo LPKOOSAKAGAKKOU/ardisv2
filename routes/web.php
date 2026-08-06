@@ -142,6 +142,7 @@ Route::middleware([
     Route::resource('companies', CompanyController::class);
 
     // --- MANAJEMEN KEBERANGKATAN ---
+    Route::get('/departures/report', [DepartureController::class, 'monthlyReport'])->name('departures.report');
     Route::post('/departures/{id}/billings', [DepartureController::class, 'saveBillings'])->name('departures.billings.save');
     Route::resource('departures', DepartureController::class);
 
