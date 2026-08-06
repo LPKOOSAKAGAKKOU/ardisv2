@@ -39,17 +39,24 @@ class KemnakerReportController extends Controller
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
         ];
 
+        $monthsEn = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+
         $monthName = $monthsId[$month] ?? 'Januari';
+        $monthNameEn = $monthsEn[$month] ?? 'January';
 
         // Link Auto-Prefill Google Form Kemnaker
         $googleFormBaseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfTr13NEBcReV9eCsrNpwDmNQHhsMdgvK2expo8B4MZgEdy5g/viewform";
         $queryParams = http_build_query([
             'usp' => 'pp_url',
             'entry.2024986366' => 'PT OOSAKA GAKKOU',
-            'entry.638972208'  => $monthName,
+            'entry.638972208'  => $monthNameEn,
             'entry.1319946884' => (string) $year,
             'entry.1714157754' => (string) $departureCount,
-            'entry.537604297'  => (string) $returnCount,
+            'entry.537604297'  => self::DEFAULT_WA,
         ]);
         $prefilledUrl = $googleFormBaseUrl . '?' . $queryParams;
 
