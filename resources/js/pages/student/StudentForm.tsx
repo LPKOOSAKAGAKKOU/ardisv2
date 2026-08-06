@@ -20,8 +20,8 @@ import { route } from 'ziggy-js';
 
 interface Props {
     student?: any;
-    provinces: { id: number; name: string }[];
-    jobSectors: { id: number; name: string; code: string }[];
+    provinces: { id: number; name: string; name_id?: string }[];
+    jobSectors: { id: number; name: string; name_id?: string; code: string }[];
     majors: { id: number; name: string }[];
     recruitments: { id: number; name: string; date: string; type: string }[];
 }
@@ -222,8 +222,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {provinces.map((prov) => (
-                                                        <SelectItem key={prov.id} value={prov.name_id} className="text-sm">
-                                                            {prov.name_id}
+                                                        <SelectItem key={prov.id} value={prov.name_id || prov.name} className="text-sm">
+                                                            {prov.name_id || prov.name}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -617,8 +617,8 @@ export default function StudentForm({ student, provinces, jobSectors, majors, re
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         {jobSectors.map((job) => (
-                                                                            <SelectItem key={job.id} value={job.name_id} className="text-sm">
-                                                                                {job.name_id} ({job.code})
+                                                                            <SelectItem key={job.id} value={job.name_id || job.name} className="text-sm">
+                                                                                {job.name_id || job.name} ({job.code})
                                                                             </SelectItem>
                                                                         ))}
                                                                     </SelectContent>
