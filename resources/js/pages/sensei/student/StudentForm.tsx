@@ -371,7 +371,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                         
                                                         {/* Grid Form Pendidikan */}
                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4 sm:gap-y-5">
-                                                            <FormItem label="Tingkat / Jenjang" required error={errors[`educations.${idx}.level`] || errors.educations}>
+                                                            <FormItem label="Tingkat / Jenjang" required error={(errors as Record<string, any>)[`educations.${idx}.level`] || errors.educations}>
                                                                 <Select value={edu.level} onValueChange={v => { const updated = [...data.educations]; updated[idx].level = v; setData('educations', updated); }}>
                                                                     <SelectTrigger className="text-sm"><SelectValue placeholder="Pilih Jenjang" /></SelectTrigger>
                                                                     <SelectContent>
@@ -393,7 +393,7 @@ export default function StudentForm({ student, provinces, jobSectors, majors }: 
                                                                 </Select>
                                                             </FormItem>
 
-                                                            <FormItem label="Nama Sekolah / Universitas" required error={errors[`educations.${idx}.school_name`] || errors.educations}>
+                                                            <FormItem label="Nama Sekolah / Universitas" required error={(errors as Record<string, any>)[`educations.${idx}.school_name`] || errors.educations}>
                                                                 <Input 
                                                                     placeholder="Masukkan nama lengkap instansi" 
                                                                     value={edu.school_name} 
