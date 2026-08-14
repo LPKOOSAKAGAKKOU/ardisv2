@@ -326,7 +326,7 @@ export default function StudentShow({ student }: Props) {
                                                                         <Eye size={14} />
                                                                     )}
                                                                 </Button>
-                                                            <a href={`https://yunerva.com/f/${student[doc.field]}`} target="_blank">
+                                                            <a href={`https://yunerva.aulaa.co/f/${student[doc.field]}`} target="_blank">
                                                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600">
                                                                     <Download size={14} />
                                                                 </Button>

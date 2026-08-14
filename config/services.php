@@ -19,7 +19,7 @@ return [
     ],
 
     'resend' => [
-        'key' => env('RESEND_API_KEY', 're_XRhw763p_36wQLUUZT4PxQvVPFcWNWuU4'),
+        'key' => env('RESEND_API_KEY'),
     ],
 
     'ses' => [
@@ -36,7 +36,7 @@ return [
     ],
 
     'yunerva' => [
-        'base_url'   => env('YUNERVA_API_BASE_URL', 'https://yunerva.com/api/v1'),
+        'base_url'   => env('YUNERVA_API_BASE_URL', 'https://yunerva.aulaa.co/api/v1'),
         'api_token'  => env('YUNERVA_API_TOKEN'),
         'secret_key' => env('YUNERVA_SECRET_KEY'),
     ],

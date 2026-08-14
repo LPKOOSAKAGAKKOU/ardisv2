@@ -1740,7 +1740,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                             </Button>
                                                             
                                                             {/* Download */}
-                                                            <a href={`https://yunerva.com/f/${student[doc.field]}`} target="_blank" rel="noreferrer">
+                                                            <a href={`https://yunerva.aulaa.co/f/${student[doc.field]}`} target="_blank" rel="noreferrer">
                                                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600">
                                                                     <Download size={14} />
                                                                 </Button>
@@ -2041,7 +2041,7 @@ function DocStatus({
                             </Button>
 
                             {/* Tombol Download */}
-                            <a href={`https://yunerva.com/f/${uuid}`} target="_blank" rel="noreferrer">
+                            <a href={`https://yunerva.aulaa.co/f/${uuid}`} target="_blank" rel="noreferrer">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground">
                                     <Download size={14}/>
                                 </Button>

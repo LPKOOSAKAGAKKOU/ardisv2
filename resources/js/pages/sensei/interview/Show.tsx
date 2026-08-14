@@ -231,7 +231,7 @@ export default function InterviewShow({ interview, availableStudents = [] }: Pro
     };
 
     const handleDownload = () => {
-        window.open(`https://yunerva.com/f/${interview.kyuujinhyou_yunerva_uuid}`, '_blank');
+        window.open(`https://yunerva.aulaa.co/f/${interview.kyuujinhyou_yunerva_uuid}`, '_blank');
     };
 
     return (
