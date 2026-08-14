@@ -174,6 +174,10 @@
                 @endforeach
             </tbody>
         </table>
+
+        <div style="margin-top: 24px; padding-top: 12px; border-top: 1px dashed #c4c4c8; font-size: 10px; color: #71717a; text-align: center;">
+            Sistem Penagihan &amp; Verifikasi Pembayaran Resmi ARDIS didukung oleh <a href="https://aulaa.co" target="_blank" rel="noopener" style="color: #2563eb; text-decoration: none; font-weight: 600;">Aulaa.co</a> Payment Gateway.
+        </div>
     </div>
 </body>
 </html>

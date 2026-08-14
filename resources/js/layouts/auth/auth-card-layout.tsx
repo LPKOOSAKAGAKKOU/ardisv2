@@ -1,4 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import PaymentPartnerBadge from '@/components/PaymentPartnerBadge';
 import {
     Card,
     CardContent,
@@ -32,13 +33,14 @@ export default function AuthCardLayout({
                 </Link>
 
                 <div className="flex flex-col gap-6">
-                    <Card className="rounded-xl">
+                    <Card className="rounded-xl shadow-md border-border/80">
                         <CardHeader className="px-10 pt-8 pb-0 text-center">
                             <CardTitle className="text-xl">{title}</CardTitle>
                             <CardDescription>{description}</CardDescription>
                         </CardHeader>
                         <CardContent className="px-10 py-8">
                             {children}
+                            <PaymentPartnerBadge variant="auth-footer" />
                         </CardContent>
                     </Card>
                 </div>
@@ -46,3 +48,4 @@ export default function AuthCardLayout({
         </div>
     );
 }
+

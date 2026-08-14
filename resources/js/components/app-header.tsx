@@ -32,7 +32,7 @@ import { useActiveUrl } from '@/hooks/use-active-url';
 import { cn, toUrl } from '@/lib/utils';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search, School } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Menu, Search, School, ShieldCheck } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import { route } from 'ziggy-js'
@@ -46,14 +46,9 @@ const mainNavItems: NavItem[] = [
 
 const rightNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
+        title: 'Mitra Pembayaran Resmi: Aulaa.co',
+        href: 'https://aulaa.co',
+        icon: ShieldCheck,
     },
 ];
 

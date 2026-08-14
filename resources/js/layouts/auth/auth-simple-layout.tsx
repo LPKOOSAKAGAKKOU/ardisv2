@@ -1,4 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import PaymentPartnerBadge from '@/components/PaymentPartnerBadge';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
@@ -36,8 +37,10 @@ export default function AuthSimpleLayout({
                         </div>
                     </div>
                     {children}
+                    <PaymentPartnerBadge variant="auth-footer" />
                 </div>
             </div>
         </div>
     );
 }
+

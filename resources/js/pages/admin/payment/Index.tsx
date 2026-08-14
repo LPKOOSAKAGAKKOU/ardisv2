@@ -14,7 +14,8 @@ import {
     Copy,
     Check,
     ChevronRight,
-    ChevronDown
+    ChevronDown,
+    ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -709,6 +710,18 @@ export default function PaymentIndex({ students = { data: [], links: [] }, filte
                             <p className="text-sm text-muted-foreground">Kelola tagihan kelulusan wawancara dan COE peserta per event wawancara.</p>
                         </div>
                     </div>
+
+                    <a
+                        href="https://aulaa.co"
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all shadow-sm w-fit"
+                        title="Official Payment Gateway Partner Aulaa.co"
+                    >
+                        <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+                        <span>Payment Partner: <strong>aulaa.co</strong></span>
+                        <ExternalLink className="size-3 opacity-70" />
+                    </a>
                 </div>
 
                 {/* Search Bar */}

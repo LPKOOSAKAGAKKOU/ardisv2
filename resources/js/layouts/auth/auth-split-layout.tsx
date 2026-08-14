@@ -1,4 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import PaymentPartnerBadge from '@/components/PaymentPartnerBadge';
 import { home } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -18,7 +19,7 @@ export default function AuthSplitLayout({
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+            <div className="relative hidden h-full flex-col justify-between bg-muted p-10 text-white lg:flex dark:border-r">
                 <div className="absolute inset-0 bg-zinc-900" />
                 <Link
                     href={home()}
@@ -27,6 +28,10 @@ export default function AuthSplitLayout({
                     <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
                     {name}
                 </Link>
+
+                <div className="relative z-20 mt-auto">
+                    <PaymentPartnerBadge variant="sidebar-widget" className="bg-zinc-800/80 border-zinc-700 text-zinc-200" />
+                </div>
             </div>
             <div className="w-full lg:p-8">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
@@ -43,8 +48,10 @@ export default function AuthSplitLayout({
                         </p>
                     </div>
                     {children}
+                    <PaymentPartnerBadge variant="auth-footer" />
                 </div>
             </div>
         </div>
     );
 }
+

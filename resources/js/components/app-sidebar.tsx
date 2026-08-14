@@ -28,6 +28,7 @@ import {
     Receipt,
 } from 'lucide-react'
 import AppLogo from './app-logo'
+import PaymentPartnerBadge from '@/components/PaymentPartnerBadge'
 import { route } from 'ziggy-js'
 
 
@@ -120,7 +121,10 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
-            <SidebarFooter>
+            <SidebarFooter className="gap-3">
+                <div className="px-2">
+                    <PaymentPartnerBadge variant="sidebar-widget" />
+                </div>
                 <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>

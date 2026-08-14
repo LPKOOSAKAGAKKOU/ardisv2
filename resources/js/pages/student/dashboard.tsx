@@ -18,6 +18,7 @@ import {
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
+import PaymentPartnerBadge from '@/components/PaymentPartnerBadge'
 
 // Shadcn UI Components
 import {
@@ -428,6 +429,40 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                 </div>
                             </div>
 
+                            {/* ========== PAYMENT PARTNER TRUST BANNER ========== */}
+                            {(paymentJobWawancara || paymentJobPendidikan || paymentCoeDokumen || paymentCoeAdmin) && (
+                                <div className="rounded-2xl sm:rounded-[2rem] border border-blue-200/80 dark:border-blue-900/60 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white dark:from-blue-950/30 dark:via-zinc-900/50 dark:to-zinc-950 p-4 sm:p-6 shadow-sm mb-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                        <div className="flex items-start sm:items-center gap-3.5">
+                                            <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0">
+                                                <CreditCard className="size-5 sm:size-6" />
+                                            </div>
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="font-bold text-sm sm:text-base text-foreground">
+                                                        Sistem Pembayaran Online Resmi Siswa
+                                                    </h3>
+                                                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
+                                                        Partner Resmi Aulaa.co
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                                    Seluruh tagihan pendidikan dan administrasi siswa diproses secara instan dan otomatis terverifikasi menggunakan payment gateway mitra resmi <a href="https://aulaa.co" target="_blank" rel="noopener" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">Aulaa.co</a> (Mendukung QRIS, BCA, BNI, BRI, Mandiri, Virtual Account, &amp; E-Wallet).
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <a
+                                            href="https://aulaa.co"
+                                            target="_blank"
+                                            rel="noopener"
+                                            className="shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 bg-white dark:bg-zinc-900 px-3.5 py-2 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm transition-all hover:shadow"
+                                        >
+                                            Kunjungi Aulaa.co <ExternalLink className="size-3.5" />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* ========== CARD: TAGIHAN BIAYA LULUS WAWANCARA (JOB 1) ========== */}
                             {paymentJobWawancara && (
                                 <div className="rounded-2xl sm:rounded-[2rem] border bg-white dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 shadow-sm relative overflow-hidden">
@@ -493,7 +528,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 {paymentJobWawancara.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
-                                                            Silakan selesaikan pembayaran tagihan lulus wawancara Anda melalui tautan resmi Aulaa di bawah ini.
+                                                            Silakan selesaikan pembayaran tagihan lulus wawancara Anda secara aman melalui mitra resmi <a href="https://aulaa.co" target="_blank" rel="noopener" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">Aulaa.co</a> di bawah ini.
                                                         </p>
                                                         {paymentJobWawancara.payment_url ? (
                                                             <Button 
@@ -533,6 +568,8 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 )}
                                             </div>
                                         </div>
+
+                                        <PaymentPartnerBadge variant="card-badge" className="mt-4" />
                                     </div>
                                 </div>
                             )}
@@ -602,7 +639,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 {paymentJobPendidikan.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
-                                                            Silakan selesaikan pembayaran tagihan pendidikan bahasa Jepang Anda melalui tautan resmi Aulaa di bawah ini.
+                                                            Silakan selesaikan pembayaran tagihan pendidikan bahasa Jepang Anda secara aman melalui mitra resmi <a href="https://aulaa.co" target="_blank" rel="noopener" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">Aulaa.co</a> di bawah ini.
                                                         </p>
                                                         {paymentJobPendidikan.payment_url ? (
                                                             <Button 
@@ -642,6 +679,8 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 )}
                                             </div>
                                         </div>
+
+                                        <PaymentPartnerBadge variant="card-badge" className="mt-4" />
                                     </div>
                                 </div>
                             )}
@@ -709,7 +748,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 {paymentCoeDokumen.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
-                                                            Silakan selesaikan pembayaran tagihan pengurusan dokumen melalui tautan resmi Aulaa di bawah ini.
+                                                            Silakan selesaikan pembayaran tagihan pengurusan dokumen secara aman melalui mitra resmi <a href="https://aulaa.co" target="_blank" rel="noopener" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">Aulaa.co</a> di bawah ini.
                                                         </p>
                                                         {paymentCoeDokumen.payment_url ? (
                                                             <Button 
@@ -749,6 +788,8 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 )}
                                             </div>
                                         </div>
+
+                                        <PaymentPartnerBadge variant="card-badge" className="mt-4" />
                                     </div>
                                 </div>
                             )}
@@ -816,7 +857,7 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 {paymentCoeAdmin.status === 'pending' ? (
                                                     <div className="flex flex-col gap-3">
                                                         <p className="text-xs text-muted-foreground max-w-sm">
-                                                            Silakan selesaikan pembayaran tagihan administrasi COE melalui tautan resmi Aulaa di bawah ini.
+                                                            Silakan selesaikan pembayaran tagihan administrasi COE secara aman melalui mitra resmi <a href="https://aulaa.co" target="_blank" rel="noopener" className="font-bold text-blue-600 dark:text-blue-400 hover:underline">Aulaa.co</a> di bawah ini.
                                                         </p>
                                                         {paymentCoeAdmin.payment_url ? (
                                                             <Button 
@@ -856,6 +897,8 @@ export default function StudentDashboard({ student, interviews, passedApplicatio
                                                 )}
                                             </div>
                                         </div>
+
+                                        <PaymentPartnerBadge variant="card-badge" className="mt-4" />
                                     </div>
                                 </div>
                             )}
